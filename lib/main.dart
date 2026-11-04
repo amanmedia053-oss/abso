@@ -31,7 +31,7 @@ class _AbsoAppState extends State<AbsoApp> {
   @override
   Widget build(BuildContext context) => MaterialApp(
     debugShowCheckedModeBanner: false,
-    title: 'ابسو | د شعرونو نړۍ',
+    title: 'ادبي خزانه | د شعرونو نړۍ',
     theme: makeTheme(Brightness.light),
     darkTheme: makeTheme(Brightness.dark),
     themeMode: mode,
@@ -144,7 +144,7 @@ class _SplashScreenState extends State<SplashScreen>
                       size: 61, color: Colors.white),
                   ),
                   const SizedBox(height: 22),
-                  const Text('ابسو',
+                  const Text('ادبي خزانه',
                     style: TextStyle(color: Colors.white, fontSize: 35,
                       fontWeight: FontWeight.bold, letterSpacing: 1)),
                   const SizedBox(height: 7),
@@ -361,7 +361,7 @@ class _PoetryShellState extends State<PoetryShell> {
 
   @override
   Widget build(BuildContext context) {
-    const titles = ['ابسو', 'خوښ شوي شعرونه', 'شاعران', 'زموږ په اړه'];
+    const titles = ['ادبي خزانه', 'خوښ شوي شعرونه', 'شاعران', 'زموږ په اړه'];
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Scaffold(
@@ -566,7 +566,7 @@ class _PoetryShellState extends State<PoetryShell> {
           ),
         ),
         const SizedBox(height: 15),
-        Center(child: Text('ابسو',
+        Center(child: Text('ادبي خزانه',
           style: Theme.of(context).textTheme.headlineSmall?.copyWith(
             fontWeight: FontWeight.bold))),
         const SizedBox(height: 5),
@@ -579,7 +579,7 @@ class _PoetryShellState extends State<PoetryShell> {
           child: const Padding(
             padding: EdgeInsets.all(16),
             child: Text(
-              'ابسو د پښتو ژبې د شعرونو او ادب د مینه‌والو لپاره یو ساده او ښکلی اپلیکیشن دی. زموږ موخه دا ده چې د پښتو شاعرۍ لوستلو، موندلو او له خوښو شعرونو سره د بیا لیدو تجربه اسانه کړو.',
+              'ادبي خزانه د پښتو ژبې د شعرونو او ادب د مینه‌والو لپاره یو ساده او ښکلی اپلیکیشن دی. زموږ موخه دا ده چې د پښتو شاعرۍ لوستلو، موندلو او له خوښو شعرونو سره د بیا لیدو تجربه اسانه کړو.',
               style: TextStyle(fontSize: 13, height: 1.9),
               textAlign: TextAlign.justify,
             ),
