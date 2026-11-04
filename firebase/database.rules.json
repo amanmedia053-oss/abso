@@ -3,9 +3,18 @@
     ".read": true,
     ".write": false,
     "poems": {
-      ".indexOn": ["createdAt", "categoryId", "featured", "isPublished"],
+      ".indexOn": [
+        "createdAt",
+        "categoryId",
+        "featured",
+        "isPublished"
+      ],
       "$poemId": {
-        ".write": "auth != null && root.child('admins').child(auth.uid).child('role').val() == 'admin'"
+        ".write": "auth != null && root.child('admins').child(auth.uid).child('role').val() == 'admin'",
+        "views": {
+          ".write": "newData.isNumber() && newData.val() == (data.exists() ? data.val() + 1 : 1)",
+          ".validate": "newData.isNumber() && newData.val() >= 1"
+        }
       }
     },
     "categories": {
