@@ -1,8 +1,15 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_database/firebase_database.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-void main() => runApp(const AbsoApp());
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp();
+  runApp(const AbsoApp());
+}
 
 class AbsoApp extends StatefulWidget {
   const AbsoApp({super.key});
@@ -414,29 +421,18 @@ class _IntroSlide {
 }
 
 class Poem {
-  const Poem(this.title, this.poet, this.category, this.lines);
-  final String title, poet, category;
+  const Poem({
+    required this.id, required this.title, required this.poet,
+    required this.category, required this.text, required this.lines,
+    this.views = 0, this.likes = 0, this.shares = 0, this.saves = 0,
+    this.imageUrl, this.featured = false,
+  });
+  final String id, title, poet, category, text;
   final List<String> lines;
+  final int views, likes, shares, saves;
+  final String? imageUrl;
+  final bool featured;
 }
-
-const poems = <Poem>[
-  Poem('د ژوند لار', 'رحمان بابا', 'عرفاني', [
-    'چې د مینې په لار لاړ شي، منزل ومومي',
-    'د زړه سترګې چې روښانه شي، جهان ومومي',
-  ]),
-  Poem('د زړه خبرې', 'حمزه شینواری', 'مینه', [
-    'د خیالونو په نړۍ کې دې یادونه راسره دي',
-    'د سپرلي د ښکلو ګلونو رنګونه راسره دي',
-  ]),
-  Poem('هیله', 'اجمل خټک', 'ژوند', [
-    'د سبا په تمه خپل مزل روان ساته',
-    'د امید څراغ په زړه کې تل روښان ساته',
-  ]),
-  Poem('وطن', 'ګل پاچا الفت', 'وطن', [
-    'وطن د مینې کور دی، د زړونو ارمان دی',
-    'د هرې خاورې ذرې کې یې د ژوند داستان دی',
-  ]),
-];
 
 class ShimmerSweep extends StatefulWidget {
   const ShimmerSweep({super.key});
@@ -518,9 +514,99 @@ class PoetryShell extends StatefulWidget {
 class _PoetryShellState extends State<PoetryShell> {
   int selectedPage = 0;
   final Set<String> favorites = {};
+  final List<Poem> poems = [];
+  Map<String, String> _categoryNames = {};
+  Map<String, String> _poetNames = {};
+  StreamSubscription<DatabaseEvent>? _poemSub, _categorySub, _poetSub;
   String query = '';
   String selectedCategory = 'ټول';
   bool _exitDialogOpen = false;
+  bool _loadingPoems = true;
+  String? _databaseError;
+
+  @override
+  void initState() {
+    super.initState();
+    _categorySub = FirebaseDatabase.instance.ref('categories').onValue.listen((e) {
+      _categoryNames = _names(e.snapshot.value);
+      _reloadPoems();
+    }, onError: (Object e) { if (mounted) setState(() => _databaseError = e.toString()); });
+    _poetSub = FirebaseDatabase.instance.ref('poets').onValue.listen((e) {
+      _poetNames = _names(e.snapshot.value);
+      _reloadPoems();
+    }, onError: (Object e) { if (mounted) setState(() => _databaseError = e.toString()); });
+    _poemSub = FirebaseDatabase.instance.ref('poems').onValue.listen((e) {
+      _applyPoems(e.snapshot.value);
+    }, onError: (Object e) {
+      if (mounted) setState(() { _loadingPoems = false; _databaseError = e.toString(); });
+    });
+  }
+
+  Map<String, String> _names(Object? raw) {
+    final result = <String, String>{};
+    if (raw is Map) {
+      for (final entry in raw.entries) {
+        final value = entry.value;
+        final name = value is Map ? value['name'] : value;
+        if (name != null && name.toString().trim().isNotEmpty) {
+          result[entry.key.toString()] = name.toString();
+        }
+      }
+    }
+    return result;
+  }
+
+  int _count(dynamic value) => value is num ? value.toInt() : int.tryParse('$value') ?? 0;
+
+  void _reloadPoems() {
+    FirebaseDatabase.instance.ref('poems').get().then((snapshot) {
+      if (mounted) _applyPoems(snapshot.value);
+    }).catchError((Object e) {
+      if (mounted) setState(() { _loadingPoems = false; _databaseError = e.toString(); });
+    });
+  }
+
+  void _applyPoems(Object? raw) {
+    final next = <Poem>[];
+    if (raw is Map) {
+      for (final entry in raw.entries) {
+        if (entry.value is! Map) continue;
+        final data = Map<String, dynamic>.from(entry.value as Map);
+        final body = (data['text'] ?? '').toString().trim();
+        final categoryId = (data['categoryId'] ?? '').toString();
+        if (body.isEmpty || categoryId.isEmpty || data['isPublished'] == false) continue;
+        next.add(Poem(
+          id: entry.key.toString(),
+          title: (data['title'] ?? '').toString().trim().isEmpty ? 'بې‌عنوانه' : data['title'].toString(),
+          poet: _poetNames[(data['poetId'] ?? '').toString()] ?? '',
+          category: _categoryNames[categoryId] ?? '',
+          text: body,
+          lines: body.split(RegExp(r'\\r?\\n')),
+          views: _count(data['views']), likes: _count(data['likes']),
+          shares: _count(data['shares']), saves: _count(data['saves']),
+          imageUrl: data['imageUrl']?.toString(), featured: data['featured'] == true,
+        ));
+      }
+    }
+    next.sort((a,b) => b.id.compareTo(a.id));
+    if (!mounted) return;
+    setState(() {
+      poems..clear()..addAll(next);
+      _loadingPoems = false;
+      _databaseError = null;
+      if (selectedCategory != 'ټول' && !poems.any((p) => p.category == selectedCategory)) {
+        selectedCategory = 'ټول';
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _poemSub?.cancel();
+    _categorySub?.cancel();
+    _poetSub?.cancel();
+    super.dispose();
+  }
 
   List<Poem> get filteredPoems => poems.where((poem) {
     final text = '${poem.title} ${poem.poet} ${poem.category} ${poem.lines.join(' ')}';
@@ -530,7 +616,7 @@ class _PoetryShellState extends State<PoetryShell> {
   }).toList();
 
   List<Poem> get favoritePoems =>
-      poems.where((poem) => favorites.contains(poem.title)).toList();
+      poems.where((poem) => favorites.contains(poem.id)).toList();
 
   @override
   Widget build(BuildContext context) {
@@ -1021,18 +1107,18 @@ class _PoetryShellState extends State<PoetryShell> {
   Widget _homePage() {
     final colors = Theme.of(context).colorScheme;
     final visible = filteredPoems;
-    final categories = <String>['ټول', ...{for (final poem in poems) poem.category}];
-    final poets = <String>{for (final poem in poems) poem.poet}.toList();
+    final categories = <String>['ټول', ...{for (final poem in poems) if (poem.category.isNotEmpty) poem.category}];
+    final poets = <String>{for (final poem in poems) if (poem.poet.isNotEmpty) poem.poet}.toList();
 
     return CustomScrollView(
       key: const PageStorageKey('home'),
       physics: const BouncingScrollPhysics(),
       slivers: [
-        if (poems.isNotEmpty)
+        if (poems.any((p) => p.featured))
           SliverToBoxAdapter(
             child: Padding(
               padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
-              child: _featuredPoemCard(poems.first),
+              child: _featuredPoemCard(poems.firstWhere((p) => p.featured)),
             ),
           ),
         SliverToBoxAdapter(
@@ -1093,13 +1179,21 @@ class _PoetryShellState extends State<PoetryShell> {
               '${visible.length} شعرونه'),
           ),
         ),
-        if (visible.isEmpty)
-          const SliverToBoxAdapter(
-            child: Padding(
-              padding: EdgeInsets.all(28),
-              child: Center(child: Text('کوم شعر پیدا نه شو.')),
-            ),
-          )
+        if (_loadingPoems)
+          const SliverToBoxAdapter(child: Padding(
+            padding: EdgeInsets.all(36), child: Center(child: CircularProgressIndicator())))
+        else if (_databaseError != null)
+          SliverToBoxAdapter(child: _emptyPoemsState(
+            icon: Icons.cloud_off_rounded, title: 'له ډیټابېس سره اړیکه ټینګه نه شوه',
+            subtitle: 'انټرنېټ وګورئ او بیا هڅه وکړئ.',
+            action: 'بیا هڅه', onAction: _listenAgain))
+        else if (poems.isEmpty)
+          SliverToBoxAdapter(child: _emptyPoemsState(
+            icon: Icons.menu_book_outlined, title: 'د شعرونو لېست تش دی',
+            subtitle: 'تر اوسه کوم شعر نه دی خپور شوی. کله چې اډمین شعر خپور کړي، دلته به ښکاره شي.'))
+        else if (visible.isEmpty)
+          const SliverToBoxAdapter(child: Padding(
+            padding: EdgeInsets.all(28), child: Center(child: Text('په دې لټون کې شعر پیدا نه شو.'))))
         else
           SliverToBoxAdapter(
             child: SizedBox(
@@ -1248,7 +1342,7 @@ class _PoetryShellState extends State<PoetryShell> {
               color: Colors.white.withValues(alpha: .09))),
           const Positioned.fill(child: ClipRRect(
             borderRadius: BorderRadius.all(Radius.circular(28)),
-            child: IgnorePointer(child: ShimmerSweep()),
+            child: const SizedBox.shrink(),
           )),
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -1852,56 +1946,142 @@ class _PoetryShellState extends State<PoetryShell> {
     );
   }
 
-  Widget _poemCard(Poem poem) {
+  void _listenAgain() {
+    setState(() { _loadingPoems = true; _databaseError = null; });
+    _reloadPoems();
+  }
+
+  Widget _emptyPoemsState({required IconData icon, required String title,
+    required String subtitle, String? action, VoidCallback? onAction}) {
     final colors = Theme.of(context).colorScheme;
-    final saved = favorites.contains(poem.title);
-    return Card(margin: const EdgeInsets.only(bottom: 14), clipBehavior: Clip.antiAlias,
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(22, 28, 22, 38),
       child: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(begin: Alignment.topRight, end: Alignment.bottomLeft,
-            colors: [colors.surface, colors.surfaceContainerLow.withValues(alpha:.75)]),
-          border: Border(right: BorderSide(color: colors.secondary, width: 4))),
-        child: Padding(padding: const EdgeInsets.fromLTRB(16, 15, 16, 16),
-          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                IconButton.filledTonal(
-                  tooltip: saved ? 'له خوښو لرې کول' : 'خوښ شعر',
-                  visualDensity: VisualDensity.compact,
-                  onPressed: () => setState(() {
-                    saved ? favorites.remove(poem.title) : favorites.add(poem.title);
-                  }),
-                  icon: Icon(saved ? Icons.favorite_rounded : Icons.favorite_border_rounded,
-                    size: 19, color: saved ? colors.error : colors.primary),
-                ),
-              ],
-            ),
-            const SizedBox(height: 7),
-            Text(poem.title, style: TextStyle(fontSize: 18,
-              fontWeight: FontWeight.w900, color: colors.primary)),
-            const SizedBox(height: 12),
-            Container(width: double.infinity,
-              padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 14),
-              decoration: BoxDecoration(color: colors.surfaceContainerHighest.withValues(alpha:.48),
-                borderRadius: BorderRadius.circular(18)),
-              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                for (final line in poem.lines)
-                  Padding(padding: const EdgeInsets.only(bottom: 6),
-                    child: Text(line, style: TextStyle(fontSize: 14, height: 2,
-                      color: colors.onSurface, fontWeight: FontWeight.w500))),
-              ])),
-            const SizedBox(height: 12),
-            Row(children: [
-              Icon(Icons.edit_note_rounded, size: 19, color: colors.secondary),
-              const SizedBox(width: 6),
-              Text(poem.poet, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800,
-                color: colors.onSurfaceVariant)),
-              const Spacer(), Icon(Icons.format_quote_rounded, size: 20, color: colors.outline),
-            ]),
-          ]),
-        ),
+        width: double.infinity, padding: const EdgeInsets.fromLTRB(22, 28, 22, 26),
+        decoration: BoxDecoration(color: colors.surface, borderRadius: BorderRadius.circular(30),
+          border: Border.all(color: colors.outlineVariant.withValues(alpha: .55)),
+          boxShadow: [BoxShadow(color: colors.shadow.withValues(alpha: .05), blurRadius: 24, offset: const Offset(0, 9))]),
+        child: Column(children: [
+          Container(width: 78, height: 78,
+            decoration: BoxDecoration(gradient: LinearGradient(colors: [colors.primary.withValues(alpha: .13), colors.secondary.withValues(alpha: .18)]), borderRadius: BorderRadius.circular(25)),
+            child: Icon(icon, size: 37, color: colors.primary)),
+          const SizedBox(height: 17),
+          Text(title, textAlign: TextAlign.center, style: TextStyle(fontSize: 17, fontWeight: FontWeight.w900, color: colors.onSurface)),
+          const SizedBox(height: 8),
+          Text(subtitle, textAlign: TextAlign.center, style: TextStyle(fontSize: 12, height: 1.9, color: colors.onSurfaceVariant)),
+          if (action != null && onAction != null) ...[
+            const SizedBox(height: 17),
+            FilledButton.icon(onPressed: onAction, icon: const Icon(Icons.refresh_rounded), label: Text(action)),
+          ],
+        ]),
       ),
     );
   }
-}
+
+  void _openPoem(Poem poem) {
+    FirebaseDatabase.instance.ref('poems/${poem.id}/views').runTransaction((value) {
+      final current = value is num ? value.toInt() : 0;
+      return Transaction.success(current + 1);
+    });
+    Navigator.push(context, MaterialPageRoute(builder: (_) => Directionality(
+      textDirection: TextDirection.rtl,
+      child: Scaffold(
+        appBar: AppBar(title: const Text('د شعر بشپړ متن')),
+        body: ListView(padding: const EdgeInsets.fromLTRB(18, 12, 18, 30), children: [
+          Container(padding: const EdgeInsets.fromLTRB(22, 25, 22, 23),
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(begin: Alignment.topRight, end: Alignment.bottomLeft,
+                colors: [Color(0xFF183D38), Color(0xFF286B5D), Color(0xFFB28A4A)]),
+              borderRadius: BorderRadius.circular(29),
+              boxShadow: [BoxShadow(color: const Color(0xFF245B50).withValues(alpha: .2), blurRadius: 22, offset: const Offset(0, 9))]),
+            child: Column(children: [
+              const Icon(Icons.auto_awesome_rounded, color: Color(0xFFFFD98A), size: 24),
+              const SizedBox(height: 12),
+              Text(poem.title, textAlign: TextAlign.center, style: const TextStyle(color: Colors.white, fontSize: 23, fontWeight: FontWeight.w900)),
+              if (poem.poet.isNotEmpty) ...[const SizedBox(height: 7), Text(poem.poet, style: const TextStyle(color: Colors.white70, fontSize: 13))],
+              const SizedBox(height: 12), Container(height: 1, color: Colors.white30),
+              const SizedBox(height: 10), Text(poem.category, style: const TextStyle(color: Color(0xFFFFD98A), fontSize: 12)),
+            ])),
+          const SizedBox(height: 17),
+          Container(padding: const EdgeInsets.fromLTRB(20, 24, 20, 24),
+            decoration: BoxDecoration(color: Theme.of(context).colorScheme.surface, borderRadius: BorderRadius.circular(25),
+              border: Border.all(color: Theme.of(context).colorScheme.outlineVariant.withValues(alpha: .5))),
+            child: Text(poem.text, textAlign: TextAlign.center,
+              style: const TextStyle(fontSize: 18, height: 2.2, fontWeight: FontWeight.w600))),
+          const SizedBox(height: 18),
+          Wrap(alignment: WrapAlignment.spaceEvenly, spacing: 10, runSpacing: 10, children: [
+            _statPill(Icons.visibility_outlined, poem.views + 1),
+            _statPill(Icons.favorite_border_rounded, poem.likes),
+            _statPill(Icons.share_outlined, poem.shares),
+            _statPill(Icons.bookmark_border_rounded, poem.saves),
+          ]),
+        ]),
+      ),
+    )));
+  }
+
+  Widget _statPill(IconData icon, int count) => Container(
+    padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 10),
+    decoration: BoxDecoration(color: Theme.of(context).colorScheme.surfaceContainerHighest, borderRadius: BorderRadius.circular(15)),
+    child: Row(mainAxisSize: MainAxisSize.min, children: [
+      Icon(icon, size: 17, color: Theme.of(context).colorScheme.primary),
+      const SizedBox(width: 7), Text('$count', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800)),
+    ]));
+
+  Widget _poemCard(Poem poem) {
+    final colors = Theme.of(context).colorScheme;
+    final saved = favorites.contains(poem.id);
+    return Card(clipBehavior: Clip.antiAlias, margin: const EdgeInsets.only(bottom: 14),
+      child: InkWell(onTap: () => _openPoem(poem),
+        child: Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(begin: Alignment.topRight, end: Alignment.bottomLeft,
+              colors: [colors.surface, colors.surfaceContainerLow.withValues(alpha: .8)]),
+            border: Border(right: BorderSide(color: colors.secondary, width: 4))),
+          child: Padding(padding: const EdgeInsets.fromLTRB(17, 16, 17, 16),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Row(children: [
+                Container(padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  decoration: BoxDecoration(color: colors.primary.withValues(alpha: .09), borderRadius: BorderRadius.circular(11)),
+                  child: Text(poem.category, style: TextStyle(fontSize: 10, color: colors.primary, fontWeight: FontWeight.w800))),
+                const Spacer(),
+                IconButton.filledTonal(visualDensity: VisualDensity.compact,
+                  tooltip: saved ? 'له خوښو لرې کول' : 'خوښ شعر',
+                  onPressed: () => setState(() { saved ? favorites.remove(poem.id) : favorites.add(poem.id); }),
+                  icon: Icon(saved ? Icons.favorite_rounded : Icons.favorite_border_rounded,
+                    color: saved ? colors.error : colors.primary, size: 19)),
+              ]),
+              const SizedBox(height: 5),
+              Text(poem.title, maxLines: 1, overflow: TextOverflow.ellipsis,
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: colors.primary)),
+              if (poem.poet.isNotEmpty) ...[
+                const SizedBox(height: 4),
+                Text(poem.poet, style: TextStyle(fontSize: 11, color: colors.onSurfaceVariant, fontWeight: FontWeight.w700)),
+              ],
+              const SizedBox(height: 13),
+              Container(width: double.infinity, padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 13),
+                decoration: BoxDecoration(color: colors.surfaceContainerHighest.withValues(alpha: .45), borderRadius: BorderRadius.circular(17)),
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  for (final line in poem.lines.take(3))
+                    Padding(padding: const EdgeInsets.only(bottom: 5),
+                      child: Text(line, maxLines: 1, overflow: TextOverflow.ellipsis,
+                        style: TextStyle(fontSize: 13, height: 1.8, color: colors.onSurface, fontWeight: FontWeight.w500))),
+                  if (poem.lines.length > 3) Text('... بشپړ شعر ولولئ', style: TextStyle(fontSize: 10, color: colors.primary, fontWeight: FontWeight.w800)),
+                ])),
+              const SizedBox(height: 13),
+              Row(children: [
+                _miniStat(Icons.visibility_outlined, poem.views),
+                const SizedBox(width: 12), _miniStat(Icons.favorite_border_rounded, poem.likes),
+                const SizedBox(width: 12), _miniStat(Icons.share_outlined, poem.shares),
+                const Spacer(), Icon(Icons.arrow_back_ios_new_rounded, size: 13, color: colors.primary),
+              ]),
+            ]),
+          ),
+        )),
+    );
+  }
+
+  Widget _miniStat(IconData icon, int value) => Row(mainAxisSize: MainAxisSize.min, children: [
+    Icon(icon, size: 14, color: Theme.of(context).colorScheme.onSurfaceVariant),
+    const SizedBox(width: 4), Text('$value', style: TextStyle(fontSize: 10, color: Theme.of(context).colorScheme.onSurfaceVariant, fontWeight: FontWeight.w700)),
+  ]);}
