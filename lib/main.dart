@@ -475,11 +475,13 @@ class _PoetryShellState extends State<PoetryShell> {
   bool _exitDialogOpen = false;
   bool _loadingPoems = true;
   String? _databaseError;
+  String _profileName = '';
 
   @override
   void initState() {
     super.initState();
     _loadEngagementState();
+    _loadProfileName();
     _categorySub = FirebaseDatabase.instance.ref('categories').onValue.listen((e) {
       _categoryNames = _names(e.snapshot.value);
       _reloadPoems();
@@ -493,6 +495,75 @@ class _PoetryShellState extends State<PoetryShell> {
     }, onError: (Object e) {
       if (mounted) setState(() { _loadingPoems = false; _databaseError = e.toString(); });
     });
+  }
+
+  Future<void> _loadProfileName() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+    try {
+      final snap = await FirebaseDatabase.instance.ref('profiles/${user.uid}/displayName').get();
+      if (mounted && snap.exists) setState(() => _profileName = snap.value.toString());
+    } catch (_) {}
+  }
+
+  Future<Map<String, String>?> _ensureProfile() async {
+    var user = FirebaseAuth.instance.currentUser;
+    try { user ??= (await FirebaseAuth.instance.signInAnonymously()).user; }
+    catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('د کارن حساب جوړ نه شو: $e')));
+      return null;
+    }
+    if (user == null) return null;
+    var name = _profileName;
+    if (name.trim().isEmpty) {
+      final snap = await FirebaseDatabase.instance.ref('profiles/${user.uid}/displayName').get();
+      name = snap.value?.toString() ?? '';
+    }
+    if (name.trim().isEmpty) {
+      final controller = TextEditingController();
+      final entered = await showDialog<String>(context: context, barrierDismissible: false,
+        builder: (ctx) => Directionality(textDirection: TextDirection.rtl, child: AlertDialog(
+          title: const Text('خپل پروفایل جوړ کړئ'),
+          content: TextField(controller: controller, autofocus: true, maxLength: 28,
+            decoration: const InputDecoration(labelText: 'ستاسو نوم')),
+          actions: [FilledButton(onPressed: () {
+            if (controller.text.trim().isNotEmpty) Navigator.pop(ctx, controller.text.trim());
+          }, child: const Text('خوندي کول'))],
+        )));
+      controller.dispose();
+      if (entered == null || entered.trim().isEmpty) return null;
+      name = entered.trim();
+      await FirebaseDatabase.instance.ref('profiles/${user.uid}').update({
+        'displayName': name, 'updatedAt': ServerValue.timestamp,
+      });
+    }
+    if (mounted) setState(() => _profileName = name);
+    return {'uid': user.uid, 'name': name};
+  }
+
+  Future<void> _editProfile() async {
+    final profile = await _ensureProfile();
+    if (profile == null) return;
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+    final controller = TextEditingController(text: profile['name']);
+    final name = await showDialog<String>(context: context,
+      builder: (ctx) => Directionality(textDirection: TextDirection.rtl, child: AlertDialog(
+        title: const Text('د پروفایل نوم بدلول'),
+        content: TextField(controller: controller, maxLength: 28, decoration: const InputDecoration(labelText: 'نوم')),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('بندول')),
+          FilledButton(onPressed: () {
+            if (controller.text.trim().isNotEmpty) Navigator.pop(ctx, controller.text.trim());
+          }, child: const Text('خوندي کول')),
+        ],
+      )));
+    controller.dispose();
+    if (name == null || name.trim().isEmpty) return;
+    await FirebaseDatabase.instance.ref('profiles/${user.uid}').update({
+      'displayName': name.trim(), 'updatedAt': ServerValue.timestamp,
+    });
+    if (mounted) setState(() => _profileName = name.trim());
   }
 
   Future<void> _loadEngagementState() async {
@@ -580,7 +651,9 @@ class _PoetryShellState extends State<PoetryShell> {
         if (body.isEmpty || categoryId.isEmpty || data['isPublished'] == false) continue;
         next.add(Poem(
           id: entry.key.toString(),
-          title: (data['title'] ?? '').toString().trim().isEmpty ? 'بې‌عنوانه' : data['title'].toString(),
+          title: (data['title'] ?? '').toString().trim().isEmpty
+              ? body.split(RegExp(r'\s+')).where((w) => w.isNotEmpty).take(3).join(' ')
+              : data['title'].toString().trim(),
           poet: _poetNames[(data['poetId'] ?? '').toString()] ?? '',
           category: _categoryNames[categoryId] ?? '',
           text: body,
@@ -1498,6 +1571,24 @@ class _PoetryShellState extends State<PoetryShell> {
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 30),
       children: [
+        Card(clipBehavior: Clip.antiAlias, child: InkWell(
+          onTap: _editProfile,
+          child: Padding(padding: const EdgeInsets.all(16), child: Row(children: [
+            Container(width: 52, height: 52,
+              decoration: BoxDecoration(gradient: const LinearGradient(colors: [Color(0xFF17483E), Color(0xFFB77928)]),
+                borderRadius: BorderRadius.circular(18)),
+              child: const Icon(Icons.person_rounded, color: Colors.white, size: 29)),
+            const SizedBox(width: 13),
+            Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              const Text('زما پروفایل', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 14)),
+              const SizedBox(height: 4),
+              Text(_profileName.isEmpty ? 'د تبصرو لپاره خپل نوم ثبت کړئ' : _profileName,
+                style: TextStyle(fontSize: 11, color: colors.onSurfaceVariant)),
+            ])),
+            Icon(Icons.edit_rounded, color: colors.primary),
+          ])),
+        )),
+        const SizedBox(height: 14),
         Container(
           padding: const EdgeInsets.all(22),
           decoration: BoxDecoration(
@@ -2016,90 +2107,11 @@ class _PoetryShellState extends State<PoetryShell> {
 
   void _openPoem(Poem poem) {
     _incrementPoemCounter(poem.id, 'views');
-    var displayedLikes = poem.likes;
-    var displayedSaves = poem.saves;
-    var displayedShares = poem.shares;
     Navigator.push(context, MaterialPageRoute(builder: (_) => Directionality(
       textDirection: TextDirection.rtl,
-      child: Scaffold(
-        appBar: AppBar(title: const Text('د شعر بشپړ متن')),
-        body: StatefulBuilder(
-          builder: (context, refreshDetail) => ListView(
-            padding: const EdgeInsets.fromLTRB(18, 12, 18, 30), children: [
-          Container(padding: const EdgeInsets.fromLTRB(22, 25, 22, 23),
-            decoration: BoxDecoration(
-              gradient: const LinearGradient(begin: Alignment.topRight, end: Alignment.bottomLeft,
-                colors: [Color(0xFF183D38), Color(0xFF286B5D), Color(0xFFB28A4A)]),
-              borderRadius: BorderRadius.circular(29),
-              boxShadow: [BoxShadow(color: const Color(0xFF245B50).withValues(alpha: .2), blurRadius: 22, offset: const Offset(0, 9))]),
-            child: Column(children: [
-              const Icon(Icons.auto_awesome_rounded, color: Color(0xFFFFD98A), size: 24),
-              const SizedBox(height: 12),
-              Text(poem.title, textAlign: TextAlign.center, style: const TextStyle(color: Colors.white, fontSize: 23, fontWeight: FontWeight.w900)),
-              if (poem.poet.isNotEmpty) ...[const SizedBox(height: 7), Text(poem.poet, style: const TextStyle(color: Colors.white70, fontSize: 13))],
-              const SizedBox(height: 12), Container(height: 1, color: Colors.white30),
-              const SizedBox(height: 10), Text(poem.category, style: const TextStyle(color: Color(0xFFFFD98A), fontSize: 12)),
-            ])),
-          if (poem.imageUrl != null && poem.imageUrl!.isNotEmpty) ...[
-            ClipRRect(
-              borderRadius: BorderRadius.circular(22),
-              child: Image.network(
-                poem.imageUrl!,
-                width: double.infinity,
-                height: 220,
-                fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) => const SizedBox.shrink(),
-              ),
-            ),
-            const SizedBox(height: 16),
-          ],
-          Container(padding: const EdgeInsets.fromLTRB(20, 24, 20, 24),
-            decoration: BoxDecoration(color: Theme.of(context).colorScheme.surface, borderRadius: BorderRadius.circular(25),
-              border: Border.all(color: Theme.of(context).colorScheme.outlineVariant.withValues(alpha: .5))),
-            child: Text(poem.text, textAlign: TextAlign.center,
-              style: const TextStyle(fontSize: 18, height: 2.2, fontWeight: FontWeight.w600))),
-          const SizedBox(height: 18),
-          Wrap(alignment: WrapAlignment.spaceEvenly, spacing: 10, runSpacing: 10, children: [
-            _statPill(Icons.visibility_outlined, poem.views + 1),
-            _statPill(Icons.favorite_border_rounded, displayedLikes),
-            _statPill(Icons.share_outlined, displayedShares),
-            _statPill(Icons.bookmark_border_rounded, displayedSaves),
-          ]),
-          const SizedBox(height: 18),
-          Row(children: [
-            Expanded(child: FilledButton.tonalIcon(
-              onPressed: () async {
-                final wasLiked = likedPoems.contains(poem.id);
-                await _likePoem(poem);
-                if (!wasLiked && likedPoems.contains(poem.id)) displayedLikes++;
-                refreshDetail(() {});
-              },
-              icon: Icon(likedPoems.contains(poem.id) ? Icons.favorite_rounded : Icons.favorite_border_rounded),
-              label: Text(likedPoems.contains(poem.id) ? 'خوښ شوی' : 'خوښول'))),
-            const SizedBox(width: 9),
-            Expanded(child: FilledButton.tonalIcon(
-              onPressed: () async {
-                final wasSaved = favorites.contains(poem.id);
-                await _toggleFavorite(poem);
-                if (!wasSaved && favorites.contains(poem.id)) displayedSaves++;
-                refreshDetail(() {});
-              },
-              icon: Icon(favorites.contains(poem.id) ? Icons.bookmark_added_rounded : Icons.bookmark_add_outlined),
-              label: Text(favorites.contains(poem.id) ? 'خوندي شوی' : 'خوندي کول'))),
-            const SizedBox(width: 9),
-            IconButton.filledTonal(
-              tooltip: 'شریکول',
-              onPressed: () async {
-                await _sharePoem(poem);
-                displayedShares++;
-                refreshDetail(() {});
-              },
-              icon: const Icon(Icons.share_rounded)),
-          ]),
-            ],
-          ),
-        ),
-      ),
+      child: PoemDetailScreen(poem: poem, ensureProfile: _ensureProfile,
+        onLike: () => _likePoem(poem), onSave: () => _toggleFavorite(poem),
+        onShare: () => _sharePoem(poem)),
     )));
   }
 
@@ -2542,6 +2554,192 @@ class _SimpleListAdminState extends State<SimpleListAdmin> {
         ]);
       },
     );
+  }
+}
+
+class PoemDetailScreen extends StatefulWidget {
+  const PoemDetailScreen({super.key, required this.poem, required this.ensureProfile,
+    required this.onLike, required this.onSave, required this.onShare});
+  final Poem poem;
+  final Future<Map<String, String>?> Function() ensureProfile;
+  final Future<void> Function() onLike, onSave, onShare;
+  @override
+  State<PoemDetailScreen> createState() => _PoemDetailScreenState();
+}
+
+class _PoemDetailScreenState extends State<PoemDetailScreen> {
+  final commentController = TextEditingController();
+  bool sending = false, liked = false, saved = false;
+  @override
+  void dispose() { commentController.dispose(); super.dispose(); }
+
+  Future<void> _sendComment() async {
+    final body = commentController.text.trim();
+    if (body.isEmpty || sending) return;
+    final profile = await widget.ensureProfile();
+    if (profile == null) return;
+    setState(() => sending = true);
+    try {
+      await FirebaseDatabase.instance.ref('comments/${widget.poem.id}').push().set({
+        'uid': profile['uid'], 'displayName': profile['name'], 'text': body,
+        'createdAt': ServerValue.timestamp,
+      });
+      commentController.clear();
+      if (mounted) FocusScope.of(context).unfocus();
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('تبصره ثبت نه شوه: $e')));
+    } finally { if (mounted) setState(() => sending = false); }
+  }
+
+  Future<void> _report() async {
+    final profile = await widget.ensureProfile();
+    if (profile == null) return;
+    final reason = await showModalBottomSheet<String>(context: context, showDragHandle: true,
+      builder: (ctx) => Directionality(textDirection: TextDirection.rtl, child: SafeArea(
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
+          const Padding(padding: EdgeInsets.all(16), child: Text('د شعر په اړه راپور',
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900))),
+          ...['ناسم یا سپکونکی متن', 'د لیکنې ناسم نسبت', 'تکراري خپرونه', 'بله ستونزه'].map((v) =>
+            ListTile(leading: const Icon(Icons.flag_outlined), title: Text(v),
+              onTap: () => Navigator.pop(ctx, v))),
+          const SizedBox(height: 12),
+        ]))));
+    if (reason == null) return;
+    try {
+      await FirebaseDatabase.instance.ref('reports/${widget.poem.id}').push().set({
+        'uid': profile['uid'], 'displayName': profile['name'], 'reason': reason,
+        'status': 'new', 'createdAt': ServerValue.timestamp,
+      });
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('ستاسو راپور ثبت شو. مننه.')));
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('راپور ثبت نه شو: $e')));
+    }
+  }
+
+  String _date(dynamic value) {
+    final ms = value is num ? value.toInt() : int.tryParse('$value');
+    if (ms == null) return 'همدا اوس';
+    final d = DateTime.fromMillisecondsSinceEpoch(ms);
+    return '${d.day.toString().padLeft(2, '0')}/${d.month.toString().padLeft(2, '0')}/${d.year}';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final c = Theme.of(context).colorScheme;
+    final poem = widget.poem;
+    return Scaffold(
+      appBar: AppBar(title: const Text('د شعر بشپړ متن'),
+        actions: [IconButton(tooltip: 'راپور ورکول', onPressed: _report, icon: const Icon(Icons.flag_outlined))]),
+      body: ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 28), children: [
+        Container(clipBehavior: Clip.antiAlias,
+          decoration: BoxDecoration(gradient: const LinearGradient(begin: Alignment.topRight,
+            end: Alignment.bottomLeft, colors: [Color(0xFF123B32), Color(0xFF286B5D), Color(0xFFB77928)]),
+            borderRadius: BorderRadius.circular(28),
+            boxShadow: [BoxShadow(color: c.primary.withValues(alpha: .18), blurRadius: 22, offset: const Offset(0, 9))]),
+          child: Stack(children: [
+            Positioned(left: -20, top: -25, child: Icon(Icons.format_quote_rounded, size: 145, color: Colors.white.withValues(alpha: .08))),
+            Padding(padding: const EdgeInsets.fromLTRB(22, 25, 22, 23),
+              child: Column(children: [
+                Container(width: 46, height: 46, decoration: BoxDecoration(color: Colors.white.withValues(alpha: .13),
+                  borderRadius: BorderRadius.circular(16)), child: const Icon(Icons.auto_stories_rounded, color: Color(0xFFFFD98A))),
+                const SizedBox(height: 14),
+                Text(poem.title, textAlign: TextAlign.center,
+                  style: const TextStyle(color: Colors.white, fontSize: 22, height: 1.55, fontWeight: FontWeight.w900)),
+                if (poem.poet.isNotEmpty) ...[const SizedBox(height: 8), Text(poem.poet, style: const TextStyle(color: Colors.white70, fontSize: 13))],
+                const SizedBox(height: 14), Container(height: 1, color: Colors.white24),
+                const SizedBox(height: 11), Text(poem.category, style: const TextStyle(color: Color(0xFFFFD98A), fontSize: 12)),
+              ])),
+          ])),
+        if (poem.imageUrl != null && poem.imageUrl!.isNotEmpty) ...[
+          const SizedBox(height: 15), ClipRRect(borderRadius: BorderRadius.circular(22),
+            child: Image.network(poem.imageUrl!, height: 205, width: double.infinity, fit: BoxFit.cover,
+              errorBuilder: (_, __, ___) => const SizedBox.shrink())),
+        ],
+        const SizedBox(height: 16),
+        Container(padding: const EdgeInsets.fromLTRB(21, 26, 21, 26),
+          decoration: BoxDecoration(color: c.surface, borderRadius: BorderRadius.circular(25),
+            border: Border.all(color: c.outlineVariant.withValues(alpha: .55)),
+            boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: .035), blurRadius: 16, offset: const Offset(0, 5))]),
+          child: SelectableText(poem.text, textAlign: TextAlign.center,
+            style: const TextStyle(fontSize: 18, height: 2.25, fontWeight: FontWeight.w600))),
+        const SizedBox(height: 16),
+        Wrap(alignment: WrapAlignment.spaceEvenly, spacing: 9, runSpacing: 9, children: [
+          _stat(Icons.visibility_outlined, poem.views + 1), _stat(Icons.favorite_border_rounded, poem.likes),
+          _stat(Icons.share_outlined, poem.shares), _stat(Icons.bookmark_border_rounded, poem.saves)]),
+        const SizedBox(height: 15),
+        Row(children: [
+          Expanded(child: FilledButton.tonalIcon(onPressed: () async {
+            await widget.onLike(); if (mounted) setState(() => liked = true);
+          }, icon: Icon(liked ? Icons.favorite_rounded : Icons.favorite_border_rounded),
+            label: Text(liked ? 'خوښ شوی' : 'خوښول'))),
+          const SizedBox(width: 8),
+          Expanded(child: FilledButton.tonalIcon(onPressed: () async {
+            await widget.onSave(); if (mounted) setState(() => saved = !saved);
+          }, icon: Icon(saved ? Icons.bookmark_added_rounded : Icons.bookmark_add_outlined),
+            label: Text(saved ? 'خوندي شو' : 'خوندي کول'))),
+          const SizedBox(width: 8),
+          IconButton.filledTonal(onPressed: widget.onShare, icon: const Icon(Icons.share_rounded)),
+        ]),
+        const SizedBox(height: 25),
+        Row(children: [
+          Icon(Icons.forum_rounded, color: c.primary), const SizedBox(width: 9),
+          const Expanded(child: Text('د لوستونکو نظرونه', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w900))),
+          StreamBuilder<DatabaseEvent>(stream: FirebaseDatabase.instance.ref('comments/${poem.id}').onValue,
+            builder: (context, snap) { final v = snap.data?.snapshot.value; return Text('${v is Map ? v.length : 0} تبصرې',
+              style: TextStyle(color: c.onSurfaceVariant, fontSize: 11)); }),
+        ]),
+        const SizedBox(height: 11),
+        Container(padding: const EdgeInsets.all(11), decoration: BoxDecoration(color: c.surface,
+          borderRadius: BorderRadius.circular(20), border: Border.all(color: c.outlineVariant.withValues(alpha: .5))),
+          child: Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
+            Expanded(child: TextField(controller: commentController, minLines: 1, maxLines: 4, maxLength: 500,
+              decoration: InputDecoration(hintText: 'خپل نظر ولیکئ...', counterText: '', filled: true,
+                fillColor: c.surfaceContainerHighest.withValues(alpha: .55),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(15), borderSide: BorderSide.none),
+                contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12)))),
+            const SizedBox(width: 8),
+            IconButton.filled(onPressed: sending ? null : _sendComment,
+              icon: sending ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
+                : const Icon(Icons.send_rounded)),
+          ])),
+        const SizedBox(height: 10),
+        StreamBuilder<DatabaseEvent>(stream: FirebaseDatabase.instance.ref('comments/${poem.id}').onValue,
+          builder: (context, snap) {
+            if (snap.hasError) return const Text('تبصرې نه لوډ کېږي.');
+            if (!snap.hasData) return const Center(child: Padding(padding: EdgeInsets.all(18), child: CircularProgressIndicator()));
+            final raw = snap.data!.snapshot.value;
+            if (raw is! Map || raw.isEmpty) return Padding(padding: const EdgeInsets.all(22),
+              child: Center(child: Text('تر اوسه تبصره نشته. لومړی خپل نظر ولیکئ.', style: TextStyle(color: c.onSurfaceVariant, fontSize: 12))));
+            final entries = raw.entries.toList().reversed.toList();
+            return Column(children: entries.map((entry) {
+              final data = Map<String, dynamic>.from(entry.value as Map);
+              final name = (data['displayName'] ?? 'لوستونکی').toString();
+              return Container(width: double.infinity, margin: const EdgeInsets.only(bottom: 9),
+                padding: const EdgeInsets.all(13), decoration: BoxDecoration(color: c.surface,
+                  borderRadius: BorderRadius.circular(18), border: Border.all(color: c.outlineVariant.withValues(alpha: .4))),
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Row(children: [
+                    CircleAvatar(radius: 16, backgroundColor: c.primaryContainer,
+                      child: Text(name.isEmpty ? 'ل' : name.characters.first, style: TextStyle(color: c.onPrimaryContainer, fontWeight: FontWeight.w900))),
+                    const SizedBox(width: 9), Expanded(child: Text(name, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w900))),
+                    Text(_date(data['createdAt']), style: TextStyle(fontSize: 9, color: c.onSurfaceVariant)),
+                  ]),
+                  const SizedBox(height: 9), Text((data['text'] ?? '').toString(), style: const TextStyle(fontSize: 13, height: 1.7)),
+                ]));
+            }).toList());
+          }),
+      ]),
+    );
+  }
+
+  Widget _stat(IconData icon, int count) {
+    final c = Theme.of(context).colorScheme;
+    return Container(padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+      decoration: BoxDecoration(color: c.surfaceContainerHighest, borderRadius: BorderRadius.circular(14)),
+      child: Row(mainAxisSize: MainAxisSize.min, children: [
+        Icon(icon, size: 16, color: c.primary), const SizedBox(width: 6),
+        Text('$count', style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w800)),
+      ]));
   }
 }
 
