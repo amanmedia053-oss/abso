@@ -1654,14 +1654,14 @@ class _PoetryShellState extends State<PoetryShell> {
         _aboutPersonFeature(
           icon: Icons.code_rounded,
           role: 'د اپلیکیشن جوړوونکی',
-          name: 'عبيدالله غفاري',
+          name: 'عبیدالله غفاري',
           description: 'د ادبي خزانې د مفکورې او تخنیکي جوړښت تر شا هڅاند کس؛ د پښتو ادب د مینه‌والو لپاره د یوې ښکلې او اسانه ډیجیټلي تجربې په جوړولو کې یې ونډه اخیستې ده.',
           accent: const Color(0xFF287C68), delay: 0),
         const SizedBox(height: 13),
         _aboutPersonFeature(
           icon: Icons.auto_awesome_rounded,
           role: 'ترتیب کوونکی',
-          name: 'الحاج ډاکټر فريدون احرار',
+          name: 'الحاج ډاکټر فریدون احرار',
           description: 'د ادبي خزانې د محتوا او ادبي چارو په ترتیب او سمون کې ونډه‌وال؛ د پښتو ژبې او ادب د ارزښتمنو اثارو د وړاندې کولو لپاره یې همکاري کړې ده.',
           accent: const Color(0xFFB77928), delay: 160),
         const SizedBox(height: 23),
