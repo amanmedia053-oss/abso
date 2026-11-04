@@ -1,0 +1,30 @@
+{
+  "project_info": {
+    "project_number": "380123744676",
+    "firebase_url": "https://arwapoh-default-rtdb.firebaseio.com",
+    "project_id": "arwapoh",
+    "storage_bucket": "arwapoh.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:380123744676:android:a8e96231656a6c78aa5931",
+        "android_client_info": { "package_name": "Com.obaidapp.arwapoh" }
+      },
+      "oauth_client": [],
+      "api_key": [{ "current_key": "AIzaSyBSRm-wcu1b5GK43tQbyEFTlmQbJS-mEKM" }],
+      "services": { "appinvite_service": { "other_platform_oauth_client": [] } }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:380123744676:android:a239007149f04060aa5931",
+        "android_client_info": { "package_name": "com.obaidapp.soraerahman" }
+      },
+      "oauth_client": [],
+      "api_key": [{ "current_key": "AIzaSyBSRm-wcu1b5GK43tQbyEFTlmQbJS-mEKM" }],
+      "services": { "appinvite_service": { "other_platform_oauth_client": [] } },
+      "admob_app_id": "ca-app-pub-5740817222496855~7437402665"
+    }
+  ],
+  "configuration_version": "1"
+}
