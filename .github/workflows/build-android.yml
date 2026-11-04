@@ -45,7 +45,7 @@ jobs:
               brace = settings_text.find("{", start)
               if start < 0 or brace < 0:
                   raise SystemExit("Gradle settings has no plugins block.")
-              settings_text = settings_text[:brace + 1] + "\\n" + settings_plugin + settings_text[brace + 1:]
+              settings_text = settings_text[:brace + 1] + "\n" + settings_plugin + settings_text[brace + 1:]
               settings.write_text(settings_text)
 
           target_id = "com.obaidapp.soraerahman"
@@ -67,7 +67,7 @@ jobs:
                       break
           if not found:
               raise SystemExit("Could not find defaultConfig block in " + str(app))
-          app_text = "\\n".join(app_lines) + "\\n"
+          app_text = "\n".join(app_lines) + "\n"
 
           app_plugin = '    id("com.google.gms.google-services")' if app.suffix == ".kts" else '    id "com.google.gms.google-services"'
           if "com.google.gms.google-services" not in app_text:
@@ -75,7 +75,7 @@ jobs:
               brace = app_text.find("{", start)
               if start < 0 or brace < 0:
                   raise SystemExit("App Gradle file has no plugins block.")
-              app_text = app_text[:brace + 1] + "\\n" + app_plugin + app_text[brace + 1:]
+              app_text = app_text[:brace + 1] + "\n" + app_plugin + app_text[brace + 1:]
           app.write_text(app_text)
           print("Configured package:", target_id)
           print("Settings:", settings, "| App:", app)
