@@ -1895,7 +1895,9 @@ class _PoetryShellState extends State<PoetryShell> {
       textDirection: TextDirection.rtl,
       child: Scaffold(
         appBar: AppBar(title: const Text('د شعر بشپړ متن')),
-        body: ListView(padding: const EdgeInsets.fromLTRB(18, 12, 18, 30), children: [
+        body: StatefulBuilder(
+          builder: (context, refreshDetail) => ListView(
+            padding: const EdgeInsets.fromLTRB(18, 12, 18, 30), children: [
           Container(padding: const EdgeInsets.fromLTRB(22, 25, 22, 23),
             decoration: BoxDecoration(
               gradient: const LinearGradient(begin: Alignment.topRight, end: Alignment.bottomLeft,
@@ -1931,19 +1933,19 @@ class _PoetryShellState extends State<PoetryShell> {
           const SizedBox(height: 18),
           Wrap(alignment: WrapAlignment.spaceEvenly, spacing: 10, runSpacing: 10, children: [
             _statPill(Icons.visibility_outlined, poem.views + 1),
-            _statPill(Icons.favorite_border_rounded, poem.likes + (likedPoems.contains(poem.id) ? 1 : 0)),
+            _statPill(Icons.favorite_border_rounded, poem.likes),
             _statPill(Icons.share_outlined, poem.shares),
             _statPill(Icons.bookmark_border_rounded, poem.saves),
           ]),
           const SizedBox(height: 18),
           Row(children: [
             Expanded(child: FilledButton.tonalIcon(
-              onPressed: () => _likePoem(poem),
+              onPressed: () async { await _likePoem(poem); refreshDetail(() {}); },
               icon: Icon(likedPoems.contains(poem.id) ? Icons.favorite_rounded : Icons.favorite_border_rounded),
               label: Text(likedPoems.contains(poem.id) ? 'خوښ شوی' : 'خوښول'))),
             const SizedBox(width: 9),
             Expanded(child: FilledButton.tonalIcon(
-              onPressed: () => _toggleFavorite(poem),
+              onPressed: () async { await _toggleFavorite(poem); refreshDetail(() {}); },
               icon: Icon(favorites.contains(poem.id) ? Icons.bookmark_added_rounded : Icons.bookmark_add_outlined),
               label: Text(favorites.contains(poem.id) ? 'خوندي شوی' : 'خوندي کول'))),
             const SizedBox(width: 9),
@@ -1952,7 +1954,9 @@ class _PoetryShellState extends State<PoetryShell> {
               onPressed: () => _sharePoem(poem),
               icon: const Icon(Icons.share_rounded)),
           ]),
-        ]),
+            ],
+          ),
+        ),
       ),
     )));
   }
