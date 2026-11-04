@@ -230,7 +230,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                         animation: pageController,
                         builder: (context, child) {
                           double value = 1;
-                          if (pageController.position.haveDimensions) {
+                          if (pageController.hasClients && pageController.position.haveDimensions) {
                             value = (1 - (pageController.page! - index).abs() * 0.16)
                                 .clamp(0.84, 1.0);
                           }
