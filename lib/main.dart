@@ -1255,10 +1255,6 @@ class _PoetryShellState extends State<PoetryShell> {
           Positioned(left: -9, bottom: -14,
             child: Icon(Icons.format_quote_rounded, size: 112,
               color: Colors.white.withValues(alpha: .09))),
-          const Positioned.fill(child: ClipRRect(
-            borderRadius: BorderRadius.all(Radius.circular(28)),
-            child: const SizedBox.shrink(),
-          )),
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -2421,7 +2417,7 @@ class _PoemEditorState extends State<PoemEditor> {
           final upload = await FirebaseStorage.instance.ref('poems/${ref.key}.jpg')
             .putFile(File(image!.path));
           imageUrl = await upload.ref.getDownloadURL();
-        } catch (uploadError) {
+        } catch (_) {
           if (mounted) ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('انځور پورته نه شو؛ شعر به بې انځوره خپور شي.')));
         }
