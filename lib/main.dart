@@ -596,7 +596,7 @@ class _PoetryShellState extends State<PoetryShell> {
                         AnimatedDefaultTextStyle(
                           duration: const Duration(milliseconds: 220),
                           style: TextStyle(
-                            fontFamily: selectedFont,
+                            fontFamily: widget.fontName,
                             fontSize: selected ? 9.5 : 9,
                             height: 1.2,
                             fontWeight: selected
