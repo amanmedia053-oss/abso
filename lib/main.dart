@@ -2326,7 +2326,7 @@ class _AdminHomeState extends State<AdminHome> {
   @override
   Widget build(BuildContext context) {
     final pages = [const PoemsAdminPage(), const SimpleListAdmin(path: 'categories', title: 'کټګورۍ'),
-      const SimpleListAdmin(path: 'poets', title: 'شاعران')];
+      const SimpleListAdmin(path: 'poets', title: 'شاعران'), const GalleryAdminPage()];
     return Scaffold(
       appBar: AppBar(title: const Text('د ادبي خزانه مدیریت'),
         actions: [IconButton(onPressed: () => FirebaseAuth.instance.signOut(),
@@ -2341,6 +2341,7 @@ class _AdminHomeState extends State<AdminHome> {
           NavigationDestination(icon: Icon(Icons.menu_book_outlined), selectedIcon: Icon(Icons.menu_book), label: 'شعرونه'),
           NavigationDestination(icon: Icon(Icons.category_outlined), label: 'کټګورۍ'),
           NavigationDestination(icon: Icon(Icons.people_outline), label: 'شاعران'),
+          NavigationDestination(icon: Icon(Icons.photo_library_outlined), label: 'ګالري'),
         ]),
     );
   }
@@ -2770,6 +2771,62 @@ class _PoemDetailScreenState extends State<PoemDetailScreen> {
         Text('$count', style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w800)),
       ]));
   }
+}
+
+class GalleryAdminPage extends StatelessWidget {
+  const GalleryAdminPage({super.key});
+  Future<void> upload(BuildContext context) async {
+    final file = await ImagePicker().pickImage(source: ImageSource.gallery, imageQuality: 82, maxWidth: 1800);
+    if (file == null) return;
+    try {
+      final ref = FirebaseDatabase.instance.ref('gallery').push();
+      final storage = FirebaseStorage.instance.ref('gallery/${ref.key}.jpg');
+      await storage.putFile(File(file.path));
+      final url = await storage.getDownloadURL();
+      await ref.set({'name': file.name, 'url': url, 'storagePath': storage.fullPath,
+        'createdAt': ServerValue.timestamp, 'createdBy': FirebaseAuth.instance.currentUser?.uid});
+    } catch (e) {
+      if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('اپلوډ ناکام شو: $e')));
+    }
+  }
+  @override
+  Widget build(BuildContext context) => StreamBuilder<DatabaseEvent>(
+    stream: FirebaseDatabase.instance.ref('gallery').onValue,
+    builder: (context, snap) {
+      final raw = snap.data?.snapshot.value;
+      final entries = raw is Map ? raw.entries.toList().reversed.toList() : <dynamic>[];
+      return Column(children: [
+        Padding(padding: const EdgeInsets.all(15), child: Container(
+          padding: const EdgeInsets.all(17),
+          decoration: BoxDecoration(gradient: const LinearGradient(colors: [Color(0xFF174E48), Color(0xFF398D79), Color(0xFFB28A4A)]), borderRadius: BorderRadius.circular(22)),
+          child: Row(children: [
+            const Icon(Icons.photo_library_rounded, color: Colors.white, size: 34), const SizedBox(width: 12),
+            const Expanded(child: Text('د انځورونو ګالري\nانځورونه یو ځل پورته کړئ او بیا یې په شعر، کټګورۍ او شاعر کې وکاروئ',
+              style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800, height: 1.6))),
+            IconButton.filledTonal(onPressed: () => upload(context), icon: const Icon(Icons.add_photo_alternate_outlined)),
+          ]))),
+        Expanded(child: !snap.hasData ? const Center(child: CircularProgressIndicator())
+          : entries.isEmpty ? const Center(child: Text('ګالري تشه ده؛ لومړی انځور پورته کړئ.'))
+          : GridView.builder(padding: const EdgeInsets.all(12),
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 2, crossAxisSpacing: 12, mainAxisSpacing: 12, childAspectRatio: .9),
+            itemCount: entries.length, itemBuilder: (context, i) {
+              final id = entries[i].key.toString();
+              final d = Map<String, dynamic>.from(entries[i].value as Map);
+              return Card(clipBehavior: Clip.antiAlias, child: Column(children: [
+                Expanded(child: Stack(fit: StackFit.expand, children: [
+                  Image.network((d['url'] ?? '').toString(), fit: BoxFit.cover),
+                  Positioned(top: 4, right: 4, child: IconButton.filledTonal(icon: const Icon(Icons.delete_outline, color: Colors.red),
+                    onPressed: () async {
+                      await FirebaseDatabase.instance.ref('gallery/$id').remove();
+                      final path = d['storagePath']?.toString();
+                      if (path != null) { try { await FirebaseStorage.instance.ref(path).delete(); } catch (_) {} }
+                    })),
+                ])),
+                Padding(padding: const EdgeInsets.all(8), child: Text((d['name'] ?? 'انځور').toString(), maxLines: 1, overflow: TextOverflow.ellipsis)),
+              ]));
+            })),
+      ]);
+    });
 }
 
 class PoemEditor extends StatefulWidget {
