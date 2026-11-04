@@ -48,8 +48,26 @@ jobs:
           settings.write_text(settings_text)
 
           target_id = "com.obaidapp.soraerahman"
-          if app.suffix == ".kts":
-              pattern = r'(?m)^(\s*)applicationId\s*=.*
+          app_lines = app_text.splitlines()
+          is_kts = app.suffix == ".kts"
+          app_id_line = ('applicationId = "' + target_id + '"') if is_kts else ('applicationId "' + target_id + '"')
+          found_id = False
+          for index, line in enumerate(app_lines):
+              if line.strip().startswith("applicationId"):
+                  indent = line[:len(line) - len(line.lstrip())]
+                  app_lines[index] = indent + app_id_line
+                  found_id = True
+                  break
+          if not found_id:
+              for index, line in enumerate(app_lines):
+                  if line.strip().startswith("defaultConfig") and line.rstrip().endswith("{"):
+                      indent = line[:len(line) - len(line.lstrip())] + "    "
+                      app_lines.insert(index + 1, indent + app_id_line)
+                      found_id = True
+                      break
+          if not found_id:
+              raise SystemExit("Could not find defaultConfig block to set applicationId in " + str(app))
+          app_text = "\n".join(app_lines) + "\n"
           if "com.google.gms.google-services" not in app_text:
               app_text, count = re.subn(r"plugins\s*\{", lambda m: m.group(0) + "\n" + app_plugin, app_text, count=1)
               if count != 1:
