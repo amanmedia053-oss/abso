@@ -14,6 +14,18 @@
         "views": {
           ".write": "newData.isNumber() && newData.val() == (data.exists() ? data.val() + 1 : 1)",
           ".validate": "newData.isNumber() && newData.val() >= 1"
+        },
+        "likes": {
+          ".write": "newData.isNumber() && newData.val() == (data.exists() ? data.val() + 1 : 1)",
+          ".validate": "newData.isNumber() && newData.val() >= 1"
+        },
+        "shares": {
+          ".write": "newData.isNumber() && newData.val() == (data.exists() ? data.val() + 1 : 1)",
+          ".validate": "newData.isNumber() && newData.val() >= 1"
+        },
+        "saves": {
+          ".write": "newData.isNumber() && newData.val() == (data.exists() ? data.val() + 1 : 1)",
+          ".validate": "newData.isNumber() && newData.val() >= 1"
         }
       }
     },
