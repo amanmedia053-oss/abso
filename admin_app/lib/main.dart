@@ -189,23 +189,192 @@ class PoemsAdminPage extends StatelessWidget {
   );
 }
 
-class SimpleListAdmin extends StatelessWidget {
+class SimpleListAdmin extends StatefulWidget {
   const SimpleListAdmin({super.key, required this.path, required this.title});
   final String path, title;
   @override
-  Widget build(BuildContext context) => StreamBuilder<DatabaseEvent>(
-    stream: FirebaseDatabase.instance.ref(path).onValue,
-    builder: (context, snap) {
-      if (!snap.hasData) return const Center(child: CircularProgressIndicator());
-      final raw = snap.data!.snapshot.value;
-      if (raw is! Map) return Center(child: Text('$title لا نه دي ثبت شوې.'));
-      return ListView(children: raw.entries.map((e) {
-        final value = e.value is Map ? (e.value['name'] ?? '') : e.value;
-        return Card(margin: const EdgeInsets.fromLTRB(14, 5, 14, 5),
-          child: ListTile(leading: const Icon(Icons.label_outline), title: Text('$value')));
-      }).toList());
-    },
-  );
+  State<SimpleListAdmin> createState() => _SimpleListAdminState();
+}
+
+class _SimpleListAdminState extends State<SimpleListAdmin> {
+  bool get isCategory => widget.path == 'categories';
+
+  Future<void> _editItem({String? id, String? oldName}) async {
+    final controller = TextEditingController(text: oldName ?? '');
+    final colors = Theme.of(context).colorScheme;
+    final name = await showDialog<String>(
+      context: context,
+      builder: (dialogContext) => Directionality(
+        textDirection: TextDirection.rtl,
+        child: AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(26)),
+          title: Text(id == null ? 'نوې ${widget.title.substring(0, widget.title.length - 1)}' : 'سمون'),
+          content: TextField(
+            controller: controller,
+            autofocus: true,
+            maxLength: 55,
+            decoration: InputDecoration(
+              hintText: isCategory ? 'لکه: غزل، حماسي، عرفاني...' : 'د شاعر نوم',
+              prefixIcon: Icon(isCategory ? Icons.category_rounded : Icons.person_rounded),
+              filled: true,
+              fillColor: colors.surfaceContainerHighest.withValues(alpha: .45),
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(17)),
+            ),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('بندول')),
+            FilledButton(onPressed: () => Navigator.pop(dialogContext, controller.text.trim()),
+              child: const Text('خوندي کول')),
+          ],
+        ),
+      ),
+    );
+    controller.dispose();
+    if (name == null || name.trim().isEmpty) return;
+    try {
+      final ref = FirebaseDatabase.instance.ref(widget.path);
+      if (id == null) {
+        await ref.push().set({'name': name.trim(), 'createdAt': ServerValue.timestamp});
+      } else {
+        await ref.child(id).update({'name': name.trim(), 'updatedAt': ServerValue.timestamp});
+      }
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('په بریالیتوب خوندي شو.')));
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('خوندي کول ناکام شول: $e')));
+    }
+  }
+
+  Future<void> _deleteItem(String id) async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => Directionality(
+        textDirection: TextDirection.rtl,
+        child: AlertDialog(
+          title: const Text('ړنګول تاییدوئ؟'),
+          content: const Text('دا توکی به له ډیټابېس څخه لرې شي.'),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('نه')),
+            FilledButton.tonal(onPressed: () => Navigator.pop(ctx, true),
+              child: const Text('هو، ړنګ یې کړه')),
+          ],
+        ),
+      ),
+    );
+    if (ok != true) return;
+    try {
+      await FirebaseDatabase.instance.ref('${widget.path}/$id').remove();
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('ړنګول ناکام شول: $e')));
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    return StreamBuilder<DatabaseEvent>(
+      stream: FirebaseDatabase.instance.ref(widget.path).onValue,
+      builder: (context, snap) {
+        if (snap.hasError) return Center(child: Text('ستونزه: ${snap.error}'));
+        if (!snap.hasData) return const Center(child: CircularProgressIndicator());
+        final raw = snap.data!.snapshot.value;
+        final entries = raw is Map ? raw.entries.toList() : <dynamic>[];
+        return Column(children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 10),
+            child: Container(
+              padding: const EdgeInsets.all(18),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topRight, end: Alignment.bottomLeft,
+                  colors: isCategory
+                    ? [const Color(0xFF263F78), const Color(0xFF7762C8), const Color(0xFFB77BC5)]
+                    : [const Color(0xFF174E48), const Color(0xFF398D79), const Color(0xFFB28A4A)],
+                ),
+                borderRadius: BorderRadius.circular(25),
+                boxShadow: [BoxShadow(color: colors.primary.withValues(alpha: .15),
+                  blurRadius: 20, offset: const Offset(0, 8))],
+              ),
+              child: Row(children: [
+                Container(width: 54, height: 54,
+                  decoration: BoxDecoration(color: Colors.white.withValues(alpha: .17),
+                    borderRadius: BorderRadius.circular(18)),
+                  child: Icon(isCategory ? Icons.category_rounded : Icons.edit_note_rounded,
+                    color: Colors.white, size: 29)),
+                const SizedBox(width: 13),
+                Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Text(widget.title, style: const TextStyle(color: Colors.white,
+                    fontSize: 19, fontWeight: FontWeight.w900)),
+                  const SizedBox(height: 4),
+                  Text('${entries.length} ثبت شوي', style: const TextStyle(
+                    color: Colors.white70, fontSize: 12)),
+                ])),
+                IconButton.filledTonal(
+                  style: IconButton.styleFrom(backgroundColor: Colors.white.withValues(alpha: .2),
+                    foregroundColor: Colors.white),
+                  onPressed: () => _editItem(),
+                  icon: const Icon(Icons.add_rounded),
+                  tooltip: 'نوی اضافه کول',
+                ),
+              ]),
+            ),
+          ),
+          Expanded(
+            child: entries.isEmpty
+              ? Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
+                  Icon(isCategory ? Icons.category_outlined : Icons.person_search_rounded,
+                    size: 54, color: colors.outline),
+                  const SizedBox(height: 12),
+                  Text('تر اوسه ${widget.title} نه دي ثبت شوي.',
+                    style: TextStyle(color: colors.onSurfaceVariant)),
+                  const SizedBox(height: 12),
+                  FilledButton.icon(onPressed: () => _editItem(),
+                    icon: const Icon(Icons.add_rounded), label: const Text('لومړی توکی اضافه کړه')),
+                ]))
+              : ListView.separated(
+                  padding: const EdgeInsets.fromLTRB(14, 4, 14, 20),
+                  itemCount: entries.length,
+                  separatorBuilder: (_, __) => const SizedBox(height: 9),
+                  itemBuilder: (context, index) {
+                    final entry = entries[index];
+                    final id = entry.key.toString();
+                    final value = entry.value;
+                    final label = (value is Map ? (value['name'] ?? '') : value).toString();
+                    final palette = [
+                      const Color(0xFF5472C8), const Color(0xFF259B86),
+                      const Color(0xFFB17A38), const Color(0xFF9A65B5),
+                    ];
+                    final tint = palette[index % palette.length];
+                    return Card(
+                      clipBehavior: Clip.antiAlias,
+                      child: ListTile(
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 5),
+                        leading: Container(width: 46, height: 46,
+                          decoration: BoxDecoration(color: tint.withValues(alpha: .12),
+                            borderRadius: BorderRadius.circular(15)),
+                          child: Icon(isCategory ? Icons.auto_awesome_mosaic_rounded : Icons.person_rounded,
+                            color: tint)),
+                        title: Text(label, style: const TextStyle(fontWeight: FontWeight.w800)),
+                        subtitle: Text(isCategory ? 'د شعرونو کټګوري' : 'شاعر',
+                          style: TextStyle(color: colors.onSurfaceVariant, fontSize: 11)),
+                        trailing: Wrap(spacing: 0, children: [
+                          IconButton(onPressed: () => _editItem(id: id, oldName: label),
+                            icon: const Icon(Icons.edit_outlined), tooltip: 'سمون'),
+                          IconButton(onPressed: () => _deleteItem(id),
+                            icon: const Icon(Icons.delete_outline_rounded, color: Colors.redAccent),
+                            tooltip: 'ړنګول'),
+                        ]),
+                      ),
+                    );
+                  },
+                ),
+          ),
+        ]);
+      },
+    );
+  }
 }
 
 class PoemEditor extends StatefulWidget {
