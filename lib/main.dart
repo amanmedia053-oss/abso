@@ -628,73 +628,220 @@ class _PoetryShellState extends State<PoetryShell> {
   Widget _buildDrawer() {
     final colors = Theme.of(context).colorScheme;
     return Drawer(
-      width: 300,
+      width: 320,
+      elevation: 18,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.horizontal(left: Radius.circular(30)),
+      ),
       child: SafeArea(
         child: Column(
           children: [
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.fromLTRB(20, 25, 20, 22),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [colors.primary, colors.tertiary],
-                  begin: Alignment.topRight,
-                  end: Alignment.bottomLeft,
+            Padding(
+              padding: const EdgeInsets.fromLTRB(14, 12, 14, 18),
+              child: Container(
+                width: double.infinity,
+                padding: const EdgeInsets.fromLTRB(18, 22, 18, 20),
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    begin: Alignment.topRight,
+                    end: Alignment.bottomLeft,
+                    colors: [Color(0xFF392B91), Color(0xFF7652CE), Color(0xFFE17AA7)],
+                  ),
+                  borderRadius: BorderRadius.circular(27),
+                  boxShadow: [
+                    BoxShadow(
+                      color: const Color(0xFF7652CE).withValues(alpha: .28),
+                      blurRadius: 22,
+                      offset: const Offset(0, 10),
+                    ),
+                  ],
+                ),
+                child: Stack(
+                  children: [
+                    Positioned(
+                      left: -8,
+                      top: -14,
+                      child: Icon(Icons.auto_stories_rounded,
+                          size: 112, color: Colors.white.withValues(alpha: .09)),
+                    ),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Container(
+                              width: 62,
+                              height: 62,
+                              decoration: BoxDecoration(
+                                color: Colors.white.withValues(alpha: .17),
+                                borderRadius: BorderRadius.circular(21),
+                                border: Border.all(
+                                    color: Colors.white.withValues(alpha: .35)),
+                              ),
+                              child: const Icon(Icons.menu_book_rounded,
+                                  color: Colors.white, size: 34),
+                            ),
+                            const Spacer(),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 10, vertical: 6),
+                              decoration: BoxDecoration(
+                                color: Colors.white.withValues(alpha: .16),
+                                borderRadius: BorderRadius.circular(30),
+                              ),
+                              child: const Row(
+                                children: [
+                                  Icon(Icons.auto_awesome_rounded,
+                                      color: Colors.white, size: 13),
+                                  SizedBox(width: 5),
+                                  Text('ادبي نړۍ',
+                                      style: TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 10,
+                                          fontWeight: FontWeight.w800)),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 17),
+                        const Text('ادبي خزانه',
+                            style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 24,
+                                fontWeight: FontWeight.w900)),
+                        const SizedBox(height: 5),
+                        const Text('د پښتو شعر او ادب رنګینه نړۍ',
+                            style: TextStyle(
+                                color: Colors.white70,
+                                fontSize: 11,
+                                fontWeight: FontWeight.w600)),
+                        const SizedBox(height: 16),
+                        Container(
+                          height: 1,
+                          color: Colors.white.withValues(alpha: .25),
+                        ),
+                        const SizedBox(height: 12),
+                        const Row(
+                          children: [
+                            Icon(Icons.auto_awesome, color: Colors.white, size: 15),
+                            SizedBox(width: 7),
+                            Text('ولولئ • خوند واخلئ • یاد یې وساتئ',
+                                style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.w700)),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ],
                 ),
               ),
-              child: const Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 0, 20, 9),
+              child: Row(
                 children: [
-                  CircleAvatar(
-                    radius: 29,
-                    backgroundColor: Colors.white24,
-                    child: Icon(Icons.auto_stories_rounded,
-                      size: 32, color: Colors.white),
+                  Text('اصلي مینو',
+                      style: TextStyle(
+                          color: colors.onSurfaceVariant,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w900)),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Container(
+                        height: 1,
+                        color: colors.outlineVariant.withValues(alpha: .6)),
                   ),
-                  SizedBox(height: 13),
-                  Text('ادبي خزانه',
-                    style: TextStyle(color: Colors.white,
-                      fontSize: 21, fontWeight: FontWeight.w800)),
-                  SizedBox(height: 3),
-                  Text('د پښتو شعر او ادب نړۍ',
-                    style: TextStyle(color: Colors.white70, fontSize: 12)),
                 ],
               ),
             ),
-            const SizedBox(height: 10),
             _drawerItem(Icons.home_rounded, 'کور پاڼه', 0),
             _drawerItem(Icons.favorite_rounded, 'خوښ شوي شعرونه', 1),
             _drawerItem(Icons.info_rounded, 'زموږ په اړه', 2),
             _drawerItem(Icons.settings_rounded, 'تنظیمات', 3),
-            const Divider(height: 24, indent: 18, endIndent: 18),
-            SwitchListTile(
-              secondary: Icon(widget.isDark
-                ? Icons.dark_mode_rounded : Icons.light_mode_rounded,
-                color: colors.primary),
-              title: const Text('تیاره بڼه'),
-              value: widget.isDark,
-              onChanged: (_) {
-                Navigator.pop(context);
-                widget.onTheme();
-              },
+            const SizedBox(height: 9),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 14),
+              child: Container(
+                decoration: BoxDecoration(
+                  color: colors.surfaceContainerLow,
+                  borderRadius: BorderRadius.circular(19),
+                  border: Border.all(
+                      color: colors.outlineVariant.withValues(alpha: .55)),
+                ),
+                child: SwitchListTile(
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 14),
+                  secondary: Container(
+                    width: 39,
+                    height: 39,
+                    decoration: BoxDecoration(
+                      color: colors.primaryContainer,
+                      borderRadius: BorderRadius.circular(13),
+                    ),
+                    child: Icon(
+                      widget.isDark
+                          ? Icons.dark_mode_rounded
+                          : Icons.light_mode_rounded,
+                      color: colors.primary,
+                      size: 21,
+                    ),
+                  ),
+                  title: const Text('تیاره بڼه',
+                      style:
+                          TextStyle(fontSize: 12, fontWeight: FontWeight.w800)),
+                  subtitle: Text(widget.isDark ? 'فعاله ده' : 'غیر فعاله ده',
+                      style: TextStyle(
+                          fontSize: 10, color: colors.onSurfaceVariant)),
+                  value: widget.isDark,
+                  onChanged: (_) {
+                    Navigator.pop(context);
+                    widget.onTheme();
+                  },
+                ),
+              ),
             ),
             const Spacer(),
-            const Divider(height: 1),
-            ListTile(
-              leading: Icon(Icons.exit_to_app_rounded, color: colors.error),
-              title: Text('له اپلیکیشن څخه وتل',
-                style: TextStyle(color: colors.error,
-                  fontWeight: FontWeight.w700)),
-              onTap: () {
-                Navigator.pop(context);
-                _confirmExit();
-              },
+            Padding(
+              padding: const EdgeInsets.fromLTRB(14, 8, 14, 5),
+              child: Material(
+                color: colors.errorContainer.withValues(alpha: .55),
+                borderRadius: BorderRadius.circular(17),
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(17),
+                  onTap: () {
+                    Navigator.pop(context);
+                    _confirmExit();
+                  },
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 15, vertical: 13),
+                    child: Row(
+                      children: [
+                        Icon(Icons.logout_rounded, color: colors.error, size: 21),
+                        const SizedBox(width: 11),
+                        Text('له اپلیکیشن څخه وتل',
+                            style: TextStyle(
+                                color: colors.error,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w800)),
+                        const Spacer(),
+                        Icon(Icons.arrow_back_ios_new_rounded,
+                            color: colors.error, size: 13),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
             ),
             Padding(
-              padding: const EdgeInsets.only(bottom: 12, top: 4),
-              child: Text('نسخه 1.0.0',
-                style: TextStyle(fontSize: 10,
-                  color: colors.onSurfaceVariant)),
+              padding: const EdgeInsets.only(bottom: 10, top: 5),
+              child: Text('ادبي خزانه  •  نسخه 1.0.0',
+                  style: TextStyle(
+                      fontSize: 9,
+                      letterSpacing: .3,
+                      color: colors.onSurfaceVariant)),
             ),
           ],
         ),
@@ -705,24 +852,78 @@ class _PoetryShellState extends State<PoetryShell> {
   Widget _drawerItem(IconData icon, String title, int index) {
     final colors = Theme.of(context).colorScheme;
     final selected = selectedPage == index;
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
-      child: ListTile(
-        selected: selected,
-        selectedTileColor: colors.secondaryContainer.withValues(alpha: .65),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(14)),
-        leading: Icon(icon),
-        title: Text(title,
-          style: TextStyle(fontWeight: selected
-            ? FontWeight.w800 : FontWeight.w500)),
-        trailing: selected
-          ? Icon(Icons.check_circle_rounded, size: 18, color: colors.primary)
-          : null,
-        onTap: () {
-          Navigator.pop(context);
-          setState(() => selectedPage = index);
-        },
+    return TweenAnimationBuilder<double>(
+      key: ValueKey('drawer-item-$index-$selected'),
+      tween: Tween(begin: 0.0, end: 1.0),
+      duration: Duration(milliseconds: 380 + (index * 75)),
+      curve: Curves.easeOutCubic,
+      builder: (context, value, child) => Opacity(
+        opacity: value,
+        child: Transform.translate(
+          offset: Offset(22 * (1 - value), 0),
+          child: child,
+        ),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 3),
+        child: Material(
+          color: selected
+              ? colors.primaryContainer.withValues(alpha: .8)
+              : Colors.transparent,
+          borderRadius: BorderRadius.circular(17),
+          child: InkWell(
+            borderRadius: BorderRadius.circular(17),
+            onTap: () {
+              Navigator.pop(context);
+              setState(() => selectedPage = index);
+            },
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 260),
+              curve: Curves.easeOutCubic,
+              padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 12),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(17),
+                border: Border.all(
+                  color: selected
+                      ? colors.primary.withValues(alpha: .22)
+                      : Colors.transparent,
+                ),
+              ),
+              child: Row(
+                children: [
+                  AnimatedContainer(
+                    duration: const Duration(milliseconds: 260),
+                    width: 40,
+                    height: 40,
+                    decoration: BoxDecoration(
+                      gradient: selected
+                          ? LinearGradient(
+                              colors: [colors.primary, colors.tertiary])
+                          : null,
+                      color: selected ? null : colors.surfaceContainerHigh,
+                      borderRadius: BorderRadius.circular(13),
+                    ),
+                    child: Icon(icon,
+                        color: selected ? Colors.white : colors.onSurfaceVariant,
+                        size: 21),
+                  ),
+                  const SizedBox(width: 13),
+                  Expanded(
+                    child: Text(title,
+                        style: TextStyle(
+                            fontSize: 12,
+                            color: selected ? colors.primary : colors.onSurface,
+                            fontWeight:
+                                selected ? FontWeight.w900 : FontWeight.w600)),
+                  ),
+                  if (selected)
+                    Icon(Icons.check_circle_rounded,
+                        color: colors.primary, size: 19),
+                ],
+              ),
+            ),
+          ),
+        ),
       ),
     );
   }
