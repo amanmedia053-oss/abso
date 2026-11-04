@@ -1101,12 +1101,19 @@ class _PoetryShellState extends State<PoetryShell> {
             ),
           )
         else
-          SliverPadding(
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-            sliver: SliverList(
-              delegate: SliverChildBuilderDelegate(
-                (context, index) => _poemCard(visible[index]),
-                childCount: visible.length,
+          SliverToBoxAdapter(
+            child: SizedBox(
+              height: 278,
+              child: ListView.separated(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+                scrollDirection: Axis.horizontal,
+                physics: const BouncingScrollPhysics(),
+                itemCount: visible.length,
+                separatorBuilder: (_, __) => const SizedBox(width: 12),
+                itemBuilder: (context, index) => SizedBox(
+                  width: 304,
+                  child: _poemCard(visible[index]),
+                ),
               ),
             ),
           ),
@@ -1127,32 +1134,58 @@ class _PoetryShellState extends State<PoetryShell> {
               separatorBuilder: (_, __) => const SizedBox(width: 11),
               itemBuilder: (context, index) {
                 final poet = poets[index];
+                final count = poems.where((p) => p.poet == poet).length;
                 return Container(
-                  width: 104,
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+                  width: 142,
+                  padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: colors.surface,
-                    borderRadius: BorderRadius.circular(20),
+                    gradient: LinearGradient(
+                      begin: Alignment.topRight,
+                      end: Alignment.bottomLeft,
+                      colors: [
+                        colors.surface,
+                        colors.primaryContainer.withValues(alpha: .58),
+                      ],
+                    ),
+                    borderRadius: BorderRadius.circular(23),
                     border: Border.all(color: colors.outlineVariant.withValues(alpha: .55)),
+                    boxShadow: [
+                      BoxShadow(color: colors.primary.withValues(alpha: .07),
+                        blurRadius: 15, offset: const Offset(0, 6)),
+                    ],
                   ),
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Container(
-                        width: 43, height: 43,
+                        width: 52, height: 52,
                         decoration: BoxDecoration(
                           gradient: LinearGradient(
                             colors: [colors.primary, colors.tertiary],
                             begin: Alignment.topRight, end: Alignment.bottomLeft,
                           ),
                           shape: BoxShape.circle,
+                          boxShadow: [BoxShadow(
+                            color: colors.primary.withValues(alpha: .22),
+                            blurRadius: 12, offset: const Offset(0, 5))],
                         ),
-                        child: const Icon(Icons.person_rounded, color: Colors.white, size: 24),
+                        child: const Icon(Icons.person_rounded,
+                          color: Colors.white, size: 27),
                       ),
-                      const SizedBox(height: 7),
+                      const SizedBox(height: 9),
                       Text(poet, maxLines: 1, overflow: TextOverflow.ellipsis,
                         textAlign: TextAlign.center,
-                        style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w800)),
+                        style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w900)),
+                      const SizedBox(height: 5),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: colors.primary.withValues(alpha: .09),
+                          borderRadius: BorderRadius.circular(20)),
+                        child: Text('$count شعرونه',
+                          style: TextStyle(fontSize: 9, color: colors.primary,
+                            fontWeight: FontWeight.w800)),
+                      ),
                     ],
                   ),
                 );
