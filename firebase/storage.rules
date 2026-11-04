@@ -1,15 +1,15 @@
 rules_version = '2';
 service firebase.storage {
   match /b/{bucket}/o {
+    // Set the admin custom claim from a trusted environment after verifying
+    // the user's UID exists under Realtime Database admins/{uid}.
     match /poems/{fileName} {
       allow read: if true;
-      allow write: if request.auth != null
-        && firestore.get(/databases/(default)/documents/admins/$(request.auth.uid)).data.role == 'admin';
+      allow write: if request.auth != null && request.auth.token.admin == true;
     }
     match /poets/{fileName} {
       allow read: if true;
-      allow write: if request.auth != null
-        && firestore.get(/databases/(default)/documents/admins/$(request.auth.uid)).data.role == 'admin';
+      allow write: if request.auth != null && request.auth.token.admin == true;
     }
   }
 }
