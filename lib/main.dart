@@ -2341,8 +2341,30 @@ class PoemsAdminPage extends StatelessWidget {
               maxLines: 1, overflow: TextOverflow.ellipsis),
             subtitle: Text((data['text'] ?? '').toString(), maxLines: 2,
               overflow: TextOverflow.ellipsis),
-            trailing: IconButton(icon: const Icon(Icons.delete_outline, color: Colors.red),
-              onPressed: () => FirebaseDatabase.instance.ref('poems/$id').remove()),
+            trailing: Wrap(spacing: 0, children: [
+              IconButton(
+                tooltip: 'سمون',
+                icon: const Icon(Icons.edit_outlined),
+                onPressed: () => Navigator.push(context, MaterialPageRoute(
+                  builder: (_) => PoemEditor(poemId: id, initialData: data))),
+              ),
+              IconButton(
+                tooltip: 'ړنګول',
+                icon: const Icon(Icons.delete_outline, color: Colors.red),
+                onPressed: () async {
+                  final ok = await showDialog<bool>(context: context, builder: (ctx) =>
+                    Directionality(textDirection: TextDirection.rtl, child: AlertDialog(
+                      title: const Text('شعر ړنګول؟'),
+                      content: const Text('دا شعر به له ډیټابېس څخه لرې شي.'),
+                      actions: [
+                        TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('نه')),
+                        FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('هو، ړنګ یې کړه')),
+                      ],
+                    )));
+                  if (ok == true) await FirebaseDatabase.instance.ref('poems/$id').remove();
+                },
+              ),
+            ]),
           ));
         });
     },
@@ -2538,7 +2560,9 @@ class _SimpleListAdminState extends State<SimpleListAdmin> {
 }
 
 class PoemEditor extends StatefulWidget {
-  const PoemEditor({super.key});
+  const PoemEditor({super.key, this.poemId, this.initialData});
+  final String? poemId;
+  final Map<String, dynamic>? initialData;
   @override
   State<PoemEditor> createState() => _PoemEditorState();
 }
@@ -2546,9 +2570,21 @@ class _PoemEditorState extends State<PoemEditor> {
   final title = TextEditingController();
   final text = TextEditingController();
   final picker = ImagePicker();
-  String? categoryId, poetId;
+  String? categoryId, poetId, existingImageUrl;
   XFile? image;
   bool featured = false, saving = false;
+
+  @override
+  void initState() {
+    super.initState();
+    final data = widget.initialData ?? <String, dynamic>{};
+    title.text = (data['title'] ?? '').toString();
+    text.text = (data['text'] ?? '').toString();
+    categoryId = data['categoryId']?.toString();
+    poetId = data['poetId']?.toString();
+    existingImageUrl = data['imageUrl']?.toString();
+    featured = data['featured'] == true;
+  }
   Future<void> save() async {
     if (text.text.trim().isEmpty || categoryId == null) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -2557,8 +2593,10 @@ class _PoemEditorState extends State<PoemEditor> {
     }
     setState(() => saving = true);
     try {
-      final ref = FirebaseDatabase.instance.ref('poems').push();
-      String? imageUrl;
+      final ref = widget.poemId == null
+          ? FirebaseDatabase.instance.ref('poems').push()
+          : FirebaseDatabase.instance.ref('poems/${widget.poemId}');
+      var imageUrl = existingImageUrl;
       if (image != null) {
         final upload = await FirebaseStorage.instance.ref('poems/${ref.key}.jpg')
           .putFile(File(image!.path));
@@ -2567,14 +2605,19 @@ class _PoemEditorState extends State<PoemEditor> {
       final data = <String, dynamic>{
         'text': text.text.trim(),
         'categoryId': categoryId,
-        'createdAt': ServerValue.timestamp,
+        'poetId': poetId,
+        'title': title.text.trim().isEmpty ? null : title.text.trim(),
+        'imageUrl': imageUrl,
         'featured': featured,
         'isPublished': true,
       };
-      if (title.text.trim().isNotEmpty) data['title'] = title.text.trim();
-      if (poetId != null) data['poetId'] = poetId;
-      if (imageUrl != null) data['imageUrl'] = imageUrl;
-      await ref.set(data);
+      if (widget.poemId == null) {
+        data['createdAt'] = ServerValue.timestamp;
+        await ref.set(data);
+      } else {
+        data['updatedAt'] = ServerValue.timestamp;
+        await ref.update(data);
+      }
       if (mounted) Navigator.pop(context);
     } catch (e) {
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(
