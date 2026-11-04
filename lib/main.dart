@@ -2597,9 +2597,14 @@ class _PoemEditorState extends State<PoemEditor> {
           : FirebaseDatabase.instance.ref('poems/${widget.poemId}');
       var imageUrl = existingImageUrl;
       if (image != null) {
-        final upload = await FirebaseStorage.instance.ref('poems/${ref.key}.jpg')
-          .putFile(File(image!.path));
-        imageUrl = await upload.ref.getDownloadURL();
+        try {
+          final upload = await FirebaseStorage.instance.ref('poems/${ref.key}.jpg')
+            .putFile(File(image!.path));
+          imageUrl = await upload.ref.getDownloadURL();
+        } catch (uploadError) {
+          if (mounted) ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('انځور پورته نه شو؛ شعر به بې انځوره خپور شي.')));
+        }
       }
       final data = <String, dynamic>{
         'text': text.text.trim(),
