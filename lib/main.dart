@@ -1061,67 +1061,222 @@ class _PoetryShellState extends State<PoetryShell> {
   Widget _aboutPage() {
     final colors = Theme.of(context).colorScheme;
     return ListView(
-      padding: const EdgeInsets.all(18),
+      padding: const EdgeInsets.fromLTRB(18, 18, 18, 30),
       children: [
-        const SizedBox(height: 12),
-        Center(
-          child: Container(
-            width: 92, height: 92,
-            decoration: BoxDecoration(
-              color: colors.primaryContainer,
-              borderRadius: BorderRadius.circular(28)),
-            child: Icon(Icons.auto_stories_rounded,
-              size: 48, color: colors.onPrimaryContainer),
+        TweenAnimationBuilder<double>(
+          tween: Tween(begin: 0, end: 1),
+          duration: const Duration(milliseconds: 850),
+          curve: Curves.easeOutCubic,
+          builder: (context, value, child) => Opacity(
+            opacity: value,
+            child: Transform.translate(
+              offset: Offset(0, 24 * (1 - value)),
+              child: child,
+            ),
+          ),
+          child: Column(
+            children: [
+              Container(
+                width: 94,
+                height: 94,
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topRight,
+                    end: Alignment.bottomLeft,
+                    colors: [colors.primary, colors.tertiary],
+                  ),
+                  borderRadius: BorderRadius.circular(30),
+                  boxShadow: [
+                    BoxShadow(
+                      color: colors.primary.withValues(alpha: .24),
+                      blurRadius: 24,
+                      offset: const Offset(0, 10),
+                    ),
+                  ],
+                ),
+                child: const Icon(Icons.auto_stories_rounded,
+                    size: 49, color: Colors.white),
+              ),
+              const SizedBox(height: 15),
+              Text('ادبي خزانه',
+                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                      fontWeight: FontWeight.w900)),
+              const SizedBox(height: 5),
+              Text('د پښتو شعر او ادب نړۍ',
+                  style: TextStyle(color: colors.onSurfaceVariant)),
+            ],
           ),
         ),
-        const SizedBox(height: 15),
-        Center(child: Text('ادبي خزانه',
-          style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-            fontWeight: FontWeight.bold))),
-        const SizedBox(height: 5),
-        Center(child: Text('د پښتو شعر او ادب نړۍ',
-          style: TextStyle(color: colors.onSurfaceVariant))),
+        const SizedBox(height: 25),
+        _aboutPersonFeature(
+          icon: Icons.code_rounded,
+          role: 'د اپلیکیشن جوړوونکی',
+          name: 'عبيدالله غفاري',
+          description:
+              'د ادبي خزانې د مفکورې او تخنیکي جوړښت تر شا هڅاند کس؛ د پښتو ادب د مینه‌والو لپاره د یوې ښکلې او اسانه ډیجیټلي تجربې په جوړولو کې یې ونډه اخیستې ده.',
+          accent: const Color(0xFF6750A4),
+          delay: 0,
+        ),
+        const SizedBox(height: 16),
+        _aboutPersonFeature(
+          icon: Icons.auto_awesome_rounded,
+          role: 'ترتیب کوونکی',
+          name: 'الحاج ډاکټر فريدون احرار',
+          description:
+              'د ادبي خزانې د محتوا او ادبي چارو په ترتیب او سمون کې ونډه‌وال؛ د پښتو ژبې او ادب د ارزښتمنو اثارو د وړاندې کولو لپاره یې همکاري کړې ده.',
+          accent: const Color(0xFFB77928),
+          delay: 180,
+        ),
         const SizedBox(height: 22),
         Card(
-          elevation: 0,
           color: colors.surfaceContainerLow,
+          elevation: 0,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(22),
+            side: BorderSide(color: colors.outlineVariant.withValues(alpha: .5)),
+          ),
           child: const Padding(
-            padding: EdgeInsets.all(16),
-            child: Text(
-              'ادبي خزانه د پښتو ژبې د شعرونو او ادب د مینه‌والو لپاره یو ساده او ښکلی اپلیکیشن دی. زموږ موخه دا ده چې د پښتو شاعرۍ لوستلو، موندلو او له خوښو شعرونو سره د بیا لیدو تجربه اسانه کړو.',
-              style: TextStyle(fontSize: 13, height: 1.9),
-              textAlign: TextAlign.justify,
+            padding: EdgeInsets.all(18),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('د اپلیکیشن په اړه',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900)),
+                SizedBox(height: 8),
+                Text(
+                  'ادبي خزانه د پښتو ژبې د شعرونو او ادب د مینه‌والو لپاره یو ښکلی اپلیکیشن دی. موخه مو دا ده چې د پښتو شاعرۍ لوستل، لټول او د خوښې شعرونه ساتل اسانه او خوندور کړو.',
+                  textAlign: TextAlign.justify,
+                  style: TextStyle(fontSize: 13, height: 1.9),
+                ),
+              ],
             ),
           ),
         ),
-        const SizedBox(height: 12),
-        Card(
-          elevation: 0,
-          color: colors.surfaceContainerLow,
-          child: const Column(children: [
-            ListTile(
-              leading: Icon(Icons.menu_book_rounded),
-              title: Text('د شعرونو ټولګه'),
-              subtitle: Text('شعرونه په بېلابېلو کټګوریو کې ولولئ.')),
-            Divider(height: 1),
-            ListTile(
-              leading: Icon(Icons.favorite_rounded),
-              title: Text('خوښ شوي شعرونه'),
-              subtitle: Text('خپل د خوښې شعرونه په نښه او بیا یې ومومئ.')),
-            Divider(height: 1),
-            ListTile(
-              leading: Icon(Icons.search_rounded),
-              title: Text('اسانه لټون'),
-              subtitle: Text('د شعر یا شاعر نوم په چټکۍ ولټوئ.')),
-          ]),
-        ),
         const SizedBox(height: 20),
-        Center(child: Text('نسخه 1.0.0',
-          style: TextStyle(fontSize: 11, color: colors.onSurfaceVariant))),
-        const SizedBox(height: 8),
-        Center(child: Text('په مینه، د پښتو ادب لپاره',
-          style: TextStyle(fontSize: 12, color: colors.primary))),
+        Center(
+          child: Text('نسخه 1.0.0',
+              style: TextStyle(fontSize: 11, color: colors.onSurfaceVariant)),
+        ),
+        const SizedBox(height: 7),
+        Center(
+          child: Text('په مینه، د پښتو ادب لپاره',
+              style: TextStyle(
+                  fontSize: 12, color: colors.primary, fontWeight: FontWeight.w700)),
+        ),
       ],
+    );
+  }
+
+  Widget _aboutPersonFeature({
+    required IconData icon,
+    required String role,
+    required String name,
+    required String description,
+    required Color accent,
+    required int delay,
+  }) {
+    final colors = Theme.of(context).colorScheme;
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0, end: 1),
+      duration: Duration(milliseconds: 850 + delay),
+      curve: Curves.easeOutBack,
+      builder: (context, value, child) => Opacity(
+        opacity: value.clamp(0.0, 1.0),
+        child: Transform.translate(
+          offset: Offset(0, 34 * (1 - value)),
+          child: Transform.scale(
+            scale: .94 + (.06 * value),
+            child: child,
+          ),
+        ),
+      ),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(19),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topRight,
+            end: Alignment.bottomLeft,
+            colors: [
+              accent.withValues(alpha: .16),
+              colors.surface,
+              colors.surfaceContainerLow,
+            ],
+          ),
+          borderRadius: BorderRadius.circular(27),
+          border: Border.all(color: accent.withValues(alpha: .35), width: 1.2),
+          boxShadow: [
+            BoxShadow(
+              color: accent.withValues(alpha: .12),
+              blurRadius: 22,
+              offset: const Offset(0, 9),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  width: 62,
+                  height: 62,
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [accent, accent.withValues(alpha: .68)],
+                      begin: Alignment.topRight,
+                      end: Alignment.bottomLeft,
+                    ),
+                    borderRadius: BorderRadius.circular(21),
+                    boxShadow: [
+                      BoxShadow(
+                        color: accent.withValues(alpha: .25),
+                        blurRadius: 13,
+                        offset: const Offset(0, 5),
+                      ),
+                    ],
+                  ),
+                  child: Icon(icon, color: Colors.white, size: 31),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(role,
+                          style: TextStyle(
+                              color: accent,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w800)),
+                      const SizedBox(height: 5),
+                      Text(name,
+                          style: TextStyle(
+                              color: colors.onSurface,
+                              fontSize: 17,
+                              fontWeight: FontWeight.w900)),
+                    ],
+                  ),
+                ),
+                Icon(Icons.verified_rounded, color: accent, size: 23),
+              ],
+            ),
+            const SizedBox(height: 16),
+            Container(
+              height: 1,
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [accent.withValues(alpha: .55), Colors.transparent],
+                ),
+              ),
+            ),
+            const SizedBox(height: 13),
+            Text(description,
+                textAlign: TextAlign.justify,
+                style: TextStyle(
+                    color: colors.onSurfaceVariant, fontSize: 12, height: 1.9)),
+          ],
+        ),
+      ),
     );
   }
 
