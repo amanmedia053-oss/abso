@@ -3,12 +3,37 @@ import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_database/firebase_database.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:firebase_storage/firebase_storage.dart';
-import 'dart:io';
 import 'package:image_picker/image_picker.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
 import 'package:share_plus/share_plus.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
+const String cloudinaryCloudName = 'a3p2c6bi';
+const String cloudinaryUploadPreset = 'adabi_gallery';
+
+Future<String> uploadImageToCloudinary(XFile file) async {
+  final request = http.MultipartRequest(
+    'POST',
+    Uri.parse('https://api.cloudinary.com/v1_1/\$cloudinaryCloudName/image/upload'),
+  );
+  request.fields['upload_preset'] = cloudinaryUploadPreset;
+  request.files.add(http.MultipartFile.fromBytes(
+    'file', await file.readAsBytes(), filename: file.name,
+  ));
+  final streamed = await request.send();
+  final response = await http.Response.fromStream(streamed);
+  final body = jsonDecode(response.body);
+  if (response.statusCode < 200 || response.statusCode >= 300) {
+    final message = body is Map ? (body['error']?['message'] ?? 'Cloudinary upload failed') : 'Cloudinary upload failed';
+    throw Exception(message);
+  }
+  final url = body is Map ? body['secure_url']?.toString() : null;
+  if (url == null || url.isEmpty) throw Exception('Cloudinary did not return secure_url');
+  return url;
+}
+
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -2800,12 +2825,12 @@ class GalleryAdminPage extends StatelessWidget {
     final file = await ImagePicker().pickImage(source: ImageSource.gallery, imageQuality: 82, maxWidth: 1800);
     if (file == null) return;
     try {
+      final url = await uploadImageToCloudinary(file);
       final ref = FirebaseDatabase.instance.ref('gallery').push();
-      final storage = FirebaseStorage.instance.ref('gallery/${ref.key}.jpg');
-      await storage.putFile(File(file.path));
-      final url = await storage.getDownloadURL();
-      await ref.set({'name': file.name, 'url': url, 'storagePath': storage.fullPath,
+      await ref.set({'name': file.name, 'url': url,
         'createdAt': ServerValue.timestamp, 'createdBy': FirebaseAuth.instance.currentUser?.uid});
+      if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('انځور Cloudinary ته پورته او لینک یې خوندي شو.')));
     } catch (e) {
       if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('اپلوډ ناکام شو: $e')));
     }
@@ -2839,8 +2864,6 @@ class GalleryAdminPage extends StatelessWidget {
                   Positioned(top: 4, right: 4, child: IconButton.filledTonal(icon: const Icon(Icons.delete_outline, color: Colors.red),
                     onPressed: () async {
                       await FirebaseDatabase.instance.ref('gallery/$id').remove();
-                      final path = d['storagePath']?.toString();
-                      if (path != null) { try { await FirebaseStorage.instance.ref(path).delete(); } catch (_) {} }
                     })),
                 ])),
                 Padding(padding: const EdgeInsets.all(8), child: Text((d['name'] ?? 'انځور').toString(), maxLines: 1, overflow: TextOverflow.ellipsis)),
@@ -2890,9 +2913,7 @@ class _PoemEditorState extends State<PoemEditor> {
       var imageUrl = existingImageUrl;
       if (image != null) {
         try {
-          final upload = await FirebaseStorage.instance.ref('poems/${ref.key}.jpg')
-            .putFile(File(image!.path));
-          imageUrl = await upload.ref.getDownloadURL();
+          imageUrl = await uploadImageToCloudinary(image!);
         } catch (_) {
           if (mounted) ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('انځور پورته نه شو؛ شعر به بې انځوره خپور شي.')));
