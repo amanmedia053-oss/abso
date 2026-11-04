@@ -65,70 +65,52 @@ class _AbsoAppState extends State<AbsoApp> {
   }
 
   ThemeData makeTheme(Brightness brightness) {
-    final forest = Color(selectedAccentValue);
-    const gold = Color(0xFFC49A45);
-    final scheme = ColorScheme.fromSeed(
-      seedColor: forest,
-      brightness: brightness,
-      primary: forest,
-      secondary: gold,
-      surface: brightness == Brightness.light
-          ? const Color(0xFFFFFCF5) : const Color(0xFF171D1B),
-    );
-    final baseText = ThemeData(brightness: brightness)
-        .textTheme.apply(fontFamily: selectedFont);
+    final accent = Color(selectedAccentValue);
+    const gold = Color(0xFFFFC857);
+    final dark = brightness == Brightness.dark;
+    final scheme = ColorScheme.fromSeed(seedColor: accent, brightness: brightness,
+      primary: accent, secondary: gold, tertiary: const Color(0xFFE76F9A),
+      surface: dark ? const Color(0xFF151725) : const Color(0xFFFFFBFF));
+    final baseText = ThemeData(brightness: brightness).textTheme.apply(fontFamily: selectedFont);
     return ThemeData(
-      useMaterial3: true,
-      colorScheme: scheme,
-      fontFamily: selectedFont,
+      useMaterial3: true, colorScheme: scheme, fontFamily: selectedFont,
       textTheme: baseText,
-      primaryTextTheme: ThemeData(brightness: brightness)
-          .primaryTextTheme.apply(fontFamily: selectedFont),
-      scaffoldBackgroundColor: brightness == Brightness.light
-          ? const Color(0xFFF7F5EF) : const Color(0xFF111715),
+      primaryTextTheme: ThemeData(brightness: brightness).primaryTextTheme.apply(fontFamily: selectedFont),
+      scaffoldBackgroundColor: dark ? const Color(0xFF10121D) : const Color(0xFFF6F4FA),
       appBarTheme: AppBarTheme(
-        backgroundColor: brightness == Brightness.light
-            ? const Color(0xFFF7F5EF) : const Color(0xFF111715),
-        elevation: 0,
-        centerTitle: false,
-        titleTextStyle: TextStyle(fontFamily: selectedFont, fontSize: 19, fontWeight: FontWeight.w800, color: scheme.onSurface),
-      ),
+        backgroundColor: dark ? const Color(0xFF10121D) : const Color(0xFFF6F4FA),
+        surfaceTintColor: Colors.transparent, elevation: 0, centerTitle: false,
+        titleTextStyle: TextStyle(fontFamily: selectedFont, fontSize: 21,
+          fontWeight: FontWeight.w900, color: scheme.onSurface),
+        iconTheme: IconThemeData(color: scheme.primary)),
       cardTheme: CardThemeData(
-        color: brightness == Brightness.light
-            ? const Color(0xFFFFFEFA) : const Color(0xFF202925),
-        elevation: 0,
-        margin: EdgeInsets.zero,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
-          side: BorderSide(color: scheme.outlineVariant.withValues(alpha: .55)),
-        ),
-      ),
-      listTileTheme: ListTileThemeData(
-        iconColor: scheme.primary,
-        titleTextStyle: TextStyle(fontFamily: selectedFont, fontSize: 14, fontWeight: FontWeight.w700, color: scheme.onSurface),
-        subtitleTextStyle: TextStyle(fontFamily: selectedFont, fontSize: 11, height: 1.6, color: scheme.onSurfaceVariant),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 5),
-      ),
-      navigationBarTheme: NavigationBarThemeData(
-        height: 70,
-        backgroundColor: brightness == Brightness.light
-            ? const Color(0xFFFFFEFA) : const Color(0xFF202925),
-        indicatorColor: scheme.secondaryContainer,
-        labelTextStyle: WidgetStatePropertyAll(TextStyle(fontFamily: selectedFont, fontSize: 11, fontWeight: FontWeight.w600)),
-      ),
+        color: dark ? const Color(0xFF1B1E2D) : Colors.white, elevation: 0, margin: EdgeInsets.zero,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24),
+          side: BorderSide(color: scheme.outlineVariant.withValues(alpha: .42)))),
+      listTileTheme: ListTileThemeData(iconColor: scheme.primary,
+        titleTextStyle: TextStyle(fontFamily: selectedFont, fontSize: 14,
+          fontWeight: FontWeight.w800, color: scheme.onSurface),
+        subtitleTextStyle: TextStyle(fontFamily: selectedFont, fontSize: 11,
+          height: 1.6, color: scheme.onSurfaceVariant),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 5)),
+      navigationBarTheme: NavigationBarThemeData(height: 76,
+        backgroundColor: dark ? const Color(0xFF1B1E2D) : Colors.white,
+        surfaceTintColor: Colors.transparent, indicatorColor: scheme.primaryContainer,
+        labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
+        labelTextStyle: WidgetStatePropertyAll(TextStyle(fontFamily: selectedFont,
+          fontSize: 10, fontWeight: FontWeight.w700))),
       searchBarTheme: SearchBarThemeData(
-        backgroundColor: WidgetStatePropertyAll(scheme.surface),
+        backgroundColor: WidgetStatePropertyAll(dark ? const Color(0xFF202436) : Colors.white),
+        surfaceTintColor: const WidgetStatePropertyAll(Colors.transparent),
         elevation: const WidgetStatePropertyAll(0),
-        shape: WidgetStatePropertyAll(RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(17),
-          side: BorderSide(color: scheme.outlineVariant))),
+        shape: WidgetStatePropertyAll(RoundedRectangleBorder(borderRadius: BorderRadius.circular(19),
+          side: BorderSide(color: scheme.outlineVariant.withValues(alpha: .5)))),
         textStyle: WidgetStatePropertyAll(TextStyle(fontFamily: selectedFont, fontSize: 13)),
-        hintStyle: WidgetStatePropertyAll(TextStyle(fontFamily: selectedFont, fontSize: 12, color: scheme.onSurfaceVariant)),
-      ),
-      chipTheme: ChipThemeData(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-        labelStyle: TextStyle(fontFamily: selectedFont, fontSize: 12),
-      ),
+        hintStyle: WidgetStatePropertyAll(TextStyle(fontFamily: selectedFont, fontSize: 12,
+          color: scheme.onSurfaceVariant))),
+      chipTheme: ChipThemeData(shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+        labelStyle: TextStyle(fontFamily: selectedFont, fontSize: 12)),
+      dividerTheme: DividerThemeData(color: scheme.outlineVariant.withValues(alpha: .5)),
     );
   }
 
@@ -698,94 +680,106 @@ class _PoetryShellState extends State<PoetryShell> {
     final colors = Theme.of(context).colorScheme;
     final visible = filteredPoems;
     return CustomScrollView(
-      key: const PageStorageKey('home'),
+      key: const PageStorageKey('home'), physics: const BouncingScrollPhysics(),
       slivers: [
-        SliverToBoxAdapter(
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(14, 8, 14, 12),
-            child: Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [colors.primary, colors.tertiary],
-                  begin: Alignment.topRight, end: Alignment.bottomLeft),
-                borderRadius: BorderRadius.circular(20)),
-              child: const Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Icon(Icons.auto_stories_rounded,
-                    color: Colors.white, size: 27),
-                  SizedBox(height: 8),
-                  Text('د پښتو ادب ښکلی جهان',
-                    style: TextStyle(color: Colors.white, fontSize: 18,
-                      fontWeight: FontWeight.bold)),
-                  SizedBox(height: 4),
-                  Text('د خوږو شعرونو او شاعرانو له نړۍ سره مل شئ.',
-                    style: TextStyle(color: Colors.white, fontSize: 12)),
-                ],
-              ),
-            ),
-          ),
-        ),
-        SliverToBoxAdapter(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 14),
-            child: SearchBar(
-              hintText: 'شعر یا شاعر ولټوئ...',
-              textStyle: const WidgetStatePropertyAll(
-                TextStyle(fontSize: 13)),
-              leading: const Icon(Icons.search_rounded, size: 20),
-              onChanged: (value) => setState(() => query = value.trim()),
-              elevation: const WidgetStatePropertyAll(0),
-              constraints: const BoxConstraints(minHeight: 46),
-            ),
-          ),
-        ),
-        SliverToBoxAdapter(
-          child: SizedBox(
-            height: 55,
-            child: ListView.separated(
-              padding: const EdgeInsets.fromLTRB(14, 9, 14, 5),
-              scrollDirection: Axis.horizontal,
-              itemCount: categories.length,
-              separatorBuilder: (_, __) => const SizedBox(width: 6),
-              itemBuilder: (context, index) => ChoiceChip(
-                visualDensity: VisualDensity.compact,
-                label: Text(categories[index],
-                  style: const TextStyle(fontSize: 12)),
-                selected: category == categories[index],
-                onSelected: (_) =>
-                  setState(() => category = categories[index]),
-              ),
-            ),
-          ),
-        ),
-        SliverToBoxAdapter(
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(14, 8, 14, 8),
-            child: Row(children: [
-              Text('غوره شعرونه',
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.bold)),
-              const Spacer(),
-              Text('${visible.length} شعرونه',
-                style: const TextStyle(fontSize: 11)),
+        SliverToBoxAdapter(child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 18),
+          child: Container(
+            padding: const EdgeInsets.fromLTRB(21, 22, 21, 20),
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(begin: Alignment.topRight, end: Alignment.bottomLeft,
+                colors: [Color(0xFF5146D8), Color(0xFF8657D8), Color(0xFFE56B9A)]),
+              borderRadius: BorderRadius.circular(30),
+              boxShadow: [BoxShadow(color: const Color(0xFF7655CC).withValues(alpha:.25),
+                blurRadius: 24, offset: const Offset(0, 11))]),
+            child: Stack(children: [
+              Positioned(left: -5, top: -12, child: Icon(Icons.auto_stories_rounded,
+                size: 118, color: Colors.white.withValues(alpha:.10))),
+              Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Container(padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 6),
+                  decoration: BoxDecoration(color: Colors.white.withValues(alpha:.18),
+                    borderRadius: BorderRadius.circular(30)),
+                  child: const Row(mainAxisSize: MainAxisSize.min, children: [
+                    Icon(Icons.auto_awesome_rounded, color: Colors.white, size: 14),
+                    SizedBox(width: 6), Text('د ادب او ښکلا نړۍ', style: TextStyle(color: Colors.white,
+                      fontSize: 10, fontWeight: FontWeight.w700))])),
+                const SizedBox(height: 17),
+                const Text('د پښتو شعرونو\nرنګینه خزانه', style: TextStyle(color: Colors.white,
+                  fontSize: 25, height: 1.45, fontWeight: FontWeight.w900)),
+                const SizedBox(height: 7),
+                const Text('ولولئ، ومومئ او د خوښې شعرونه مو وساتئ.',
+                  style: TextStyle(color: Colors.white, fontSize: 11, height: 1.8)),
+                const SizedBox(height: 17),
+                Row(children: [
+                  _heroStat(Icons.menu_book_rounded, '${poems.length}', 'شعرونه'),
+                  const SizedBox(width: 10),
+                  _heroStat(Icons.category_rounded, '${categories.length}', 'برخې'),
+                  const SizedBox(width: 10),
+                  _heroStat(Icons.favorite_rounded, '${favorites.length}', 'خوښ شوي'),
+                ]),
+              ]),
             ]),
           ),
-        ),
+        )),
+        SliverToBoxAdapter(child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: SearchBar(hintText: 'د شعر یا شاعر نوم ولټوئ...',
+            textStyle: const WidgetStatePropertyAll(TextStyle(fontSize: 13)),
+            leading: Icon(Icons.search_rounded, size: 22, color: colors.primary),
+            onChanged: (value) => setState(() => query = value.trim()),
+            elevation: const WidgetStatePropertyAll(0),
+            constraints: const BoxConstraints(minHeight: 54),
+            padding: const WidgetStatePropertyAll(EdgeInsets.symmetric(horizontal: 18))))),
+        SliverToBoxAdapter(child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 23, 16, 8),
+          child: Row(children: [
+            Text('د شعرونو کټګورۍ', style: Theme.of(context).textTheme.titleMedium
+              ?.copyWith(fontWeight: FontWeight.w900)),
+            const Spacer(), Icon(Icons.tune_rounded, size: 17, color: colors.primary)]))),
+        SliverToBoxAdapter(child: SizedBox(height: 48, child: ListView.separated(
+          padding: const EdgeInsets.symmetric(horizontal: 16), scrollDirection: Axis.horizontal,
+          itemCount: categories.length, separatorBuilder: (_, __) => const SizedBox(width: 8),
+          itemBuilder: (context, index) => ChoiceChip(showCheckmark: false,
+            visualDensity: VisualDensity.compact,
+            label: Text(categories[index], style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700)),
+            selected: category == categories[index],
+            onSelected: (_) => setState(() => category = categories[index]))))),
+        SliverToBoxAdapter(child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 19, 16, 11),
+          child: Row(children: [
+            Container(width: 4, height: 22, decoration: BoxDecoration(color: colors.secondary,
+              borderRadius: BorderRadius.circular(8))),
+            const SizedBox(width: 9),
+            Text('غوره شعرونه', style: Theme.of(context).textTheme.titleMedium
+              ?.copyWith(fontWeight: FontWeight.w900)),
+            const Spacer(), Text('${visible.length} شعرونه',
+              style: TextStyle(fontSize: 11, color: colors.onSurfaceVariant))]))),
         if (visible.isEmpty)
-          const SliverToBoxAdapter(
-            child: Padding(padding: EdgeInsets.all(28),
-              child: Center(child: Text('کوم شعر پیدا نه شو.'))))
+          const SliverToBoxAdapter(child: Padding(padding: EdgeInsets.all(28),
+            child: Center(child: Text('کوم شعر پیدا نه شو.'))))
         else
-          SliverPadding(
-            padding: const EdgeInsets.fromLTRB(14, 0, 14, 16),
+          SliverPadding(padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
             sliver: SliverList(delegate: SliverChildBuilderDelegate(
-              (context, index) => _poemCard(visible[index]),
-              childCount: visible.length)),
-          ),
+              (context, index) => _poemCard(visible[index]), childCount: visible.length))),
       ],
     );
+  }
+
+  Widget _heroStat(IconData icon, String value, String label) {
+    return Expanded(child: Container(
+      padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
+      decoration: BoxDecoration(color: Colors.white.withValues(alpha:.15),
+        borderRadius: BorderRadius.circular(15),
+        border: Border.all(color: Colors.white.withValues(alpha:.12))),
+      child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+        Icon(icon, color: Colors.white, size: 15), const SizedBox(width: 5),
+        Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text(value, style: const TextStyle(color: Colors.white, fontSize: 13,
+            fontWeight: FontWeight.w900)),
+          Text(label, style: const TextStyle(color: Colors.white70, fontSize: 9)),
+        ]),
+      ]),
+    ));
   }
 
   Widget _favoritesPage() {
@@ -1091,84 +1085,52 @@ class _PoetryShellState extends State<PoetryShell> {
   Widget _poemCard(Poem poem) {
     final colors = Theme.of(context).colorScheme;
     final saved = favorites.contains(poem.title);
-    return Card(
-      margin: const EdgeInsets.only(bottom: 12),
-      clipBehavior: Clip.antiAlias,
+    return Card(margin: const EdgeInsets.only(bottom: 14), clipBehavior: Clip.antiAlias,
       child: Container(
         decoration: BoxDecoration(
-          border: Border(
-            right: BorderSide(color: colors.secondary, width: 4),
-          ),
-        ),
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(15, 12, 15, 14),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 11, vertical: 5),
-                  decoration: BoxDecoration(
-                    color: colors.secondaryContainer,
-                    borderRadius: BorderRadius.circular(30)),
-                  child: Text(poem.category,
-                    style: TextStyle(fontSize: 10,
-                      fontWeight: FontWeight.w700,
-                      color: colors.onSecondaryContainer)),
-                ),
-                const Spacer(),
-                IconButton.filledTonal(
-                  tooltip: saved ? 'له خوښو لرې کول' : 'خوښ شعر',
-                  visualDensity: VisualDensity.compact,
-                  onPressed: () => setState(() {
-                    saved ? favorites.remove(poem.title)
-                      : favorites.add(poem.title);
-                  }),
-                  icon: Icon(saved ? Icons.favorite_rounded
-                    : Icons.favorite_border_rounded, size: 19),
-                ),
-              ]),
-              const SizedBox(height: 5),
-              Text(poem.title,
-                style: TextStyle(fontSize: 16,
-                  fontWeight: FontWeight.w800, color: colors.primary)),
-              const SizedBox(height: 9),
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 13, vertical: 11),
-                decoration: BoxDecoration(
-                  color: colors.surfaceContainerLow,
-                  borderRadius: BorderRadius.circular(14)),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    for (final line in poem.lines)
-                      Padding(
-                        padding: const EdgeInsets.only(bottom: 5),
-                        child: Text(line,
-                          style: TextStyle(fontSize: 13, height: 1.9,
-                            color: colors.onSurface)),
-                      ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 10),
-              Row(children: [
-                Icon(Icons.edit_note_rounded,
-                  size: 18, color: colors.secondary),
-                const SizedBox(width: 5),
-                Text(poem.poet,
-                  style: TextStyle(fontSize: 11,
-                    fontWeight: FontWeight.w700,
-                    color: colors.onSurfaceVariant)),
-                const Spacer(),
-                Icon(Icons.menu_book_rounded,
-                  size: 16, color: colors.outline),
-              ]),
-            ],
-          ),
+          gradient: LinearGradient(begin: Alignment.topRight, end: Alignment.bottomLeft,
+            colors: [colors.surface, colors.surfaceContainerLow.withValues(alpha:.75)]),
+          border: Border(right: BorderSide(color: colors.secondary, width: 4))),
+        child: Padding(padding: const EdgeInsets.fromLTRB(16, 15, 16, 16),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Row(children: [
+              Container(padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(color: colors.primaryContainer,
+                  borderRadius: BorderRadius.circular(30)),
+                child: Text(poem.category, style: TextStyle(fontSize: 10,
+                  fontWeight: FontWeight.w800, color: colors.onPrimaryContainer))),
+              const Spacer(),
+              IconButton.filledTonal(tooltip: saved ? 'له خوښو لرې کول' : 'خوښ شعر',
+                visualDensity: VisualDensity.compact,
+                onPressed: () => setState(() {
+                  saved ? favorites.remove(poem.title) : favorites.add(poem.title);
+                }),
+                icon: Icon(saved ? Icons.favorite_rounded : Icons.favorite_border_rounded,
+                  size: 19, color: saved ? colors.error : colors.primary)),
+            ]),
+            const SizedBox(height: 7),
+            Text(poem.title, style: TextStyle(fontSize: 18,
+              fontWeight: FontWeight.w900, color: colors.primary)),
+            const SizedBox(height: 12),
+            Container(width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 14),
+              decoration: BoxDecoration(color: colors.surfaceContainerHighest.withValues(alpha:.48),
+                borderRadius: BorderRadius.circular(18)),
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                for (final line in poem.lines)
+                  Padding(padding: const EdgeInsets.only(bottom: 6),
+                    child: Text(line, style: TextStyle(fontSize: 14, height: 2,
+                      color: colors.onSurface, fontWeight: FontWeight.w500))),
+              ])),
+            const SizedBox(height: 12),
+            Row(children: [
+              Icon(Icons.edit_note_rounded, size: 19, color: colors.secondary),
+              const SizedBox(width: 6),
+              Text(poem.poet, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800,
+                color: colors.onSurfaceVariant)),
+              const Spacer(), Icon(Icons.format_quote_rounded, size: 20, color: colors.outline),
+            ]),
+          ]),
         ),
       ),
     );
