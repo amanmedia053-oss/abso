@@ -1083,6 +1083,7 @@ class _PoetryShellState extends State<PoetryShell> {
 
   Widget _settingsPage() {
     final colors = Theme.of(context).colorScheme;
+    final dark = widget.isDark;
     const fonts = <Map<String, String>>[
       {'name': 'Vazirmatn', 'label': 'وزیرمتن', 'note': 'روښانه او منظم'},
       {'name': 'Noto Naskh Arabic', 'label': 'نوتو نسخ', 'note': 'د کتابونو کلاسیک سبک'},
@@ -1099,151 +1100,216 @@ class _PoetryShellState extends State<PoetryShell> {
       {'name': 'فیروزه يي', 'color': Color(0xFF287C78)},
     ];
     return ListView(
-      padding: const EdgeInsets.fromLTRB(16, 14, 16, 28),
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 30),
       children: [
         Container(
-          padding: const EdgeInsets.all(18),
+          padding: const EdgeInsets.all(22),
           decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [colors.primary, colors.tertiary],
-              begin: Alignment.topRight,
-              end: Alignment.bottomLeft,
+            gradient: const LinearGradient(
+              begin: Alignment.topRight, end: Alignment.bottomLeft,
+              colors: [Color(0xFF153F37), Color(0xFF245B50), Color(0xFFB77928)],
             ),
-            borderRadius: BorderRadius.circular(22),
+            borderRadius: BorderRadius.circular(28),
+            boxShadow: [BoxShadow(color: const Color(0xFF245B50).withValues(alpha: .23),
+              blurRadius: 24, offset: const Offset(0, 10))],
           ),
-          child: const Row(
-            children: [
-              Icon(Icons.tune_rounded, color: Colors.white, size: 34),
-              SizedBox(width: 13),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('د اپلیکیشن تنظیمات',
-                      style: TextStyle(color: Colors.white,
-                        fontSize: 18, fontWeight: FontWeight.w800)),
-                    SizedBox(height: 4),
-                    Text('بڼه او لیکدود د خپلې خوښې سره برابر کړئ.',
-                      style: TextStyle(color: Colors.white70, fontSize: 11)),
-                  ],
-                ),
-              ),
-            ],
-          ),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Row(children: [
+              Container(width: 54, height: 54,
+                decoration: BoxDecoration(color: Colors.white.withValues(alpha: .14),
+                  borderRadius: BorderRadius.circular(18),
+                  border: Border.all(color: Colors.white24)),
+                child: const Icon(Icons.tune_rounded, color: Color(0xFFFFD98A), size: 29)),
+              const SizedBox(width: 13),
+              const Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('شخصي تنظیمات', style: TextStyle(color: Colors.white,
+                    fontSize: 20, fontWeight: FontWeight.w900)),
+                  SizedBox(height: 4),
+                  Text('خپله ادبي نړۍ په خپله خوښه برابره کړئ.',
+                    style: TextStyle(color: Colors.white70, fontSize: 11)),
+                ])),
+              const Icon(Icons.auto_awesome_rounded, color: Color(0xFFFFD98A), size: 24),
+            ]),
+            const SizedBox(height: 20),
+            Container(padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 11),
+              decoration: BoxDecoration(color: Colors.white.withValues(alpha: .12),
+                borderRadius: BorderRadius.circular(16)),
+              child: Row(children: [
+                const Icon(Icons.palette_outlined, color: Color(0xFFFFD98A), size: 19),
+                const SizedBox(width: 9),
+                const Expanded(child: Text('اوسنی رنګ او بڼه', style: TextStyle(
+                  color: Colors.white, fontSize: 12, fontWeight: FontWeight.w700))),
+                Text(dark ? 'تیاره بڼه' : 'روښانه بڼه',
+                  style: const TextStyle(color: Colors.white70, fontSize: 11)),
+              ])),
+          ]),
         ),
-        const SizedBox(height: 22),
+        const SizedBox(height: 25),
+        _settingsHeading(Icons.nightlight_round, 'د ښودنې بڼه'),
+        const SizedBox(height: 10),
+        Container(
+          padding: const EdgeInsets.all(7),
+          decoration: BoxDecoration(color: colors.surface,
+            borderRadius: BorderRadius.circular(22),
+            border: Border.all(color: colors.outlineVariant.withValues(alpha: .55))),
+          child: Row(children: [
+            Expanded(child: _appearanceChoice(
+              icon: Icons.light_mode_rounded, title: 'روښانه',
+              selected: !dark, onTap: () { if (dark) widget.onTheme(); })),
+            const SizedBox(width: 7),
+            Expanded(child: _appearanceChoice(
+              icon: Icons.dark_mode_rounded, title: 'تیاره',
+              selected: dark, onTap: () { if (!dark) widget.onTheme(); })),
+          ]),
+        ),
+        const SizedBox(height: 23),
         _settingsHeading(Icons.font_download_rounded, 'د لیکدود فونټونه'),
-        const SizedBox(height: 8),
+        const SizedBox(height: 9),
         ...fonts.map((font) {
           final selected = widget.fontName == font['name'];
           return AnimatedContainer(
-            duration: const Duration(milliseconds: 220),
-            curve: Curves.easeOut,
-            margin: const EdgeInsets.only(bottom: 8),
+            duration: const Duration(milliseconds: 240),
+            margin: const EdgeInsets.only(bottom: 9),
             decoration: BoxDecoration(
-              color: selected ? colors.primaryContainer : colors.surface,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(
-                color: selected ? colors.primary : colors.outlineVariant,
-                width: selected ? 1.5 : 1,
-              ),
+              gradient: selected ? LinearGradient(colors: [
+                colors.primary.withValues(alpha: .13), colors.surface]) : null,
+              color: selected ? null : colors.surface,
+              borderRadius: BorderRadius.circular(19),
+              border: Border.all(color: selected ? colors.primary :
+                colors.outlineVariant.withValues(alpha: .55), width: selected ? 1.5 : 1),
+              boxShadow: selected ? [BoxShadow(color: colors.primary.withValues(alpha: .08),
+                blurRadius: 14, offset: const Offset(0, 5))] : [],
             ),
             child: ListTile(
               onTap: () => widget.onFontChanged(font['name']!),
-              leading: CircleAvatar(
-                backgroundColor: selected ? colors.primary : colors.surfaceContainerHighest,
-                child: Icon(Icons.text_fields_rounded,
-                  color: selected ? colors.onPrimary : colors.primary),
-              ),
-              title: Text(font['label']!,
-                style: TextStyle(fontWeight: FontWeight.w800)),
+              contentPadding: const EdgeInsets.symmetric(horizontal: 15, vertical: 4),
+              leading: Container(width: 45, height: 45,
+                decoration: BoxDecoration(color: selected ? colors.primary :
+                  colors.surfaceContainerHighest, borderRadius: BorderRadius.circular(15)),
+                child: Center(child: Text('Aa', style: TextStyle(fontSize: 17,
+                  fontWeight: FontWeight.w900,
+                  color: selected ? colors.onPrimary : colors.primary)))),
+              title: Text(font['label']!, style: const TextStyle(fontWeight: FontWeight.w900)),
               subtitle: Text(font['note']!),
-              trailing: selected
-                  ? Icon(Icons.check_circle_rounded, color: colors.primary)
-                  : const Icon(Icons.circle_outlined, size: 19),
+              trailing: AnimatedContainer(duration: const Duration(milliseconds: 200),
+                width: 25, height: 25,
+                decoration: BoxDecoration(shape: BoxShape.circle,
+                  color: selected ? colors.primary : Colors.transparent,
+                  border: Border.all(color: selected ? colors.primary : colors.outline)),
+                child: selected ? Icon(Icons.check_rounded, size: 17, color: colors.onPrimary) : null),
             ),
           );
         }),
-        const SizedBox(height: 15),
-        _settingsHeading(Icons.palette_rounded, 'د اپلیکیشن رنګونه'),
-        const SizedBox(height: 8),
-        Card(
-          child: Padding(
-            padding: const EdgeInsets.all(14),
-            child: Wrap(
-              spacing: 13,
-              runSpacing: 14,
-              children: palettes.map((palette) {
-                final color = palette['color'] as Color;
-                final selected = widget.accentColor.toARGB32() == color.toARGB32();
-                return InkWell(
-                  borderRadius: BorderRadius.circular(14),
-                  onTap: () => widget.onAccentChanged(color),
-                  child: SizedBox(
-                    width: 82,
-                    child: Column(
-                      children: [
-                        AnimatedContainer(
-                          duration: const Duration(milliseconds: 220),
-                          width: selected ? 47 : 42,
-                          height: selected ? 47 : 42,
-                          decoration: BoxDecoration(
-                            color: color,
-                            shape: BoxShape.circle,
-                            border: Border.all(
-                              color: selected ? colors.onSurface : Colors.transparent,
-                              width: 2.5,
-                            ),
-                          ),
-                          child: selected
-                              ? const Icon(Icons.check_rounded,
-                                  color: Colors.white, size: 24)
-                              : null,
-                        ),
-                        const SizedBox(height: 6),
-                        Text(palette['name'] as String,
-                          textAlign: TextAlign.center,
-                          style: const TextStyle(fontSize: 10)),
-                      ],
-                    ),
-                  ),
-                );
-              }).toList(),
+        const SizedBox(height: 14),
+        _settingsHeading(Icons.color_lens_rounded, 'د اپلیکیشن رنګونه'),
+        const SizedBox(height: 10),
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(color: colors.surface,
+            borderRadius: BorderRadius.circular(22),
+            border: Border.all(color: colors.outlineVariant.withValues(alpha: .55))),
+          child: Wrap(
+            alignment: WrapAlignment.spaceAround, spacing: 12, runSpacing: 17,
+            children: palettes.map((palette) {
+              final color = palette['color'] as Color;
+              final selected = widget.accentColor.toARGB32() == color.toARGB32();
+              return InkWell(
+                borderRadius: BorderRadius.circular(16),
+                onTap: () => widget.onAccentChanged(color),
+                child: SizedBox(width: 82, child: Column(children: [
+                  AnimatedContainer(duration: const Duration(milliseconds: 220),
+                    width: selected ? 49 : 43, height: selected ? 49 : 43,
+                    decoration: BoxDecoration(color: color, shape: BoxShape.circle,
+                      boxShadow: [BoxShadow(color: color.withValues(alpha: .24),
+                        blurRadius: selected ? 13 : 5, offset: const Offset(0, 4))],
+                      border: Border.all(color: selected ? colors.onSurface :
+                        Colors.transparent, width: 2.5)),
+                    child: selected ? const Icon(Icons.check_rounded,
+                      color: Colors.white, size: 24) : null),
+                  const SizedBox(height: 7),
+                  Text(palette['name'] as String, textAlign: TextAlign.center,
+                    style: TextStyle(fontSize: 10,
+                      fontWeight: selected ? FontWeight.w900 : FontWeight.w500)),
+                ])),
+              );
+            }).toList(),
+          ),
+        ),
+        const SizedBox(height: 23),
+        _settingsHeading(Icons.settings_suggest_rounded, 'نور انتخابونه'),
+        const SizedBox(height: 10),
+        Container(
+          decoration: BoxDecoration(color: colors.surface,
+            borderRadius: BorderRadius.circular(22),
+            border: Border.all(color: colors.outlineVariant.withValues(alpha: .55))),
+          child: Column(children: [
+            ListTile(
+              leading: _settingsIcon(Icons.restart_alt_rounded, colors.primary),
+              title: const Text('اصلي تنظیمات بېرته فعالول',
+                style: TextStyle(fontWeight: FontWeight.w800)),
+              subtitle: const Text('ټول رنګونه او فونټ لومړني حالت ته ستنوي.'),
+              trailing: const Icon(Icons.chevron_left_rounded),
+              onTap: () => _showResetConfirmation(),
             ),
-          ),
+            Divider(height: 1, indent: 16, endIndent: 16,
+              color: colors.outlineVariant.withValues(alpha: .5)),
+            ListTile(
+              leading: _settingsIcon(Icons.auto_stories_rounded, colors.secondary),
+              title: const Text('ادبي خزانه', style: TextStyle(fontWeight: FontWeight.w800)),
+              subtitle: const Text('د پښتو شعر او ادب نړۍ'),
+              trailing: const Text('۱.۰.۰', style: TextStyle(fontWeight: FontWeight.w800)),
+            ),
+          ]),
         ),
-        const SizedBox(height: 15),
-        _settingsHeading(Icons.display_settings_rounded, 'نور تنظیمات'),
-        const SizedBox(height: 8),
-        Card(
-          child: Column(
-            children: [
-              SwitchListTile(
-                secondary: Icon(widget.isDark
-                    ? Icons.dark_mode_rounded : Icons.light_mode_rounded,
-                    color: colors.primary),
-                title: const Text('تیاره بڼه'),
-                subtitle: const Text('د شپې لپاره تیاره رنګونه فعال کړئ.'),
-                value: widget.isDark,
-                onChanged: (_) => widget.onTheme(),
-              ),
-              const Divider(height: 1, indent: 16, endIndent: 16),
-              ListTile(
-                leading: Icon(Icons.restart_alt_rounded, color: colors.primary),
-                title: const Text('اصلي تنظیمات بېرته فعالول'),
-                subtitle: const Text('فونټ، رنګ او بڼه لومړني حالت ته ستنوي.'),
-                onTap: () => widget.onResetAppearance(),
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 16),
-        Center(
-          child: Text('ستاسو خوښه، ستاسو ادبي خزانه',
-            style: TextStyle(color: colors.onSurfaceVariant, fontSize: 11)),
-        ),
+        const SizedBox(height: 20),
+        Center(child: Text('په مینه، د پښتو ادب لپاره',
+          style: TextStyle(color: colors.primary, fontSize: 12, fontWeight: FontWeight.w800))),
       ],
     );
+  }
+
+  Widget _appearanceChoice({required IconData icon, required String title,
+    required bool selected, required VoidCallback onTap}) {
+    final colors = Theme.of(context).colorScheme;
+    return InkWell(
+      borderRadius: BorderRadius.circular(17), onTap: onTap,
+      child: AnimatedContainer(duration: const Duration(milliseconds: 220),
+        padding: const EdgeInsets.symmetric(vertical: 13, horizontal: 10),
+        decoration: BoxDecoration(
+          color: selected ? colors.primary : Colors.transparent,
+          borderRadius: BorderRadius.circular(17)),
+        child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+          Icon(icon, size: 19, color: selected ? colors.onPrimary : colors.onSurfaceVariant),
+          const SizedBox(width: 8),
+          Text(title, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800,
+            color: selected ? colors.onPrimary : colors.onSurfaceVariant)),
+        ]),
+      ),
+    );
+  }
+
+  Widget _settingsIcon(IconData icon, Color color) => Container(
+    width: 42, height: 42,
+    decoration: BoxDecoration(color: color.withValues(alpha: .12),
+      borderRadius: BorderRadius.circular(14)),
+    child: Icon(icon, color: color));
+
+  void _showResetConfirmation() {
+    final colors = Theme.of(context).colorScheme;
+    showDialog<void>(context: context, builder: (dialogContext) => AlertDialog(
+      icon: Icon(Icons.restart_alt_rounded, color: colors.primary, size: 32),
+      title: const Text('اصلي تنظیمات؟'),
+      content: const Text('ایا غواړئ فونټ، رنګ او بڼه لومړني حالت ته ستانه کړئ؟'),
+      actions: [
+        TextButton(onPressed: () => Navigator.pop(dialogContext),
+          child: const Text('نه، پرېږده')),
+        FilledButton(onPressed: () {
+          Navigator.pop(dialogContext);
+          widget.onResetAppearance();
+        }, child: const Text('هو، بېرته یې کړه')),
+      ],
+    ));
   }
 
   Widget _settingsHeading(IconData icon, String title) {
@@ -1262,109 +1328,148 @@ class _PoetryShellState extends State<PoetryShell> {
   Widget _aboutPage() {
     final colors = Theme.of(context).colorScheme;
     return ListView(
-      padding: const EdgeInsets.fromLTRB(18, 18, 18, 30),
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 30),
       children: [
         TweenAnimationBuilder<double>(
           tween: Tween(begin: 0, end: 1),
-          duration: const Duration(milliseconds: 850),
+          duration: const Duration(milliseconds: 950),
           curve: Curves.easeOutCubic,
-          builder: (context, value, child) => Opacity(
-            opacity: value,
-            child: Transform.translate(
-              offset: Offset(0, 24 * (1 - value)),
-              child: child,
+          builder: (context, value, child) => Opacity(opacity: value,
+            child: Transform.translate(offset: Offset(0, 25 * (1 - value)), child: child)),
+          child: Container(
+            padding: const EdgeInsets.fromLTRB(20, 25, 20, 22),
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(begin: Alignment.topRight,
+                end: Alignment.bottomLeft,
+                colors: [Color(0xFF123B32), Color(0xFF245B50), Color(0xFF9A6A2A)]),
+              borderRadius: BorderRadius.circular(30),
+              boxShadow: [BoxShadow(color: const Color(0xFF245B50).withValues(alpha: .22),
+                blurRadius: 25, offset: const Offset(0, 11))],
             ),
-          ),
-          child: Column(
-            children: [
-              Container(
-                width: 94,
-                height: 94,
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topRight,
-                    end: Alignment.bottomLeft,
-                    colors: [colors.primary, colors.tertiary],
-                  ),
-                  borderRadius: BorderRadius.circular(30),
-                  boxShadow: [
-                    BoxShadow(
-                      color: colors.primary.withValues(alpha: .24),
-                      blurRadius: 24,
-                      offset: const Offset(0, 10),
-                    ),
-                  ],
-                ),
-                child: const Icon(Icons.auto_stories_rounded,
-                    size: 49, color: Colors.white),
-              ),
+            child: Column(children: [
+              Container(width: 86, height: 86,
+                decoration: BoxDecoration(color: Colors.white.withValues(alpha: .13),
+                  borderRadius: BorderRadius.circular(27),
+                  border: Border.all(color: const Color(0xFFFFD98A).withValues(alpha: .7), width: 1.3),
+                  boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: .12), blurRadius: 15)]),
+                child: const Icon(Icons.auto_stories_rounded, size: 48,
+                  color: Color(0xFFFFD98A))),
               const SizedBox(height: 15),
-              Text('ادبي خزانه',
-                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                      fontWeight: FontWeight.w900)),
-              const SizedBox(height: 5),
-              Text('د پښتو شعر او ادب نړۍ',
-                  style: TextStyle(color: colors.onSurfaceVariant)),
-            ],
+              const Text('ادبي خزانه', style: TextStyle(color: Colors.white,
+                fontSize: 27, fontWeight: FontWeight.w900)),
+              const SizedBox(height: 6),
+              const Text('د پښتو شعر او ادب رنګینه نړۍ',
+                style: TextStyle(color: Colors.white70, fontSize: 12)),
+              const SizedBox(height: 18),
+              Container(height: 1, color: Colors.white24),
+              const SizedBox(height: 14),
+              const Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+                Icon(Icons.auto_awesome_rounded, color: Color(0xFFFFD98A), size: 16),
+                SizedBox(width: 7),
+                Text('ادب ژوندی وساتو، شعرونه خوندي کړو',
+                  style: TextStyle(color: Colors.white, fontSize: 11,
+                    fontWeight: FontWeight.w700)),
+              ]),
+            ]),
           ),
         ),
-        const SizedBox(height: 25),
+        const SizedBox(height: 24),
+        _aboutSectionTitle(Icons.people_alt_rounded, 'د دې پروژې ملګري'),
+        const SizedBox(height: 11),
         _aboutPersonFeature(
           icon: Icons.code_rounded,
           role: 'د اپلیکیشن جوړوونکی',
           name: 'عبيدالله غفاري',
-          description:
-              'د ادبي خزانې د مفکورې او تخنیکي جوړښت تر شا هڅاند کس؛ د پښتو ادب د مینه‌والو لپاره د یوې ښکلې او اسانه ډیجیټلي تجربې په جوړولو کې یې ونډه اخیستې ده.',
-          accent: const Color(0xFF6750A4),
-          delay: 0,
-        ),
-        const SizedBox(height: 16),
+          description: 'د ادبي خزانې د مفکورې او تخنیکي جوړښت تر شا هڅاند کس؛ د پښتو ادب د مینه‌والو لپاره د یوې ښکلې او اسانه ډیجیټلي تجربې په جوړولو کې یې ونډه اخیستې ده.',
+          accent: const Color(0xFF287C68), delay: 0),
+        const SizedBox(height: 13),
         _aboutPersonFeature(
           icon: Icons.auto_awesome_rounded,
           role: 'ترتیب کوونکی',
           name: 'الحاج ډاکټر فريدون احرار',
-          description:
-              'د ادبي خزانې د محتوا او ادبي چارو په ترتیب او سمون کې ونډه‌وال؛ د پښتو ژبې او ادب د ارزښتمنو اثارو د وړاندې کولو لپاره یې همکاري کړې ده.',
-          accent: const Color(0xFFB77928),
-          delay: 180,
+          description: 'د ادبي خزانې د محتوا او ادبي چارو په ترتیب او سمون کې ونډه‌وال؛ د پښتو ژبې او ادب د ارزښتمنو اثارو د وړاندې کولو لپاره یې همکاري کړې ده.',
+          accent: const Color(0xFFB77928), delay: 160),
+        const SizedBox(height: 23),
+        _aboutSectionTitle(Icons.menu_book_rounded, 'د ادبي خزانې په اړه'),
+        const SizedBox(height: 11),
+        Container(
+          padding: const EdgeInsets.all(19),
+          decoration: BoxDecoration(color: colors.surface,
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(color: colors.outlineVariant.withValues(alpha: .55)),
+            boxShadow: [BoxShadow(color: colors.shadow.withValues(alpha: .04),
+              blurRadius: 16, offset: const Offset(0, 6))]),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Row(children: [
+              _settingsIcon(Icons.format_quote_rounded, colors.primary),
+              const SizedBox(width: 11),
+              const Expanded(child: Text('زموږ موخه', style: TextStyle(
+                fontSize: 16, fontWeight: FontWeight.w900))),
+            ]),
+            const SizedBox(height: 12),
+            Text('ادبي خزانه د پښتو ژبې د شعرونو او ادب د مینه‌والو لپاره یو ښکلی اپلیکیشن دی. موخه مو دا ده چې د پښتو شاعرۍ لوستل، لټول او د خوښې شعرونه ساتل اسانه او خوندور کړو.',
+              textAlign: TextAlign.justify,
+              style: TextStyle(fontSize: 12, height: 2, color: colors.onSurfaceVariant)),
+            const SizedBox(height: 17),
+            Wrap(spacing: 8, runSpacing: 8, children: [
+              _aboutFeatureChip(Icons.search_rounded, 'اسانه لټون'),
+              _aboutFeatureChip(Icons.favorite_rounded, 'خوښ شعرونه'),
+              _aboutFeatureChip(Icons.palette_rounded, 'شخصي بڼه'),
+              _aboutFeatureChip(Icons.auto_stories_rounded, 'پښتو ادب'),
+            ]),
+          ]),
         ),
         const SizedBox(height: 22),
-        Card(
-          color: colors.surfaceContainerLow,
-          elevation: 0,
-          shape: RoundedRectangleBorder(
+        Container(
+          padding: const EdgeInsets.symmetric(vertical: 17, horizontal: 18),
+          decoration: BoxDecoration(
+            color: colors.surfaceContainerLow,
             borderRadius: BorderRadius.circular(22),
-            side: BorderSide(color: colors.outlineVariant.withValues(alpha: .5)),
-          ),
-          child: const Padding(
-            padding: EdgeInsets.all(18),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+            border: Border.all(color: colors.outlineVariant.withValues(alpha: .5))),
+          child: Row(children: [
+            Icon(Icons.verified_outlined, color: colors.primary, size: 25),
+            const SizedBox(width: 11),
+            const Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('د اپلیکیشن په اړه',
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900)),
-                SizedBox(height: 8),
-                Text(
-                  'ادبي خزانه د پښتو ژبې د شعرونو او ادب د مینه‌والو لپاره یو ښکلی اپلیکیشن دی. موخه مو دا ده چې د پښتو شاعرۍ لوستل، لټول او د خوښې شعرونه ساتل اسانه او خوندور کړو.',
-                  textAlign: TextAlign.justify,
-                  style: TextStyle(fontSize: 13, height: 1.9),
-                ),
-              ],
-            ),
-          ),
+                Text('د اپلیکیشن نسخه', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 12)),
+                SizedBox(height: 3),
+                Text('ادبي خزانه • نسخه 1.0.0', style: TextStyle(fontSize: 11)),
+              ])),
+            const Icon(Icons.auto_awesome_rounded, color: Color(0xFFB77928)),
+          ]),
         ),
-        const SizedBox(height: 20),
-        Center(
-          child: Text('نسخه 1.0.0',
-              style: TextStyle(fontSize: 11, color: colors.onSurfaceVariant)),
-        ),
-        const SizedBox(height: 7),
-        Center(
-          child: Text('په مینه، د پښتو ادب لپاره',
-              style: TextStyle(
-                  fontSize: 12, color: colors.primary, fontWeight: FontWeight.w700)),
-        ),
+        const SizedBox(height: 18),
+        Center(child: Text('په مینه، د پښتو ادب لپاره',
+          style: TextStyle(fontSize: 12, color: colors.primary, fontWeight: FontWeight.w900))),
       ],
+    );
+  }
+
+  Widget _aboutSectionTitle(IconData icon, String title) {
+    final colors = Theme.of(context).colorScheme;
+    return Row(children: [
+      Container(width: 34, height: 34,
+        decoration: BoxDecoration(color: colors.primary.withValues(alpha: .11),
+          borderRadius: BorderRadius.circular(11)),
+        child: Icon(icon, color: colors.primary, size: 19)),
+      const SizedBox(width: 9),
+      Text(title, style: TextStyle(fontSize: 15, fontWeight: FontWeight.w900,
+        color: colors.onSurface)),
+    ]);
+  }
+
+  Widget _aboutFeatureChip(IconData icon, String label) {
+    final colors = Theme.of(context).colorScheme;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 8),
+      decoration: BoxDecoration(color: colors.primary.withValues(alpha: .09),
+        borderRadius: BorderRadius.circular(13)),
+      child: Row(mainAxisSize: MainAxisSize.min, children: [
+        Icon(icon, size: 14, color: colors.primary),
+        const SizedBox(width: 6),
+        Text(label, style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700,
+          color: colors.primary)),
+      ]),
     );
   }
 
