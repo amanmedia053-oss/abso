@@ -9,7 +9,6 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  google_fonts: ^6.2.1
   shared_preferences: ^2.3.2
 
 dev_dependencies:
@@ -19,3 +18,19 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+  fonts:
+    - family: Vazirmatn
+      fonts:
+        - asset: assets/fonts/Vazirmatn.ttf
+    - family: Noto Naskh Arabic
+      fonts:
+        - asset: assets/fonts/NotoNaskhArabic.ttf
+    - family: Amiri
+      fonts:
+        - asset: assets/fonts/Amiri.ttf
+    - family: Cairo
+      fonts:
+        - asset: assets/fonts/Cairo.ttf
+    - family: Tajawal
+      fonts:
+        - asset: assets/fonts/Tajawal.ttf
