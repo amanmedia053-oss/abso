@@ -2409,6 +2409,26 @@ class SimpleListAdmin extends StatefulWidget {
 class _SimpleListAdminState extends State<SimpleListAdmin> {
   bool get isCategory => widget.path == 'categories';
 
+  Future<String?> _chooseGalleryImage() async {
+    return showModalBottomSheet<String>(context: context, isScrollControlled: true, showDragHandle: true,
+      builder: (ctx) => Directionality(textDirection: TextDirection.rtl,
+        child: SizedBox(height: MediaQuery.of(ctx).size.height * .68,
+          child: StreamBuilder<DatabaseEvent>(stream: FirebaseDatabase.instance.ref('gallery').onValue,
+            builder: (ctx, snap) {
+              final raw = snap.data?.snapshot.value;
+              final items = raw is Map ? raw.entries.toList().reversed.toList() : <dynamic>[];
+              if (!snap.hasData) return const Center(child: CircularProgressIndicator());
+              if (items.isEmpty) return const Center(child: Text('ګالري تشه ده؛ انځورونه لومړی هلته پورته کړئ.'));
+              return GridView.builder(padding: const EdgeInsets.all(12),
+                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 3, crossAxisSpacing: 8, mainAxisSpacing: 8),
+                itemCount: items.length, itemBuilder: (_, i) {
+                  final d = Map<String, dynamic>.from(items[i].value as Map);
+                  return InkWell(onTap: () => Navigator.pop(ctx, d['url']?.toString()),
+                    child: Image.network((d['url'] ?? '').toString(), fit: BoxFit.cover));
+                });
+            }))));
+  }
+
   Future<void> _editItem({String? id, String? oldName}) async {
     final controller = TextEditingController(text: oldName ?? '');
     final colors = Theme.of(context).colorScheme;
@@ -2441,12 +2461,13 @@ class _SimpleListAdminState extends State<SimpleListAdmin> {
     );
     controller.dispose();
     if (name == null || name.trim().isEmpty) return;
+    final imageUrl = await _chooseGalleryImage();
     try {
       final ref = FirebaseDatabase.instance.ref(widget.path);
       if (id == null) {
-        await ref.push().set({'name': name.trim(), 'createdAt': ServerValue.timestamp});
+        await ref.push().set({'name': name.trim(), if (imageUrl != null) 'imageUrl': imageUrl, 'createdAt': ServerValue.timestamp});
       } else {
-        await ref.child(id).update({'name': name.trim(), 'updatedAt': ServerValue.timestamp});
+        await ref.child(id).update({'name': name.trim(), if (imageUrl != null) 'imageUrl': imageUrl, 'updatedAt': ServerValue.timestamp});
       }
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('په بریالیتوب خوندي شو.')));
@@ -2940,11 +2961,30 @@ class _PoemEditorState extends State<PoemEditor> {
           const SizedBox(height: 12),
           OutlinedButton.icon(
             onPressed: () async {
-              final picked = await picker.pickImage(source: ImageSource.gallery, imageQuality: 82);
-              if (picked != null) setState(() => image = picked);
+              final selected = await showModalBottomSheet<Map<String, dynamic>>(context: context,
+                isScrollControlled: true, showDragHandle: true,
+                builder: (ctx) => Directionality(textDirection: TextDirection.rtl,
+                  child: SizedBox(height: MediaQuery.of(ctx).size.height * .72,
+                    child: Column(children: [
+                      const Padding(padding: EdgeInsets.all(14), child: Text('له ګالري انځور وټاکئ')),
+                      Expanded(child: StreamBuilder<DatabaseEvent>(stream: FirebaseDatabase.instance.ref('gallery').onValue,
+                        builder: (ctx, snap) {
+                          final raw = snap.data?.snapshot.value;
+                          final items = raw is Map ? raw.entries.toList().reversed.toList() : <dynamic>[];
+                          if (!snap.hasData) return const Center(child: CircularProgressIndicator());
+                          if (items.isEmpty) return const Center(child: Text('ګالري تشه ده؛ لومړی انځور پورته کړئ.'));
+                          return GridView.builder(gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 3),
+                            itemCount: items.length, itemBuilder: (_, i) {
+                              final d = Map<String, dynamic>.from(items[i].value as Map);
+                              return InkWell(onTap: () => Navigator.pop(ctx, d),
+                                child: Image.network((d['url'] ?? '').toString(), fit: BoxFit.cover));
+                            });
+                        })),
+                    ]))));
+              if (selected != null) setState(() => existingImageUrl = selected['url']?.toString());
             },
-            icon: const Icon(Icons.image_outlined),
-            label: Text(image != null ? 'نوی انځور وټاکل شو' : (existingImageUrl != null ? 'اوسنی انځور شته' : 'انځور (اختیاري)'))),
+            icon: const Icon(Icons.photo_library_outlined),
+            label: Text(existingImageUrl == null ? 'له ګالري انځور وټاکئ (اختیاري)' : 'د ګالري انځور وټاکل شو')),
           SwitchListTile(contentPadding: EdgeInsets.zero, value: featured,
             onChanged: (v) => setState(() => featured = v), title: const Text('د ورځې غوره شعر')),
           const SizedBox(height: 14),
