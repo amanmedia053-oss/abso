@@ -2628,7 +2628,7 @@ class _PoemEditorState extends State<PoemEditor> {
   void dispose() { title.dispose(); text.dispose(); super.dispose(); }
   @override
   Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: const Text('نوی شعر ثبتول')),
+    appBar: AppBar(title: Text(widget.poemId == null ? 'نوی شعر ثبتول' : 'د شعر سمون')),
     body: FutureBuilder<List<DataSnapshot>>(
       future: Future.wait([
         FirebaseDatabase.instance.ref('categories').get(),
@@ -2669,13 +2669,13 @@ class _PoemEditorState extends State<PoemEditor> {
               if (picked != null) setState(() => image = picked);
             },
             icon: const Icon(Icons.image_outlined),
-            label: Text(image == null ? 'انځور (اختیاري)' : 'انځور وټاکل شو')),
+            label: Text(image != null ? 'نوی انځور وټاکل شو' : (existingImageUrl != null ? 'اوسنی انځور شته' : 'انځور (اختیاري)'))),
           SwitchListTile(contentPadding: EdgeInsets.zero, value: featured,
             onChanged: (v) => setState(() => featured = v), title: const Text('د ورځې غوره شعر')),
           const SizedBox(height: 14),
           FilledButton.icon(onPressed: saving ? null : save,
             icon: const Icon(Icons.cloud_upload_outlined),
-            label: Text(saving ? 'خوندي کېږي...' : 'شعر خپرول')),
+            label: Text(saving ? 'خوندي کېږي...' : (widget.poemId == null ? 'شعر خپرول' : 'بدلونونه خوندي کول'))),
         ]);
       },
     ),
