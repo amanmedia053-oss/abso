@@ -439,61 +439,6 @@ class Poem {
   final bool featured;
 }
 
-class ShimmerSweep extends StatefulWidget {
-  const ShimmerSweep({super.key});
-
-  @override
-  State<ShimmerSweep> createState() => _ShimmerSweepState();
-}
-
-class _ShimmerSweepState extends State<ShimmerSweep>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _controller = AnimationController(
-    vsync: this, duration: const Duration(milliseconds: 2600),
-  )..repeat();
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) => AnimatedBuilder(
-        animation: _controller,
-        builder: (context, child) {
-          final dx = (constraints.maxWidth + 180) * _controller.value - 180;
-          return Transform.translate(
-            offset: Offset(dx, 0),
-            child: SizedBox(
-              width: 150,
-              height: constraints.maxHeight,
-              child: DecoratedBox(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.centerLeft,
-                    end: Alignment.centerRight,
-                    colors: [
-                      Colors.white.withValues(alpha: 0),
-                      Colors.white.withValues(alpha: .055),
-                      Colors.white.withValues(alpha: .16),
-                      Colors.white.withValues(alpha: .055),
-                      Colors.white.withValues(alpha: 0),
-                    ],
-                    stops: const [0, .28, .5, .72, 1],
-                  ),
-                ),
-              ),
-            ),
-          );
-        },
-      ),
-    );
-  }
-}
-
 class PoetryShell extends StatefulWidget {
   const PoetryShell({
     super.key,
@@ -2055,8 +2000,9 @@ class _PoetryShellState extends State<PoetryShell> {
               const SizedBox(height: 13),
               Row(children: [
                 _miniStat(Icons.visibility_outlined, poem.views),
-                const SizedBox(width: 12), _miniStat(Icons.favorite_border_rounded, poem.likes),
-                const SizedBox(width: 12), _miniStat(Icons.share_outlined, poem.shares),
+                const SizedBox(width: 9), _miniStat(Icons.favorite_border_rounded, poem.likes),
+                const SizedBox(width: 9), _miniStat(Icons.share_outlined, poem.shares),
+                const SizedBox(width: 9), _miniStat(Icons.bookmark_border_rounded, poem.saves),
                 const Spacer(), Icon(Icons.arrow_back_ios_new_rounded, size: 13, color: colors.primary),
               ]),
             ]),
