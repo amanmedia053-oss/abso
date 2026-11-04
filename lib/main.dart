@@ -464,14 +464,11 @@ class _PoetryShellState extends State<PoetryShell> {
   int selectedPage = 0;
   final Set<String> favorites = {};
   String query = '';
-  String category = 'ټول';
   bool _exitDialogOpen = false;
-  final categories = const ['ټول', 'مینه', 'عرفاني', 'ژوند', 'وطن'];
 
   List<Poem> get filteredPoems => poems.where((poem) {
-    final matchesCategory = category == 'ټول' || poem.category == category;
     final text = '${poem.title} ${poem.poet} ${poem.lines.join(' ')}';
-    return matchesCategory && text.contains(query);
+    return text.contains(query);
   }).toList();
 
   List<Poem> get favoritePoems =>
@@ -479,7 +476,7 @@ class _PoetryShellState extends State<PoetryShell> {
 
   @override
   Widget build(BuildContext context) {
-    const titles = ['ادبي خزانه', 'خوښ شوي شعرونه', 'شاعران', 'زموږ په اړه', 'تنظیمات'];
+    const titles = ['ادبي خزانه', 'خوښ شوي شعرونه', 'زموږ په اړه', 'تنظیمات'];
     return Directionality(
       textDirection: TextDirection.rtl,
       child: PopScope<Object?>(
@@ -509,8 +506,7 @@ class _PoetryShellState extends State<PoetryShell> {
         body: IndexedStack(
           index: selectedPage,
           children: [
-            _homePage(), _favoritesPage(), _poetsPage(), _aboutPage(),
-            _settingsPage(),
+            _homePage(), _favoritesPage(), _aboutPage(), _settingsPage(),
           ],
         ),
         bottomNavigationBar: _luxuryBottomNavigation(),
@@ -525,7 +521,6 @@ class _PoetryShellState extends State<PoetryShell> {
     const items = <(IconData, IconData, String)>[
       (Icons.home_outlined, Icons.home_rounded, 'کور'),
       (Icons.favorite_border_rounded, Icons.favorite_rounded, 'خوښ شوي'),
-      (Icons.people_outline_rounded, Icons.people_rounded, 'شاعران'),
       (Icons.info_outline_rounded, Icons.info_rounded, 'زموږ په اړه'),
       (Icons.settings_outlined, Icons.settings_rounded, 'تنظیمات'),
     ];
@@ -669,9 +664,8 @@ class _PoetryShellState extends State<PoetryShell> {
             const SizedBox(height: 10),
             _drawerItem(Icons.home_rounded, 'کور پاڼه', 0),
             _drawerItem(Icons.favorite_rounded, 'خوښ شوي شعرونه', 1),
-            _drawerItem(Icons.people_alt_rounded, 'شاعران', 2),
-            _drawerItem(Icons.info_rounded, 'زموږ په اړه', 3),
-            _drawerItem(Icons.settings_rounded, 'تنظیمات', 4),
+            _drawerItem(Icons.info_rounded, 'زموږ په اړه', 2),
+            _drawerItem(Icons.settings_rounded, 'تنظیمات', 3),
             const Divider(height: 24, indent: 18, endIndent: 18),
             SwitchListTile(
               secondary: Icon(widget.isDark
@@ -820,20 +814,6 @@ class _PoetryShellState extends State<PoetryShell> {
             constraints: const BoxConstraints(minHeight: 54),
             padding: const WidgetStatePropertyAll(EdgeInsets.symmetric(horizontal: 18))))),
         SliverToBoxAdapter(child: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 23, 16, 8),
-          child: Row(children: [
-            Text('د شعرونو کټګورۍ', style: Theme.of(context).textTheme.titleMedium
-              ?.copyWith(fontWeight: FontWeight.w900)),
-            const Spacer(), Icon(Icons.tune_rounded, size: 17, color: colors.primary)]))),
-        SliverToBoxAdapter(child: SizedBox(height: 48, child: ListView.separated(
-          padding: const EdgeInsets.symmetric(horizontal: 16), scrollDirection: Axis.horizontal,
-          itemCount: categories.length, separatorBuilder: (_, __) => const SizedBox(width: 8),
-          itemBuilder: (context, index) => ChoiceChip(showCheckmark: false,
-            visualDensity: VisualDensity.compact,
-            label: Text(categories[index], style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700)),
-            selected: category == categories[index],
-            onSelected: (_) => setState(() => category = categories[index]))))),
-        SliverToBoxAdapter(child: Padding(
           padding: const EdgeInsets.fromLTRB(16, 19, 16, 11),
           child: Row(children: [
             Container(width: 4, height: 22, decoration: BoxDecoration(color: colors.secondary,
@@ -897,33 +877,7 @@ class _PoetryShellState extends State<PoetryShell> {
     );
   }
 
-  Widget _poetsPage() {
-    final poets = poems.map((poem) => poem.poet).toSet().toList();
-    final colors = Theme.of(context).colorScheme;
-    return ListView.separated(
-      padding: const EdgeInsets.all(16),
-      itemCount: poets.length,
-      separatorBuilder: (_, __) => const SizedBox(height: 10),
-      itemBuilder: (context, index) {
-        final poet = poets[index];
-        final count = poems.where((poem) => poem.poet == poet).length;
-        return Card(
-          child: ListTile(
-            leading: CircleAvatar(
-              radius: 23,
-              backgroundColor: colors.primaryContainer,
-              child: Icon(Icons.person_rounded,
-                color: colors.onPrimaryContainer),
-            ),
-            title: Text(poet),
-            subtitle: Text('$count شعر په ټولګه کې'),
-            trailing: Icon(Icons.arrow_back_ios_new_rounded,
-              size: 15, color: colors.outline),
-          ),
-        );
-      },
-    );
-  }
+  
 
 
   Widget _settingsPage() {
@@ -1182,21 +1136,20 @@ class _PoetryShellState extends State<PoetryShell> {
           border: Border(right: BorderSide(color: colors.secondary, width: 4))),
         child: Padding(padding: const EdgeInsets.fromLTRB(16, 15, 16, 16),
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Row(children: [
-              Container(padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                decoration: BoxDecoration(color: colors.primaryContainer,
-                  borderRadius: BorderRadius.circular(30)),
-                child: Text(poem.category, style: TextStyle(fontSize: 10,
-                  fontWeight: FontWeight.w800, color: colors.onPrimaryContainer))),
-              const Spacer(),
-              IconButton.filledTonal(tooltip: saved ? 'له خوښو لرې کول' : 'خوښ شعر',
-                visualDensity: VisualDensity.compact,
-                onPressed: () => setState(() {
-                  saved ? favorites.remove(poem.title) : favorites.add(poem.title);
-                }),
-                icon: Icon(saved ? Icons.favorite_rounded : Icons.favorite_border_rounded,
-                  size: 19, color: saved ? colors.error : colors.primary)),
-            ]),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                IconButton.filledTonal(
+                  tooltip: saved ? 'له خوښو لرې کول' : 'خوښ شعر',
+                  visualDensity: VisualDensity.compact,
+                  onPressed: () => setState(() {
+                    saved ? favorites.remove(poem.title) : favorites.add(poem.title);
+                  }),
+                  icon: Icon(saved ? Icons.favorite_rounded : Icons.favorite_border_rounded,
+                    size: 19, color: saved ? colors.error : colors.primary),
+                ),
+              ],
+            ),
             const SizedBox(height: 7),
             Text(poem.title, style: TextStyle(fontSize: 18,
               fontWeight: FontWeight.w900, color: colors.primary)),
