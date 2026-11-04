@@ -6,6 +6,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'dart:io';
 import 'package:image_picker/image_picker.dart';
+import 'package:share_plus/share_plus.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -594,10 +595,8 @@ class _PoetryShellState extends State<PoetryShell> {
   Future<void> _sharePoem(Poem poem) async {
     final author = poem.poet.isEmpty ? '' : poem.poet + '\n';
     final content = poem.title + '\n' + author + '\n' + poem.text + '\n\n— ادبي خزانه';
-    await Clipboard.setData(ClipboardData(text: content));
+    await Share.share(content, subject: poem.title);
     await _incrementPoemCounter(poem.id, 'shares');
-    if (mounted) ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('د شعر متن کاپي شو؛ اوس یې شریکولی شئ.')));
   }
 
   Map<String, String> _names(Object? raw) {
