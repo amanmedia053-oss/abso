@@ -142,7 +142,20 @@ class _AbsoAppState extends State<AbsoApp> {
   }
 
   @override
-  Widget build(BuildContext context) => MaterialApp(
+  Widget build(BuildContext context) {
+    final systemBarColor = mode == ThemeMode.dark
+        ? const Color(0xFF111715)
+        : const Color(0xFFF7F5EF);
+    SystemChrome.setSystemUIOverlayStyle(SystemUiOverlayStyle(
+      statusBarColor: systemBarColor,
+      systemNavigationBarColor: systemBarColor,
+      statusBarIconBrightness:
+          mode == ThemeMode.dark ? Brightness.light : Brightness.dark,
+      systemNavigationBarIconBrightness:
+          mode == ThemeMode.dark ? Brightness.light : Brightness.dark,
+      systemNavigationBarDividerColor: systemBarColor,
+    ));
+    return MaterialApp(
     debugShowCheckedModeBanner: false,
     title: 'ادبي خزانه | د شعرونو نړۍ',
     theme: makeTheme(Brightness.light),
@@ -159,7 +172,8 @@ class _AbsoAppState extends State<AbsoApp> {
         onResetAppearance: _resetAppearance,
       ),
     ),
-  );
+    );
+  }
 }
 
 
