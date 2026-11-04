@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() => runApp(const AbsoApp());
@@ -76,18 +75,15 @@ class _AbsoAppState extends State<AbsoApp> {
       surface: brightness == Brightness.light
           ? const Color(0xFFFFFCF5) : const Color(0xFF171D1B),
     );
-    final baseText = GoogleFonts.getTextTheme(
-      selectedFont,
-      ThemeData(brightness: brightness).textTheme,
-    );
+    final baseText = ThemeData(brightness: brightness)
+        .textTheme.apply(fontFamily: selectedFont);
     return ThemeData(
       useMaterial3: true,
       colorScheme: scheme,
-      fontFamily: GoogleFonts.getFont(selectedFont).fontFamily,
+      fontFamily: selectedFont,
       textTheme: baseText,
-      primaryTextTheme: GoogleFonts.getTextTheme(selectedFont, 
-        ThemeData(brightness: brightness).primaryTextTheme,
-      ),
+      primaryTextTheme: ThemeData(brightness: brightness)
+          .primaryTextTheme.apply(fontFamily: selectedFont),
       scaffoldBackgroundColor: brightness == Brightness.light
           ? const Color(0xFFF7F5EF) : const Color(0xFF111715),
       appBarTheme: AppBarTheme(
@@ -95,8 +91,7 @@ class _AbsoAppState extends State<AbsoApp> {
             ? const Color(0xFFF7F5EF) : const Color(0xFF111715),
         elevation: 0,
         centerTitle: false,
-        titleTextStyle: GoogleFonts.getFont(selectedFont, 
-          fontSize: 19, fontWeight: FontWeight.w800, color: scheme.onSurface),
+        titleTextStyle: TextStyle(fontFamily: selectedFont, fontSize: 19, fontWeight: FontWeight.w800, color: scheme.onSurface),
       ),
       cardTheme: CardThemeData(
         color: brightness == Brightness.light
@@ -110,10 +105,8 @@ class _AbsoAppState extends State<AbsoApp> {
       ),
       listTileTheme: ListTileThemeData(
         iconColor: scheme.primary,
-        titleTextStyle: GoogleFonts.getFont(selectedFont, 
-          fontSize: 14, fontWeight: FontWeight.w700, color: scheme.onSurface),
-        subtitleTextStyle: GoogleFonts.getFont(selectedFont, 
-          fontSize: 11, height: 1.6, color: scheme.onSurfaceVariant),
+        titleTextStyle: TextStyle(fontFamily: selectedFont, fontSize: 14, fontWeight: FontWeight.w700, color: scheme.onSurface),
+        subtitleTextStyle: TextStyle(fontFamily: selectedFont, fontSize: 11, height: 1.6, color: scheme.onSurfaceVariant),
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 5),
       ),
       navigationBarTheme: NavigationBarThemeData(
@@ -121,8 +114,7 @@ class _AbsoAppState extends State<AbsoApp> {
         backgroundColor: brightness == Brightness.light
             ? const Color(0xFFFFFEFA) : const Color(0xFF202925),
         indicatorColor: scheme.secondaryContainer,
-        labelTextStyle: WidgetStatePropertyAll(GoogleFonts.getFont(selectedFont, 
-          fontSize: 11, fontWeight: FontWeight.w600)),
+        labelTextStyle: WidgetStatePropertyAll(TextStyle(fontFamily: selectedFont, fontSize: 11, fontWeight: FontWeight.w600)),
       ),
       searchBarTheme: SearchBarThemeData(
         backgroundColor: WidgetStatePropertyAll(scheme.surface),
@@ -130,13 +122,12 @@ class _AbsoAppState extends State<AbsoApp> {
         shape: WidgetStatePropertyAll(RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(17),
           side: BorderSide(color: scheme.outlineVariant))),
-        textStyle: WidgetStatePropertyAll(GoogleFonts.getFont(selectedFont, fontSize: 13)),
-        hintStyle: WidgetStatePropertyAll(GoogleFonts.getFont(selectedFont, 
-          fontSize: 12, color: scheme.onSurfaceVariant)),
+        textStyle: WidgetStatePropertyAll(TextStyle(fontFamily: selectedFont, fontSize: 13)),
+        hintStyle: WidgetStatePropertyAll(TextStyle(fontFamily: selectedFont, fontSize: 12, color: scheme.onSurfaceVariant)),
       ),
       chipTheme: ChipThemeData(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-        labelStyle: GoogleFonts.getFont(selectedFont, fontSize: 12),
+        labelStyle: TextStyle(fontFamily: selectedFont, fontSize: 12),
       ),
     );
   }
