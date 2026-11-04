@@ -652,7 +652,7 @@ class _PoetryShellState extends State<PoetryShell> {
         next.add(Poem(
           id: entry.key.toString(),
           title: (data['title'] ?? '').toString().trim().isEmpty
-              ? body.split(RegExp(r'\s+')).where((w) => w.isNotEmpty).take(3).join(' ')
+              ? body.split(RegExp(r'\s+')).where((w) => w.isNotEmpty).take(6).join(' ')
               : data['title'].toString().trim(),
           poet: _poetNames[(data['poetId'] ?? '').toString()] ?? '',
           category: _categoryNames[categoryId] ?? '',
@@ -1229,7 +1229,7 @@ class _PoetryShellState extends State<PoetryShell> {
       slivers: [
         if (featuredPoems.isNotEmpty)
           SliverToBoxAdapter(child: Column(children: [
-            SizedBox(height: 154, child: PageView.builder(
+            SizedBox(height: 174, child: PageView.builder(
               itemCount: featuredPoems.length,
               onPageChanged: (index) => setState(() => _featuredIndex = index),
               itemBuilder: (context, index) {
@@ -1246,9 +1246,16 @@ class _PoetryShellState extends State<PoetryShell> {
                         DecoratedBox(decoration: BoxDecoration(gradient: LinearGradient(
                           begin: Alignment.topCenter, end: Alignment.bottomCenter,
                           colors: [Colors.transparent, Colors.black.withValues(alpha: .72)]))),
-                        Positioned(right: 16, left: 16, bottom: 13, child: Text(poem.title,
-                          maxLines: 2, overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w900))),
+                        Positioned(right: 16, left: 16, bottom: 12, child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(poem.title, maxLines: 1, overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w900)),
+                            const SizedBox(height: 4),
+                            Text(poem.text.replaceAll('\\n', ' ').trim(), maxLines: 3, overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(color: Colors.white, fontSize: 11, height: 1.45, fontWeight: FontWeight.w600)),
+                          ],
+                        )),
                       ]))));
               },
             )),
@@ -1285,33 +1292,49 @@ class _PoetryShellState extends State<PoetryShell> {
         if (_categoryNames.isNotEmpty) ...[
           SliverPadding(padding: const EdgeInsets.fromLTRB(16, 10, 16, 9),
             sliver: SliverToBoxAdapter(child: _sectionHeader(Icons.category_rounded, 'کټګورۍ', '${_categoryNames.length} کټګورۍ'))),
-          SliverToBoxAdapter(child: SizedBox(height: 105, child: ListView.separated(
-            padding: const EdgeInsets.symmetric(horizontal: 16), scrollDirection: Axis.horizontal,
-            physics: const BouncingScrollPhysics(), itemCount: _categoryNames.length,
-            separatorBuilder: (_, __) => const SizedBox(width: 10),
+          SliverToBoxAdapter(child: SizedBox(height: 116, child: ListView.separated(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 3),
+            scrollDirection: Axis.horizontal, physics: const BouncingScrollPhysics(),
+            itemCount: _categoryNames.length,
+            separatorBuilder: (_, __) => const SizedBox(width: 11),
             itemBuilder: (context, index) {
               final entry = _categoryNames.entries.elementAt(index);
-              return SizedBox(width: 92, child: InkWell(
-                borderRadius: BorderRadius.circular(16),
-                onTap: () => setState(() { selectedCategory = entry.value; query = ''; }),
-                child: Container(decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(16),
-                  gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight,
-                    colors: [colors.primaryContainer, colors.secondaryContainer])),
-                  child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-                    Icon(Icons.auto_awesome_rounded, color: colors.primary, size: 26),
-                    const SizedBox(height: 7),
-                    Padding(padding: const EdgeInsets.symmetric(horizontal: 5), child: Text(entry.value,
-                      maxLines: 2, textAlign: TextAlign.center, overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w800))),
-                  ]))));
+              final count = poems.where((p) => p.category == entry.value).length;
+              final selected = selectedCategory == entry.value;
+              return SizedBox(width: 112, child: Material(
+                color: selected ? colors.primary : colors.surface,
+                borderRadius: BorderRadius.circular(20),
+                child: InkWell(borderRadius: BorderRadius.circular(20),
+                  onTap: () => setState(() { selectedCategory = selected ? 'ټول' : entry.value; query = ''; }),
+                  child: Container(padding: const EdgeInsets.all(11),
+                    decoration: BoxDecoration(borderRadius: BorderRadius.circular(20),
+                      border: Border.all(color: selected ? colors.primary : colors.outlineVariant.withValues(alpha: .55)),
+                      gradient: selected ? null : LinearGradient(begin: Alignment.topRight, end: Alignment.bottomLeft,
+                        colors: [colors.surface, colors.primaryContainer.withValues(alpha: .62)])),
+                    child: Column(crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisAlignment: MainAxisAlignment.center, children: [
+                        Container(width: 34, height: 34,
+                          decoration: BoxDecoration(color: selected ? Colors.white.withValues(alpha: .17) : colors.primary.withValues(alpha: .10),
+                            borderRadius: BorderRadius.circular(12)),
+                          child: Icon(Icons.auto_awesome_rounded, color: selected ? Colors.white : colors.primary, size: 19)),
+                        const Spacer(),
+                        Text(entry.value, maxLines: 1, overflow: TextOverflow.ellipsis,
+                          style: TextStyle(fontSize: 11, fontWeight: FontWeight.w900,
+                            color: selected ? Colors.white : colors.onSurface)),
+                        const SizedBox(height: 3),
+                        Text('$count شعرونه', style: TextStyle(fontSize: 9,
+                          color: selected ? Colors.white70 : colors.onSurfaceVariant)),
+                      ]),
+                  ),
+                ),
+              ));
             }))),
         ],
         if (poetGroups.isNotEmpty) ...[
           SliverPadding(padding: const EdgeInsets.fromLTRB(16, 10, 16, 9),
             sliver: SliverToBoxAdapter(child: _sectionHeader(Icons.people_alt_rounded,
               'شاعران', '${poetGroups.length} شاعران'))),
-          SliverToBoxAdapter(child: SizedBox(height: 150, child: ListView.separated(
+          SliverToBoxAdapter(child: SizedBox(height: 158, child: ListView.separated(
             padding: const EdgeInsets.fromLTRB(16, 2, 16, 10), scrollDirection: Axis.horizontal,
             physics: const BouncingScrollPhysics(), itemCount: poetGroups.length,
             separatorBuilder: (_, __) => const SizedBox(width: 10),
@@ -1362,7 +1385,13 @@ class _PoetryShellState extends State<PoetryShell> {
               ],
               const SizedBox(height: 8),
               Row(children: [
-                Text('${poem.views}', style: const TextStyle(color: Colors.white70, fontSize: 10, fontWeight: FontWeight.w700)),
+                const Icon(Icons.visibility_rounded, color: Colors.white70, size: 13),
+                const SizedBox(width: 4),
+                Text('${poem.views}', style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w800)),
+                const SizedBox(width: 12),
+                const Icon(Icons.favorite_rounded, color: Color(0xFFFFA8B5), size: 13),
+                const SizedBox(width: 4),
+                Text('${poem.likes}', style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w800)),
                 const Spacer(),
                 const Icon(Icons.arrow_back_rounded, color: Colors.white, size: 15),
               ]),
@@ -1383,17 +1412,17 @@ class _PoetryShellState extends State<PoetryShell> {
   Widget _horizontalPoetCard(String name, List<Poem> poetPoems) {
     final colors = Theme.of(context).colorScheme;
     final initial = name.trim().isEmpty ? 'ش' : name.trim().characters.first;
-    return SizedBox(width: 154, child: Card(
+    return SizedBox(width: 148, child: Card(
       elevation: 1.5, clipBehavior: Clip.antiAlias,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(19)),
       child: InkWell(onTap: () => setState(() => query = name),
         child: Padding(padding: const EdgeInsets.fromLTRB(12, 15, 12, 12),
           child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-            Container(width: 86, height: 86, decoration: BoxDecoration(shape: BoxShape.circle,
+            Container(width: 72, height: 72, decoration: BoxDecoration(shape: BoxShape.circle,
               gradient: LinearGradient(begin: Alignment.topRight, end: Alignment.bottomLeft,
                 colors: [colors.primary.withValues(alpha: .16), colors.secondary.withValues(alpha: .28)]),
               border: Border.all(color: colors.primary.withValues(alpha: .12), width: 2)),
-              child: Center(child: Text(initial, style: TextStyle(fontSize: 35,
+              child: Center(child: Text(initial, style: TextStyle(fontSize: 29,
                 fontWeight: FontWeight.w900, color: colors.primary)))),
             const SizedBox(height: 10),
             Text(name, maxLines: 1, overflow: TextOverflow.ellipsis, textAlign: TextAlign.center,
