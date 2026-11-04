@@ -13,9 +13,60 @@ class AbsoApp extends StatefulWidget {
 
 class _AbsoAppState extends State<AbsoApp> {
   ThemeMode mode = ThemeMode.light;
+  String selectedFont = 'Vazirmatn';
+  int selectedAccentValue = 0xFF245B50;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadAppearance();
+  }
+
+  Future<void> _loadAppearance() async {
+    final prefs = await SharedPreferences.getInstance();
+    if (!mounted) return;
+    setState(() {
+      mode = (prefs.getBool('dark_mode') ?? false)
+          ? ThemeMode.dark : ThemeMode.light;
+      selectedFont = prefs.getString('app_font') ?? 'Vazirmatn';
+      selectedAccentValue = prefs.getInt('app_accent') ?? 0xFF245B50;
+    });
+  }
+
+  Future<void> _setFont(String value) async {
+    setState(() => selectedFont = value);
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('app_font', value);
+  }
+
+  Future<void> _setAccent(Color value) async {
+    setState(() => selectedAccentValue = value.toARGB32());
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt('app_accent', value.toARGB32());
+  }
+
+  Future<void> _toggleTheme() async {
+    setState(() {
+      mode = mode == ThemeMode.light ? ThemeMode.dark : ThemeMode.light;
+    });
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('dark_mode', mode == ThemeMode.dark);
+  }
+
+  Future<void> _resetAppearance() async {
+    setState(() {
+      selectedFont = 'Vazirmatn';
+      selectedAccentValue = 0xFF245B50;
+      mode = ThemeMode.light;
+    });
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('app_font', selectedFont);
+    await prefs.setInt('app_accent', selectedAccentValue);
+    await prefs.setBool('dark_mode', false);
+  }
 
   ThemeData makeTheme(Brightness brightness) {
-    const forest = Color(0xFF245B50);
+    final forest = Color(selectedAccentValue);
     const gold = Color(0xFFC49A45);
     final scheme = ColorScheme.fromSeed(
       seedColor: forest,
@@ -25,15 +76,16 @@ class _AbsoAppState extends State<AbsoApp> {
       surface: brightness == Brightness.light
           ? const Color(0xFFFFFCF5) : const Color(0xFF171D1B),
     );
-    final baseText = GoogleFonts.vazirmatnTextTheme(
+    final baseText = GoogleFonts.getTextTheme(
+      selectedFont,
       ThemeData(brightness: brightness).textTheme,
     );
     return ThemeData(
       useMaterial3: true,
       colorScheme: scheme,
-      fontFamily: GoogleFonts.vazirmatn().fontFamily,
+      fontFamily: GoogleFonts.getFont(selectedFont).fontFamily,
       textTheme: baseText,
-      primaryTextTheme: GoogleFonts.vazirmatnTextTheme(
+      primaryTextTheme: GoogleFonts.getTextTheme(selectedFont, 
         ThemeData(brightness: brightness).primaryTextTheme,
       ),
       scaffoldBackgroundColor: brightness == Brightness.light
@@ -43,7 +95,7 @@ class _AbsoAppState extends State<AbsoApp> {
             ? const Color(0xFFF7F5EF) : const Color(0xFF111715),
         elevation: 0,
         centerTitle: false,
-        titleTextStyle: GoogleFonts.vazirmatn(
+        titleTextStyle: GoogleFonts.getFont(selectedFont, 
           fontSize: 19, fontWeight: FontWeight.w800, color: scheme.onSurface),
       ),
       cardTheme: CardThemeData(
@@ -58,9 +110,9 @@ class _AbsoAppState extends State<AbsoApp> {
       ),
       listTileTheme: ListTileThemeData(
         iconColor: scheme.primary,
-        titleTextStyle: GoogleFonts.vazirmatn(
+        titleTextStyle: GoogleFonts.getFont(selectedFont, 
           fontSize: 14, fontWeight: FontWeight.w700, color: scheme.onSurface),
-        subtitleTextStyle: GoogleFonts.vazirmatn(
+        subtitleTextStyle: GoogleFonts.getFont(selectedFont, 
           fontSize: 11, height: 1.6, color: scheme.onSurfaceVariant),
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 5),
       ),
@@ -69,7 +121,7 @@ class _AbsoAppState extends State<AbsoApp> {
         backgroundColor: brightness == Brightness.light
             ? const Color(0xFFFFFEFA) : const Color(0xFF202925),
         indicatorColor: scheme.secondaryContainer,
-        labelTextStyle: WidgetStatePropertyAll(GoogleFonts.vazirmatn(
+        labelTextStyle: WidgetStatePropertyAll(GoogleFonts.getFont(selectedFont, 
           fontSize: 11, fontWeight: FontWeight.w600)),
       ),
       searchBarTheme: SearchBarThemeData(
@@ -78,13 +130,13 @@ class _AbsoAppState extends State<AbsoApp> {
         shape: WidgetStatePropertyAll(RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(17),
           side: BorderSide(color: scheme.outlineVariant))),
-        textStyle: WidgetStatePropertyAll(GoogleFonts.vazirmatn(fontSize: 13)),
-        hintStyle: WidgetStatePropertyAll(GoogleFonts.vazirmatn(
+        textStyle: WidgetStatePropertyAll(GoogleFonts.getFont(selectedFont, fontSize: 13)),
+        hintStyle: WidgetStatePropertyAll(GoogleFonts.getFont(selectedFont, 
           fontSize: 12, color: scheme.onSurfaceVariant)),
       ),
       chipTheme: ChipThemeData(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-        labelStyle: GoogleFonts.vazirmatn(fontSize: 12),
+        labelStyle: GoogleFonts.getFont(selectedFont, fontSize: 12),
       ),
     );
   }
@@ -99,9 +151,12 @@ class _AbsoAppState extends State<AbsoApp> {
     home: LaunchGate(
       appBuilder: () => PoetryShell(
         isDark: mode == ThemeMode.dark,
-        onTheme: () => setState(() {
-          mode = mode == ThemeMode.light ? ThemeMode.dark : ThemeMode.light;
-        }),
+        fontName: selectedFont,
+        accentColor: Color(selectedAccentValue),
+        onTheme: _toggleTheme,
+        onFontChanged: _setFont,
+        onAccentChanged: _setAccent,
+        onResetAppearance: _resetAppearance,
       ),
     ),
   );
@@ -397,9 +452,23 @@ const poems = <Poem>[
 ];
 
 class PoetryShell extends StatefulWidget {
-  const PoetryShell({super.key, required this.isDark, required this.onTheme});
+  const PoetryShell({
+    super.key,
+    required this.isDark,
+    required this.fontName,
+    required this.accentColor,
+    required this.onTheme,
+    required this.onFontChanged,
+    required this.onAccentChanged,
+    required this.onResetAppearance,
+  });
   final bool isDark;
+  final String fontName;
+  final Color accentColor;
   final VoidCallback onTheme;
+  final ValueChanged<String> onFontChanged;
+  final ValueChanged<Color> onAccentChanged;
+  final VoidCallback onResetAppearance;
   @override
   State<PoetryShell> createState() => _PoetryShellState();
 }
@@ -423,7 +492,7 @@ class _PoetryShellState extends State<PoetryShell> {
 
   @override
   Widget build(BuildContext context) {
-    const titles = ['ادبي خزانه', 'خوښ شوي شعرونه', 'شاعران', 'زموږ په اړه'];
+    const titles = ['ادبي خزانه', 'خوښ شوي شعرونه', 'شاعران', 'زموږ په اړه', 'تنظیمات'];
     return Directionality(
       textDirection: TextDirection.rtl,
       child: PopScope<Object?>(
@@ -452,7 +521,10 @@ class _PoetryShellState extends State<PoetryShell> {
         ),
         body: IndexedStack(
           index: selectedPage,
-          children: [_homePage(), _favoritesPage(), _poetsPage(), _aboutPage()],
+          children: [
+            _homePage(), _favoritesPage(), _poetsPage(), _aboutPage(),
+            _settingsPage(),
+          ],
         ),
         bottomNavigationBar: NavigationBar(
           height: 66,
@@ -472,6 +544,9 @@ class _PoetryShellState extends State<PoetryShell> {
             NavigationDestination(
               icon: Icon(Icons.info_outline_rounded),
               selectedIcon: Icon(Icons.info_rounded), label: 'زموږ په اړه'),
+            NavigationDestination(
+              icon: Icon(Icons.settings_outlined),
+              selectedIcon: Icon(Icons.settings_rounded), label: 'تنظیمات'),
           ],
         ),
         ),
@@ -520,6 +595,7 @@ class _PoetryShellState extends State<PoetryShell> {
             _drawerItem(Icons.favorite_rounded, 'خوښ شوي شعرونه', 1),
             _drawerItem(Icons.people_alt_rounded, 'شاعران', 2),
             _drawerItem(Icons.info_rounded, 'زموږ په اړه', 3),
+            _drawerItem(Icons.settings_rounded, 'تنظیمات', 4),
             const Divider(height: 24, indent: 18, endIndent: 18),
             SwitchListTile(
               secondary: Icon(widget.isDark
@@ -761,6 +837,184 @@ class _PoetryShellState extends State<PoetryShell> {
     );
   }
 
+
+  Widget _settingsPage() {
+    final colors = Theme.of(context).colorScheme;
+    const fonts = <Map<String, String>>[
+      {'name': 'Vazirmatn', 'label': 'وزیرمتن', 'note': 'روښانه او منظم'},
+      {'name': 'Noto Naskh Arabic', 'label': 'نوتو نسخ', 'note': 'د کتابونو کلاسیک سبک'},
+      {'name': 'Amiri', 'label': 'اميري', 'note': 'ادبي او دودیز خط'},
+      {'name': 'Cairo', 'label': 'کایرو', 'note': 'عصري او ساده'},
+      {'name': 'Tajawal', 'label': 'تجوال', 'note': 'نرم او ښکلی'},
+    ];
+    const palettes = <Map<String, Object>>[
+      {'name': 'ځنګلي شین', 'color': Color(0xFF245B50)},
+      {'name': 'شاهي ارغواني', 'color': Color(0xFF6750A4)},
+      {'name': 'سمندري آبي', 'color': Color(0xFF176B87)},
+      {'name': 'یاقوتي سور', 'color': Color(0xFF9A3D50)},
+      {'name': 'طلایي نارنجي', 'color': Color(0xFF9A641F)},
+      {'name': 'فیروزه يي', 'color': Color(0xFF287C78)},
+    ];
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(16, 14, 16, 28),
+      children: [
+        Container(
+          padding: const EdgeInsets.all(18),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [colors.primary, colors.tertiary],
+              begin: Alignment.topRight,
+              end: Alignment.bottomLeft,
+            ),
+            borderRadius: BorderRadius.circular(22),
+          ),
+          child: const Row(
+            children: [
+              Icon(Icons.tune_rounded, color: Colors.white, size: 34),
+              SizedBox(width: 13),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('د اپلیکیشن تنظیمات',
+                      style: TextStyle(color: Colors.white,
+                        fontSize: 18, fontWeight: FontWeight.w800)),
+                    SizedBox(height: 4),
+                    Text('بڼه او لیکدود د خپلې خوښې سره برابر کړئ.',
+                      style: TextStyle(color: Colors.white70, fontSize: 11)),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 22),
+        _settingsHeading(Icons.font_download_rounded, 'د لیکدود فونټونه'),
+        const SizedBox(height: 8),
+        ...fonts.map((font) {
+          final selected = widget.fontName == font['name'];
+          return AnimatedContainer(
+            duration: const Duration(milliseconds: 220),
+            curve: Curves.easeOut,
+            margin: const EdgeInsets.only(bottom: 8),
+            decoration: BoxDecoration(
+              color: selected ? colors.primaryContainer : colors.surface,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: selected ? colors.primary : colors.outlineVariant,
+                width: selected ? 1.5 : 1,
+              ),
+            ),
+            child: ListTile(
+              onTap: () => widget.onFontChanged(font['name']!),
+              leading: CircleAvatar(
+                backgroundColor: selected ? colors.primary : colors.surfaceContainerHighest,
+                child: Icon(Icons.text_fields_rounded,
+                  color: selected ? colors.onPrimary : colors.primary),
+              ),
+              title: Text(font['label']!,
+                style: TextStyle(fontWeight: FontWeight.w800)),
+              subtitle: Text(font['note']!),
+              trailing: selected
+                  ? Icon(Icons.check_circle_rounded, color: colors.primary)
+                  : const Icon(Icons.circle_outlined, size: 19),
+            ),
+          );
+        }),
+        const SizedBox(height: 15),
+        _settingsHeading(Icons.palette_rounded, 'د اپلیکیشن رنګونه'),
+        const SizedBox(height: 8),
+        Card(
+          child: Padding(
+            padding: const EdgeInsets.all(14),
+            child: Wrap(
+              spacing: 13,
+              runSpacing: 14,
+              children: palettes.map((palette) {
+                final color = palette['color'] as Color;
+                final selected = widget.accentColor.toARGB32() == color.toARGB32();
+                return InkWell(
+                  borderRadius: BorderRadius.circular(14),
+                  onTap: () => widget.onAccentChanged(color),
+                  child: SizedBox(
+                    width: 82,
+                    child: Column(
+                      children: [
+                        AnimatedContainer(
+                          duration: const Duration(milliseconds: 220),
+                          width: selected ? 47 : 42,
+                          height: selected ? 47 : 42,
+                          decoration: BoxDecoration(
+                            color: color,
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                              color: selected ? colors.onSurface : Colors.transparent,
+                              width: 2.5,
+                            ),
+                          ),
+                          child: selected
+                              ? const Icon(Icons.check_rounded,
+                                  color: Colors.white, size: 24)
+                              : null,
+                        ),
+                        const SizedBox(height: 6),
+                        Text(palette['name'] as String,
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(fontSize: 10)),
+                      ],
+                    ),
+                  ),
+                );
+              }).toList(),
+            ),
+          ),
+        ),
+        const SizedBox(height: 15),
+        _settingsHeading(Icons.display_settings_rounded, 'نور تنظیمات'),
+        const SizedBox(height: 8),
+        Card(
+          child: Column(
+            children: [
+              SwitchListTile(
+                secondary: Icon(widget.isDark
+                    ? Icons.dark_mode_rounded : Icons.light_mode_rounded,
+                    color: colors.primary),
+                title: const Text('تیاره بڼه'),
+                subtitle: const Text('د شپې لپاره تیاره رنګونه فعال کړئ.'),
+                value: widget.isDark,
+                onChanged: (_) => widget.onTheme(),
+              ),
+              const Divider(height: 1, indent: 16, endIndent: 16),
+              ListTile(
+                leading: Icon(Icons.restart_alt_rounded, color: colors.primary),
+                title: const Text('اصلي تنظیمات بېرته فعالول'),
+                subtitle: const Text('فونټ، رنګ او بڼه لومړني حالت ته ستنوي.'),
+                onTap: () => widget.onResetAppearance(),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 16),
+        Center(
+          child: Text('ستاسو خوښه، ستاسو ادبي خزانه',
+            style: TextStyle(color: colors.onSurfaceVariant, fontSize: 11)),
+        ),
+      ],
+    );
+  }
+
+  Widget _settingsHeading(IconData icon, String title) {
+    final colors = Theme.of(context).colorScheme;
+    return Row(
+      children: [
+        Icon(icon, color: colors.primary, size: 21),
+        const SizedBox(width: 8),
+        Text(title,
+          style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800,
+            color: colors.onSurface)),
+      ],
+    );
+  }
 
   Widget _aboutPage() {
     final colors = Theme.of(context).colorScheme;
