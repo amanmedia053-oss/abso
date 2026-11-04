@@ -37,6 +37,20 @@ jobs:
             <foreground android:drawable="@drawable/ic_launcher_foreground"/>
           </adaptive-icon>
           EOF
+      - name: Download bundled TTF fonts
+        shell: bash
+        run: |
+          mkdir -p assets/fonts/licenses
+          curl -fL "https://raw.githubusercontent.com/google/fonts/main/ofl/vazirmatn/Vazirmatn%5Bwght%5D.ttf" -o assets/fonts/Vazirmatn.ttf
+          curl -fL "https://raw.githubusercontent.com/google/fonts/main/ofl/notonaskharabic/NotoNaskhArabic%5Bwght%5D.ttf" -o assets/fonts/NotoNaskhArabic.ttf
+          curl -fL "https://raw.githubusercontent.com/google/fonts/main/ofl/amiri/Amiri-Regular.ttf" -o assets/fonts/Amiri.ttf
+          curl -fL "https://raw.githubusercontent.com/google/fonts/main/ofl/cairo/Cairo%5Bslnt%2Cwght%5D.ttf" -o assets/fonts/Cairo.ttf
+          curl -fL "https://raw.githubusercontent.com/google/fonts/main/ofl/tajawal/Tajawal-Regular.ttf" -o assets/fonts/Tajawal.ttf
+          curl -fL "https://raw.githubusercontent.com/google/fonts/main/ofl/vazirmatn/OFL.txt" -o assets/fonts/licenses/Vazirmatn-OFL.txt
+          curl -fL "https://raw.githubusercontent.com/google/fonts/main/ofl/notonaskharabic/OFL.txt" -o assets/fonts/licenses/NotoNaskhArabic-OFL.txt
+          curl -fL "https://raw.githubusercontent.com/google/fonts/main/ofl/amiri/OFL.txt" -o assets/fonts/licenses/Amiri-OFL.txt
+          curl -fL "https://raw.githubusercontent.com/google/fonts/main/ofl/cairo/OFL.txt" -o assets/fonts/licenses/Cairo-OFL.txt
+          curl -fL "https://raw.githubusercontent.com/google/fonts/main/ofl/tajawal/OFL.txt" -o assets/fonts/licenses/Tajawal-OFL.txt
       - name: Install packages
         run: flutter pub get
       - name: Build release APK
