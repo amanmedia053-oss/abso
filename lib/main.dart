@@ -513,29 +513,118 @@ class _PoetryShellState extends State<PoetryShell> {
             _settingsPage(),
           ],
         ),
-        bottomNavigationBar: NavigationBar(
-          height: 66,
-          selectedIndex: selectedPage,
-          onDestinationSelected: (index) =>
-              setState(() => selectedPage = index),
-          destinations: const [
-            NavigationDestination(
-              icon: Icon(Icons.home_outlined),
-              selectedIcon: Icon(Icons.home_rounded), label: 'کور'),
-            NavigationDestination(
-              icon: Icon(Icons.favorite_border_rounded),
-              selectedIcon: Icon(Icons.favorite_rounded), label: 'خوښ شوي'),
-            NavigationDestination(
-              icon: Icon(Icons.people_outline_rounded),
-              selectedIcon: Icon(Icons.people_rounded), label: 'شاعران'),
-            NavigationDestination(
-              icon: Icon(Icons.info_outline_rounded),
-              selectedIcon: Icon(Icons.info_rounded), label: 'زموږ په اړه'),
-            NavigationDestination(
-              icon: Icon(Icons.settings_outlined),
-              selectedIcon: Icon(Icons.settings_rounded), label: 'تنظیمات'),
+        bottomNavigationBar: _luxuryBottomNavigation(),
+        ),
+      ),
+    );
+  }
+
+  Widget _luxuryBottomNavigation() {
+    final colors = Theme.of(context).colorScheme;
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    const items = <(IconData, IconData, String)>[
+      (Icons.home_outlined, Icons.home_rounded, 'کور'),
+      (Icons.favorite_border_rounded, Icons.favorite_rounded, 'خوښ شوي'),
+      (Icons.people_outline_rounded, Icons.people_rounded, 'شاعران'),
+      (Icons.info_outline_rounded, Icons.info_rounded, 'زموږ په اړه'),
+      (Icons.settings_outlined, Icons.settings_rounded, 'تنظیمات'),
+    ];
+    return SafeArea(
+      top: false,
+      child: Container(
+        margin: const EdgeInsets.fromLTRB(12, 5, 12, 10),
+        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 8),
+        decoration: BoxDecoration(
+          color: dark ? const Color(0xFF1B1D2B) : Colors.white,
+          borderRadius: BorderRadius.circular(27),
+          border: Border.all(
+            color: colors.outlineVariant.withValues(alpha: .42),
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: dark ? .22 : .075),
+              blurRadius: 25,
+              spreadRadius: 1,
+              offset: const Offset(0, 8),
+            ),
           ],
         ),
+        child: Row(
+          children: List.generate(items.length, (index) {
+            final selected = selectedPage == index;
+            final item = items[index];
+            return Expanded(
+              child: Semantics(
+                button: true,
+                selected: selected,
+                label: item.$3,
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(20),
+                  onTap: () => setState(() => selectedPage = index),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 280),
+                    curve: Curves.easeOutCubic,
+                    margin: const EdgeInsets.symmetric(horizontal: 2),
+                    padding: EdgeInsets.symmetric(
+                      horizontal: selected ? 3 : 0,
+                      vertical: 7,
+                    ),
+                    decoration: BoxDecoration(
+                      gradient: selected
+                          ? const LinearGradient(
+                              begin: Alignment.topRight,
+                              end: Alignment.bottomLeft,
+                              colors: [
+                                Color(0xFF5146D8),
+                                Color(0xFF8657D8),
+                                Color(0xFFE56B9A),
+                              ],
+                            )
+                          : null,
+                      borderRadius: BorderRadius.circular(19),
+                    ),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        AnimatedScale(
+                          scale: selected ? 1.08 : 1,
+                          duration: const Duration(milliseconds: 240),
+                          child: Icon(
+                            selected ? item.$2 : item.$1,
+                            size: 22,
+                            color: selected
+                                ? Colors.white
+                                : colors.onSurfaceVariant,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        AnimatedDefaultTextStyle(
+                          duration: const Duration(milliseconds: 220),
+                          style: TextStyle(
+                            fontFamily: selectedFont,
+                            fontSize: selected ? 9.5 : 9,
+                            height: 1.2,
+                            fontWeight: selected
+                                ? FontWeight.w900
+                                : FontWeight.w600,
+                            color: selected
+                                ? Colors.white
+                                : colors.onSurfaceVariant,
+                          ),
+                          child: Text(
+                            item.$3,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            textAlign: TextAlign.center,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            );
+          }),
         ),
       ),
     );
