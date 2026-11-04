@@ -464,11 +464,14 @@ class _PoetryShellState extends State<PoetryShell> {
   int selectedPage = 0;
   final Set<String> favorites = {};
   String query = '';
+  String selectedCategory = 'ټول';
   bool _exitDialogOpen = false;
 
   List<Poem> get filteredPoems => poems.where((poem) {
-    final text = '${poem.title} ${poem.poet} ${poem.lines.join(' ')}';
-    return text.contains(query);
+    final text = '${poem.title} ${poem.poet} ${poem.category} ${poem.lines.join(' ')}';
+    final matchesQuery = text.contains(query);
+    final matchesCategory = selectedCategory == 'ټول' || poem.category == selectedCategory;
+    return matchesQuery && matchesCategory;
   }).toList();
 
   List<Poem> get favoritePoems =>
@@ -963,75 +966,246 @@ class _PoetryShellState extends State<PoetryShell> {
   Widget _homePage() {
     final colors = Theme.of(context).colorScheme;
     final visible = filteredPoems;
+    final categories = <String>['ټول', ...{for (final poem in poems) poem.category}];
+    final poets = <String>{for (final poem in poems) poem.poet}.toList();
+
     return CustomScrollView(
-      key: const PageStorageKey('home'), physics: const BouncingScrollPhysics(),
+      key: const PageStorageKey('home'),
+      physics: const BouncingScrollPhysics(),
       slivers: [
-        SliverToBoxAdapter(child: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 18),
-          child: Container(
-            padding: const EdgeInsets.fromLTRB(21, 22, 21, 20),
-            decoration: BoxDecoration(
-              gradient: const LinearGradient(begin: Alignment.topRight, end: Alignment.bottomLeft,
-                colors: [Color(0xFF5146D8), Color(0xFF8657D8), Color(0xFFE56B9A)]),
-              borderRadius: BorderRadius.circular(30),
-              boxShadow: [BoxShadow(color: const Color(0xFF7655CC).withValues(alpha:.25),
-                blurRadius: 24, offset: const Offset(0, 11))]),
-            child: Stack(children: [
-              Positioned(left: -5, top: -12, child: Icon(Icons.auto_stories_rounded,
-                size: 118, color: Colors.white.withValues(alpha:.10))),
-              Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Container(padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 6),
-                  decoration: BoxDecoration(color: Colors.white.withValues(alpha:.18),
-                    borderRadius: BorderRadius.circular(30)),
-                  child: const Row(mainAxisSize: MainAxisSize.min, children: [
-                    Icon(Icons.auto_awesome_rounded, color: Colors.white, size: 14),
-                    SizedBox(width: 6), Text('د ادب او ښکلا نړۍ', style: TextStyle(color: Colors.white,
-                      fontSize: 10, fontWeight: FontWeight.w700))])),
-                const SizedBox(height: 17),
-                const Text('د پښتو شعرونو\nرنګینه خزانه', style: TextStyle(color: Colors.white,
-                  fontSize: 25, height: 1.45, fontWeight: FontWeight.w900)),
-                const SizedBox(height: 7),
-                const Text('ولولئ، ومومئ او د خوښې شعرونه مو وساتئ.',
-                  style: TextStyle(color: Colors.white, fontSize: 11, height: 1.8)),
-                const SizedBox(height: 17),
-                Row(children: [
-                  _heroStat(Icons.menu_book_rounded, '${poems.length}', 'شعرونه'),
-                  const SizedBox(width: 10),
-                  _heroStat(Icons.text_fields_rounded, '۵', 'فونټونه'),
-                  const SizedBox(width: 10),
-                  _heroStat(Icons.favorite_rounded, '${favorites.length}', 'خوښ شوي'),
-                ]),
-              ]),
-            ]),
+        if (poems.isNotEmpty)
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+              child: _featuredPoemCard(poems.first),
+            ),
           ),
-        )),
-        SliverToBoxAdapter(child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          child: SearchBar(hintText: 'د شعر یا شاعر نوم ولټوئ...',
-            textStyle: const WidgetStatePropertyAll(TextStyle(fontSize: 13)),
-            leading: Icon(Icons.search_rounded, size: 22, color: colors.primary),
-            onChanged: (value) => setState(() => query = value.trim()),
-            elevation: const WidgetStatePropertyAll(0),
-            constraints: const BoxConstraints(minHeight: 54),
-            padding: const WidgetStatePropertyAll(EdgeInsets.symmetric(horizontal: 18))))),
-        SliverToBoxAdapter(child: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 19, 16, 11),
-          child: Row(children: [
-            Container(width: 4, height: 22, decoration: BoxDecoration(color: colors.secondary,
-              borderRadius: BorderRadius.circular(8))),
-            const SizedBox(width: 9),
-            Text('غوره شعرونه', style: Theme.of(context).textTheme.titleMedium
-              ?.copyWith(fontWeight: FontWeight.w900)),
-            const Spacer(), Text('${visible.length} شعرونه',
-              style: TextStyle(fontSize: 11, color: colors.onSurfaceVariant))]))),
+        SliverToBoxAdapter(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 20, 16, 10),
+            child: _sectionHeader(Icons.category_rounded, 'د شعرونو کټګورۍ',
+              'خپله خوښه برخه وټاکئ'),
+          ),
+        ),
+        SliverToBoxAdapter(
+          child: SizedBox(
+            height: 49,
+            child: ListView.separated(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              scrollDirection: Axis.horizontal,
+              itemCount: categories.length,
+              separatorBuilder: (_, __) => const SizedBox(width: 8),
+              itemBuilder: (context, index) {
+                final category = categories[index];
+                final selected = selectedCategory == category;
+                return ChoiceChip(
+                  selected: selected,
+                  showCheckmark: false,
+                  avatar: Icon(category == 'ټول'
+                    ? Icons.apps_rounded : Icons.auto_stories_rounded,
+                    size: 17, color: selected ? colors.onPrimary : colors.primary),
+                  label: Text(category),
+                  onSelected: (_) => setState(() => selectedCategory = category),
+                  labelStyle: TextStyle(fontSize: 11, fontWeight: FontWeight.w800,
+                    color: selected ? colors.onPrimary : colors.onSurface),
+                  selectedColor: colors.primary,
+                  backgroundColor: colors.surface,
+                  side: BorderSide(color: colors.outlineVariant.withValues(alpha: .6)),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                );
+              },
+            ),
+          ),
+        ),
+        SliverToBoxAdapter(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 22, 16, 10),
+            child: SearchBar(
+              hintText: 'د شعر یا شاعر نوم ولټوئ...',
+              textStyle: const WidgetStatePropertyAll(TextStyle(fontSize: 13)),
+              leading: Icon(Icons.search_rounded, size: 22, color: colors.primary),
+              onChanged: (value) => setState(() => query = value.trim()),
+              elevation: const WidgetStatePropertyAll(0),
+              constraints: const BoxConstraints(minHeight: 54),
+              padding: const WidgetStatePropertyAll(EdgeInsets.symmetric(horizontal: 18)),
+            ),
+          ),
+        ),
+        SliverToBoxAdapter(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 17, 16, 10),
+            child: _sectionHeader(Icons.fiber_new_rounded, 'نوي شعرونه',
+              '${visible.length} شعرونه'),
+          ),
+        ),
         if (visible.isEmpty)
-          const SliverToBoxAdapter(child: Padding(padding: EdgeInsets.all(28),
-            child: Center(child: Text('کوم شعر پیدا نه شو.'))))
+          const SliverToBoxAdapter(
+            child: Padding(
+              padding: EdgeInsets.all(28),
+              child: Center(child: Text('کوم شعر پیدا نه شو.')),
+            ),
+          )
         else
-          SliverPadding(padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
-            sliver: SliverList(delegate: SliverChildBuilderDelegate(
-              (context, index) => _poemCard(visible[index]), childCount: visible.length))),
+          SliverPadding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+            sliver: SliverList(
+              delegate: SliverChildBuilderDelegate(
+                (context, index) => _poemCard(visible[index]),
+                childCount: visible.length,
+              ),
+            ),
+          ),
+        SliverToBoxAdapter(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 14, 16, 10),
+            child: _sectionHeader(Icons.person_pin_rounded, 'شاعران',
+              '${poets.length} شاعران'),
+          ),
+        ),
+        SliverToBoxAdapter(
+          child: SizedBox(
+            height: 112,
+            child: ListView.separated(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 22),
+              scrollDirection: Axis.horizontal,
+              itemCount: poets.length,
+              separatorBuilder: (_, __) => const SizedBox(width: 11),
+              itemBuilder: (context, index) {
+                final poet = poets[index];
+                return Container(
+                  width: 104,
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: colors.surface,
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: colors.outlineVariant.withValues(alpha: .55)),
+                  ),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Container(
+                        width: 43, height: 43,
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [colors.primary, colors.tertiary],
+                            begin: Alignment.topRight, end: Alignment.bottomLeft,
+                          ),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(Icons.person_rounded, color: Colors.white, size: 24),
+                      ),
+                      const SizedBox(height: 7),
+                      Text(poet, maxLines: 1, overflow: TextOverflow.ellipsis,
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w800)),
+                    ],
+                  ),
+                );
+              },
+            ),
+          ),
+        ),
       ],
+    );
+  }
+
+  Widget _sectionHeader(IconData icon, String title, String subtitle) {
+    final colors = Theme.of(context).colorScheme;
+    return Row(
+      children: [
+        Container(
+          width: 35, height: 35,
+          decoration: BoxDecoration(
+            color: colors.primary.withValues(alpha: .10),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Icon(icon, color: colors.primary, size: 19),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(title, style: TextStyle(fontSize: 15,
+                fontWeight: FontWeight.w900, color: colors.onSurface)),
+              const SizedBox(height: 2),
+              Text(subtitle, style: TextStyle(fontSize: 10,
+                color: colors.onSurfaceVariant)),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _featuredPoemCard(Poem poem) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(19, 18, 19, 18),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          begin: Alignment.topRight, end: Alignment.bottomLeft,
+          colors: [Color(0xFF173F38), Color(0xFF28695C), Color(0xFFB17A35)],
+        ),
+        borderRadius: BorderRadius.circular(28),
+        boxShadow: [
+          BoxShadow(color: const Color(0xFF245B50).withValues(alpha: .22),
+            blurRadius: 22, offset: const Offset(0, 9)),
+        ],
+      ),
+      child: Stack(
+        children: [
+          Positioned(left: -9, bottom: -14,
+            child: Icon(Icons.format_quote_rounded, size: 112,
+              color: Colors.white.withValues(alpha: .09))),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                    decoration: BoxDecoration(color: Colors.white.withValues(alpha: .15),
+                      borderRadius: BorderRadius.circular(30)),
+                    child: const Row(mainAxisSize: MainAxisSize.min, children: [
+                      Icon(Icons.auto_awesome_rounded, color: Color(0xFFFFD98A), size: 14),
+                      SizedBox(width: 6),
+                      Text('د ورځې غوره شعر', style: TextStyle(color: Colors.white,
+                        fontSize: 10, fontWeight: FontWeight.w800)),
+                    ]),
+                  ),
+                  const Spacer(),
+                  Icon(Icons.bookmark_added_rounded,
+                    color: const Color(0xFFFFD98A).withValues(alpha: .9), size: 22),
+                ],
+              ),
+              const SizedBox(height: 17),
+              Text(poem.title.isEmpty ? 'بې‌عنوانه' : poem.title,
+                style: const TextStyle(color: Colors.white, fontSize: 20,
+                  fontWeight: FontWeight.w900)),
+              const SizedBox(height: 13),
+              ...poem.lines.take(2).map((line) => Padding(
+                padding: const EdgeInsets.only(bottom: 6),
+                child: Text(line, style: const TextStyle(color: Colors.white,
+                  fontSize: 13, height: 1.9, fontWeight: FontWeight.w600)),
+              )),
+              const SizedBox(height: 9),
+              Row(
+                children: [
+                  const Icon(Icons.edit_note_rounded,
+                    color: Color(0xFFFFD98A), size: 18),
+                  const SizedBox(width: 5),
+                  Text(poem.poet, style: const TextStyle(color: Colors.white70,
+                    fontSize: 11, fontWeight: FontWeight.w700)),
+                  const Spacer(),
+                  Text(poem.category, style: const TextStyle(color: Colors.white70,
+                    fontSize: 10)),
+                ],
+              ),
+            ],
+          ),
+        ],
+      ),
     );
   }
 
