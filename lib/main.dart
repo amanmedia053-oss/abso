@@ -716,9 +716,9 @@ class _PoetryShellState extends State<PoetryShell> {
                               begin: Alignment.topRight,
                               end: Alignment.bottomLeft,
                               colors: [
-                                Color(0xFF5146D8),
-                                Color(0xFF8657D8),
-                                Color(0xFFE56B9A),
+                                Color(0xFF153F37),
+                                Color(0xFF245B50),
+                                Color(0xFFB77928),
                               ],
                             )
                           : null,
