@@ -463,6 +463,7 @@ class PoetryShell extends StatefulWidget {
 
 class _PoetryShellState extends State<PoetryShell> {
   int selectedPage = 0;
+  int _featuredIndex = 0;
   final Set<String> favorites = {};
   final Set<String> likedPoems = {};
   final List<Poem> poems = [];
@@ -1144,6 +1145,7 @@ class _PoetryShellState extends State<PoetryShell> {
       );
     }
     final visible = filteredPoems;
+    final featuredPoems = poems.where((p) => p.featured).toList();
     final poetGroups = <String, List<Poem>>{};
     for (final poem in poems) {
       if (poem.poet.trim().isNotEmpty) poetGroups.putIfAbsent(poem.poet, () => <Poem>[]).add(poem);
@@ -1152,61 +1154,106 @@ class _PoetryShellState extends State<PoetryShell> {
       key: const PageStorageKey('home'),
       physics: const BouncingScrollPhysics(),
       slivers: [
-        if (poems.any((p) => p.featured))
-          SliverToBoxAdapter(child: Padding(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
-            child: InkWell(borderRadius: BorderRadius.circular(28),
-              onTap: () => _openPoem(poems.firstWhere((p) => p.featured)),
-              child: _featuredPoemCard(poems.firstWhere((p) => p.featured))))),
-        SliverPadding(padding: const EdgeInsets.fromLTRB(16, 17, 16, 12),
+        if (featuredPoems.isNotEmpty)
+          SliverToBoxAdapter(child: Column(children: [
+            SizedBox(height: 154, child: PageView.builder(
+              itemCount: featuredPoems.length,
+              onPageChanged: (index) => setState(() => _featuredIndex = index),
+              itemBuilder: (context, index) {
+                final poem = featuredPoems[index];
+                return Padding(padding: const EdgeInsets.fromLTRB(16, 7, 16, 3),
+                  child: InkWell(borderRadius: BorderRadius.circular(20),
+                    onTap: () => _openPoem(poem),
+                    child: ClipRRect(borderRadius: BorderRadius.circular(20),
+                      child: Stack(fit: StackFit.expand, children: [
+                        if (poem.imageUrl != null && poem.imageUrl!.isNotEmpty)
+                          Image.network(poem.imageUrl!, fit: BoxFit.cover,
+                            errorBuilder: (_, __, ___) => _poemCardArtwork())
+                        else _poemCardArtwork(),
+                        DecoratedBox(decoration: BoxDecoration(gradient: LinearGradient(
+                          begin: Alignment.topCenter, end: Alignment.bottomCenter,
+                          colors: [Colors.transparent, Colors.black.withValues(alpha: .72)]))),
+                        Positioned(right: 16, left: 16, bottom: 13, child: Text(poem.title,
+                          maxLines: 2, overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w900))),
+                      ]))));
+              },
+            )),
+            const SizedBox(height: 5),
+            Row(mainAxisAlignment: MainAxisAlignment.center, children: List.generate(
+              featuredPoems.length, (index) => AnimatedContainer(
+                duration: const Duration(milliseconds: 220),
+                margin: const EdgeInsets.symmetric(horizontal: 3),
+                width: _featuredIndex == index ? 17 : 6, height: 6,
+                decoration: BoxDecoration(color: _featuredIndex == index ? colors.primary : colors.outlineVariant,
+                  borderRadius: BorderRadius.circular(10))))),
+          ])),
+        SliverPadding(padding: const EdgeInsets.fromLTRB(16, 14, 16, 8),
           sliver: SliverToBoxAdapter(child: SearchBar(
             hintText: 'د شعر یا شاعر نوم ولټوئ...',
             textStyle: const WidgetStatePropertyAll(TextStyle(fontSize: 13)),
             leading: Icon(Icons.search_rounded, size: 22, color: colors.primary),
             onChanged: (value) => setState(() => query = value.trim()),
             elevation: const WidgetStatePropertyAll(0),
-            constraints: const BoxConstraints(minHeight: 54),
+            constraints: const BoxConstraints(minHeight: 50),
             padding: const WidgetStatePropertyAll(EdgeInsets.symmetric(horizontal: 18))))),
-        SliverPadding(padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
-          sliver: SliverToBoxAdapter(child: _sectionHeader(
-            Icons.auto_stories_rounded, 'د شعرونو ټولګه', '\${visible.length} لیکنې'))),
+        SliverPadding(padding: const EdgeInsets.fromLTRB(16, 8, 16, 9),
+          sliver: SliverToBoxAdapter(child: _sectionHeader(Icons.auto_stories_rounded,
+            'د شعرونو ټولګه', '${visible.length} شعرونه'))),
         if (visible.isEmpty)
-          const SliverToBoxAdapter(child: Padding(padding: EdgeInsets.all(25),
+          const SliverToBoxAdapter(child: Padding(padding: EdgeInsets.all(20),
             child: Center(child: Text('په دې لټون کې څه پیدا نه شول.'))))
         else
-          SliverToBoxAdapter(child: SizedBox(height: 226,
-            child: ListView.separated(
-              padding: const EdgeInsets.fromLTRB(16, 2, 16, 12),
-              scrollDirection: Axis.horizontal,
-              physics: const BouncingScrollPhysics(),
-              itemCount: visible.length,
-              separatorBuilder: (_, __) => const SizedBox(width: 13),
-              itemBuilder: (context, index) => _horizontalPoemCard(visible[index])))),
-        if (poetGroups.isNotEmpty) ...[
-          SliverPadding(padding: const EdgeInsets.fromLTRB(16, 13, 16, 12),
-            sliver: SliverToBoxAdapter(child: _sectionHeader(
-              Icons.people_alt_rounded, 'شاعران', '\${poetGroups.length} شاعران'))),
-          SliverToBoxAdapter(child: SizedBox(height: 190,
-            child: ListView.separated(
-              padding: const EdgeInsets.fromLTRB(16, 2, 16, 15),
-              scrollDirection: Axis.horizontal,
-              physics: const BouncingScrollPhysics(),
-              itemCount: poetGroups.length,
-              separatorBuilder: (_, __) => const SizedBox(width: 12),
-              itemBuilder: (context, index) {
-                final entry = poetGroups.entries.elementAt(index);
-                return _horizontalPoetCard(entry.key, entry.value);
-              }))),
+          SliverToBoxAdapter(child: SizedBox(height: 176, child: ListView.separated(
+            padding: const EdgeInsets.fromLTRB(16, 2, 16, 10),
+            scrollDirection: Axis.horizontal, physics: const BouncingScrollPhysics(),
+            itemCount: visible.length, separatorBuilder: (_, __) => const SizedBox(width: 10),
+            itemBuilder: (context, index) => _horizontalPoemCard(visible[index])))),
+        if (_categoryNames.isNotEmpty) ...[
+          SliverPadding(padding: const EdgeInsets.fromLTRB(16, 10, 16, 9),
+            sliver: SliverToBoxAdapter(child: _sectionHeader(Icons.category_rounded, 'کټګورۍ', '${_categoryNames.length} کټګورۍ'))),
+          SliverToBoxAdapter(child: SizedBox(height: 105, child: ListView.separated(
+            padding: const EdgeInsets.symmetric(horizontal: 16), scrollDirection: Axis.horizontal,
+            physics: const BouncingScrollPhysics(), itemCount: _categoryNames.length,
+            separatorBuilder: (_, __) => const SizedBox(width: 10),
+            itemBuilder: (context, index) {
+              final entry = _categoryNames.entries.elementAt(index);
+              return SizedBox(width: 92, child: InkWell(
+                borderRadius: BorderRadius.circular(16),
+                onTap: () => setState(() { selectedCategory = entry.value; query = ''; }),
+                child: Container(decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(16),
+                  gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight,
+                    colors: [colors.primaryContainer, colors.secondaryContainer])),
+                  child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+                    Icon(Icons.auto_awesome_rounded, color: colors.primary, size: 26),
+                    const SizedBox(height: 7),
+                    Padding(padding: const EdgeInsets.symmetric(horizontal: 5), child: Text(entry.value,
+                      maxLines: 2, textAlign: TextAlign.center, overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w800))),
+                  ]))));
+            }))),
         ],
-
+        if (poetGroups.isNotEmpty) ...[
+          SliverPadding(padding: const EdgeInsets.fromLTRB(16, 10, 16, 9),
+            sliver: SliverToBoxAdapter(child: _sectionHeader(Icons.people_alt_rounded,
+              'شاعران', '${poetGroups.length} شاعران'))),
+          SliverToBoxAdapter(child: SizedBox(height: 150, child: ListView.separated(
+            padding: const EdgeInsets.fromLTRB(16, 2, 16, 10), scrollDirection: Axis.horizontal,
+            physics: const BouncingScrollPhysics(), itemCount: poetGroups.length,
+            separatorBuilder: (_, __) => const SizedBox(width: 10),
+            itemBuilder: (context, index) {
+              final entry = poetGroups.entries.elementAt(index);
+              return _horizontalPoetCard(entry.key, entry.value);
+            }))),
+        ],
       ],
     );
   }
-
   Widget _horizontalPoemCard(Poem poem) {
     final colors = Theme.of(context).colorScheme;
     final saved = favorites.contains(poem.id);
-    return SizedBox(width: 190, child: Card(
+    return SizedBox(width: 148, child: Card(
       clipBehavior: Clip.antiAlias, elevation: 2,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(19)),
       child: InkWell(onTap: () => _openPoem(poem),
@@ -1233,7 +1280,7 @@ class _PoetryShellState extends State<PoetryShell> {
             crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min,
             children: [
               Text(poem.title, maxLines: 2, overflow: TextOverflow.ellipsis,
-                style: const TextStyle(color: Colors.white, fontSize: 14,
+                style: const TextStyle(color: Colors.white, fontSize: 12,
                   height: 1.55, fontWeight: FontWeight.w900)),
               if (poem.poet.isNotEmpty) ...[
                 const SizedBox(height: 5),
@@ -1242,9 +1289,7 @@ class _PoetryShellState extends State<PoetryShell> {
               ],
               const SizedBox(height: 8),
               Row(children: [
-                const Icon(Icons.visibility_outlined, color: Colors.white70, size: 13),
-                const SizedBox(width: 4),
-                Text('\${poem.views}', style: const TextStyle(color: Colors.white70, fontSize: 9)),
+                Text('${poem.views}', style: const TextStyle(color: Colors.white70, fontSize: 10, fontWeight: FontWeight.w700)),
                 const Spacer(),
                 const Icon(Icons.arrow_back_rounded, color: Colors.white, size: 15),
               ]),
@@ -1281,7 +1326,7 @@ class _PoetryShellState extends State<PoetryShell> {
             Text(name, maxLines: 1, overflow: TextOverflow.ellipsis, textAlign: TextAlign.center,
               style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w900)),
             const SizedBox(height: 4),
-            Text('\${poetPoems.length} خپرونې',
+            Text('${poetPoems.length} خپرونې',
               style: TextStyle(fontSize: 10, color: colors.onSurfaceVariant)),
           ])))));
   }
