@@ -14,7 +14,29 @@ jobs:
         with:
           channel: stable
       - name: Generate Android project
-        run: flutter create --platforms=android --project-name abso .
+        run: flutter create --platforms=android --project-name adabi_khazana .
+      - name: Apply app branding and icon
+        shell: bash
+        run: |
+          sed -i 's/android:label="[^"]*"/android:label="ادبي خزانه"/' android/app/src/main/AndroidManifest.xml
+          mkdir -p android/app/src/main/res/drawable android/app/src/main/res/mipmap-anydpi-v26 android/app/src/main/res/values
+          cat > android/app/src/main/res/drawable/ic_launcher_foreground.xml <<'EOF'
+          <vector xmlns:android="http://schemas.android.com/apk/res/android" android:width="108dp" android:height="108dp" android:viewportWidth="108" android:viewportHeight="108">
+            <path android:fillColor="#FFF8E8" android:pathData="M18,29 Q18,24 24,24 L51,29 L51,82 Q36,76 22,80 Q18,81 18,76 Z"/>
+            <path android:fillColor="#FFFFFF" android:pathData="M90,29 Q90,24 84,24 L57,29 L57,82 Q72,76 86,80 Q90,81 90,76 Z"/>
+            <path android:fillColor="#D6A84B" android:pathData="M51,29 L54,31 L57,29 L57,84 L54,87 L51,84 Z"/>
+            <path android:fillColor="#2E6F68" android:pathData="M70,18 Q78,10 86,17 Q91,23 84,31 L59,57 L53,51 Z"/>
+            <path android:fillColor="#D6A84B" android:pathData="M53,51 L59,57 L48,65 L49,56 Z"/>
+            <path android:fillColor="#2E6F68" android:pathData="M29,42 L45,45 L45,49 L29,46 Z M29,53 L45,56 L45,60 L29,57 Z M63,45 L79,42 L79,46 L63,49 Z M63,56 L79,53 L79,57 L63,60 Z"/>
+          </vector>
+          EOF
+          echo '<resources><color name="ic_launcher_background">#243D39</color></resources>' > android/app/src/main/res/values/ic_launcher_background.xml
+          cat > android/app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml <<'EOF'
+          <adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
+            <background android:drawable="@color/ic_launcher_background"/>
+            <foreground android:drawable="@drawable/ic_launcher_foreground"/>
+          </adaptive-icon>
+          EOF
       - name: Install packages
         run: flutter pub get
       - name: Build release APK
@@ -22,5 +44,5 @@ jobs:
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: abso-release-apk
+          name: adabi-khazana-release-apk
           path: build/app/outputs/flutter-apk/app-release.apk
