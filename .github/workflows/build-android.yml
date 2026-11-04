@@ -47,12 +47,128 @@ jobs:
                   raise SystemExit("Could not locate plugins block in Gradle settings.")
           settings.write_text(settings_text)
 
+          target_id = "com.obaidapp.soraerahman"
           if app.suffix == ".kts":
-              app_text, count = re.subn(r'applicationId\s*=\s*"[^"]+"', 'applicationId = "com.obaidapp.soraerahman"', app_text, count=1)
+              pattern = r'(?m)^(\s*)applicationId\s*=.*
+          if "com.google.gms.google-services" not in app_text:
+              app_text, count = re.subn(r"plugins\s*\{", lambda m: m.group(0) + "\n" + app_plugin, app_text, count=1)
+              if count != 1:
+                  raise SystemExit("Could not locate app plugins block.")
+          app.write_text(app_text)
+          print(f"Firebase configured with {settings} and {app}")
+          PY
+      - name: Apply app branding and icon
+        shell: bash
+        run: |
+          sed -i 's/android:label="[^"]*"/android:label="ادبي خزانه"/' android/app/src/main/AndroidManifest.xml
+          mkdir -p android/app/src/main/res/drawable android/app/src/main/res/mipmap-anydpi-v26 android/app/src/main/res/values
+          cat > android/app/src/main/res/drawable/ic_launcher_foreground.xml <<'EOF'
+          <vector xmlns:android="http://schemas.android.com/apk/res/android" android:width="108dp" android:height="108dp" android:viewportWidth="108" android:viewportHeight="108">
+            <path android:fillColor="#FFF8E8" android:pathData="M18,29 Q18,24 24,24 L51,29 L51,82 Q36,76 22,80 Q18,81 18,76 Z"/>
+            <path android:fillColor="#FFFFFF" android:pathData="M90,29 Q90,24 84,24 L57,29 L57,82 Q72,76 86,80 Q90,81 90,76 Z"/>
+            <path android:fillColor="#D6A84B" android:pathData="M51,29 L54,31 L57,29 L57,84 L54,87 L51,84 Z"/>
+            <path android:fillColor="#2E6F68" android:pathData="M70,18 Q78,10 86,17 Q91,23 84,31 L59,57 L53,51 Z"/>
+            <path android:fillColor="#D6A84B" android:pathData="M53,51 L59,57 L48,65 L49,56 Z"/>
+            <path android:fillColor="#2E6F68" android:pathData="M29,42 L45,45 L45,49 L29,46 Z M29,53 L45,56 L45,60 L29,57 Z M63,45 L79,42 L79,46 L63,49 Z M63,56 L79,53 L79,57 L63,60 Z"/>
+          </vector>
+          EOF
+          echo '<resources><color name="ic_launcher_background">#243D39</color></resources>' > android/app/src/main/res/values/ic_launcher_background.xml
+          cat > android/app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml <<'EOF'
+          <adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
+            <background android:drawable="@color/ic_launcher_background"/>
+            <foreground android:drawable="@drawable/ic_launcher_foreground"/>
+          </adaptive-icon>
+          EOF
+      - name: Download bundled TTF fonts
+        shell: bash
+        run: |
+          mkdir -p assets/fonts/licenses
+          curl -fL "https://raw.githubusercontent.com/google/fonts/main/ofl/vazirmatn/Vazirmatn%5Bwght%5D.ttf" -o assets/fonts/Vazirmatn.ttf
+          curl -fL "https://raw.githubusercontent.com/google/fonts/main/ofl/notonaskharabic/NotoNaskhArabic%5Bwght%5D.ttf" -o assets/fonts/NotoNaskhArabic.ttf
+          curl -fL "https://raw.githubusercontent.com/google/fonts/main/ofl/amiri/Amiri-Regular.ttf" -o assets/fonts/Amiri.ttf
+          curl -fL "https://raw.githubusercontent.com/google/fonts/main/ofl/cairo/Cairo%5Bslnt%2Cwght%5D.ttf" -o assets/fonts/Cairo.ttf
+          curl -fL "https://raw.githubusercontent.com/google/fonts/main/ofl/tajawal/Tajawal-Regular.ttf" -o assets/fonts/Tajawal.ttf
+          curl -fL "https://raw.githubusercontent.com/google/fonts/main/ofl/vazirmatn/OFL.txt" -o assets/fonts/licenses/Vazirmatn-OFL.txt
+          curl -fL "https://raw.githubusercontent.com/google/fonts/main/ofl/notonaskharabic/OFL.txt" -o assets/fonts/licenses/NotoNaskhArabic-OFL.txt
+          curl -fL "https://raw.githubusercontent.com/google/fonts/main/ofl/amiri/OFL.txt" -o assets/fonts/licenses/Amiri-OFL.txt
+          curl -fL "https://raw.githubusercontent.com/google/fonts/main/ofl/cairo/OFL.txt" -o assets/fonts/licenses/Cairo-OFL.txt
+          curl -fL "https://raw.githubusercontent.com/google/fonts/main/ofl/tajawal/OFL.txt" -o assets/fonts/licenses/Tajawal-OFL.txt
+      - name: Install packages
+        run: flutter pub get
+      - name: Build release APK
+        run: flutter build apk --release --split-per-abi
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: adabi-khazana-release-apk
+          path: build/app/outputs/flutter-apk/*-release.apk
+
+              replacement = lambda m: m.group(1) + 'applicationId = "' + target_id + '"'
           else:
-              app_text, count = re.subn(r'applicationId\s+"[^"]+"', 'applicationId "com.obaidapp.soraerahman"', app_text, count=1)
-          if count != 1:
-              raise SystemExit("Could not set applicationId in app Gradle file.")
+              pattern = r'(?m)^(\s*)applicationId\s+.*
+          if "com.google.gms.google-services" not in app_text:
+              app_text, count = re.subn(r"plugins\s*\{", lambda m: m.group(0) + "\n" + app_plugin, app_text, count=1)
+              if count != 1:
+                  raise SystemExit("Could not locate app plugins block.")
+          app.write_text(app_text)
+          print(f"Firebase configured with {settings} and {app}")
+          PY
+      - name: Apply app branding and icon
+        shell: bash
+        run: |
+          sed -i 's/android:label="[^"]*"/android:label="ادبي خزانه"/' android/app/src/main/AndroidManifest.xml
+          mkdir -p android/app/src/main/res/drawable android/app/src/main/res/mipmap-anydpi-v26 android/app/src/main/res/values
+          cat > android/app/src/main/res/drawable/ic_launcher_foreground.xml <<'EOF'
+          <vector xmlns:android="http://schemas.android.com/apk/res/android" android:width="108dp" android:height="108dp" android:viewportWidth="108" android:viewportHeight="108">
+            <path android:fillColor="#FFF8E8" android:pathData="M18,29 Q18,24 24,24 L51,29 L51,82 Q36,76 22,80 Q18,81 18,76 Z"/>
+            <path android:fillColor="#FFFFFF" android:pathData="M90,29 Q90,24 84,24 L57,29 L57,82 Q72,76 86,80 Q90,81 90,76 Z"/>
+            <path android:fillColor="#D6A84B" android:pathData="M51,29 L54,31 L57,29 L57,84 L54,87 L51,84 Z"/>
+            <path android:fillColor="#2E6F68" android:pathData="M70,18 Q78,10 86,17 Q91,23 84,31 L59,57 L53,51 Z"/>
+            <path android:fillColor="#D6A84B" android:pathData="M53,51 L59,57 L48,65 L49,56 Z"/>
+            <path android:fillColor="#2E6F68" android:pathData="M29,42 L45,45 L45,49 L29,46 Z M29,53 L45,56 L45,60 L29,57 Z M63,45 L79,42 L79,46 L63,49 Z M63,56 L79,53 L79,57 L63,60 Z"/>
+          </vector>
+          EOF
+          echo '<resources><color name="ic_launcher_background">#243D39</color></resources>' > android/app/src/main/res/values/ic_launcher_background.xml
+          cat > android/app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml <<'EOF'
+          <adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
+            <background android:drawable="@color/ic_launcher_background"/>
+            <foreground android:drawable="@drawable/ic_launcher_foreground"/>
+          </adaptive-icon>
+          EOF
+      - name: Download bundled TTF fonts
+        shell: bash
+        run: |
+          mkdir -p assets/fonts/licenses
+          curl -fL "https://raw.githubusercontent.com/google/fonts/main/ofl/vazirmatn/Vazirmatn%5Bwght%5D.ttf" -o assets/fonts/Vazirmatn.ttf
+          curl -fL "https://raw.githubusercontent.com/google/fonts/main/ofl/notonaskharabic/NotoNaskhArabic%5Bwght%5D.ttf" -o assets/fonts/NotoNaskhArabic.ttf
+          curl -fL "https://raw.githubusercontent.com/google/fonts/main/ofl/amiri/Amiri-Regular.ttf" -o assets/fonts/Amiri.ttf
+          curl -fL "https://raw.githubusercontent.com/google/fonts/main/ofl/cairo/Cairo%5Bslnt%2Cwght%5D.ttf" -o assets/fonts/Cairo.ttf
+          curl -fL "https://raw.githubusercontent.com/google/fonts/main/ofl/tajawal/Tajawal-Regular.ttf" -o assets/fonts/Tajawal.ttf
+          curl -fL "https://raw.githubusercontent.com/google/fonts/main/ofl/vazirmatn/OFL.txt" -o assets/fonts/licenses/Vazirmatn-OFL.txt
+          curl -fL "https://raw.githubusercontent.com/google/fonts/main/ofl/notonaskharabic/OFL.txt" -o assets/fonts/licenses/NotoNaskhArabic-OFL.txt
+          curl -fL "https://raw.githubusercontent.com/google/fonts/main/ofl/amiri/OFL.txt" -o assets/fonts/licenses/Amiri-OFL.txt
+          curl -fL "https://raw.githubusercontent.com/google/fonts/main/ofl/cairo/OFL.txt" -o assets/fonts/licenses/Cairo-OFL.txt
+          curl -fL "https://raw.githubusercontent.com/google/fonts/main/ofl/tajawal/OFL.txt" -o assets/fonts/licenses/Tajawal-OFL.txt
+      - name: Install packages
+        run: flutter pub get
+      - name: Build release APK
+        run: flutter build apk --release --split-per-abi
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: adabi-khazana-release-apk
+          path: build/app/outputs/flutter-apk/*-release.apk
+
+              replacement = lambda m: m.group(1) + 'applicationId "' + target_id + '"'
+          app_text, count = re.subn(pattern, replacement, app_text, count=1)
+          if count == 0:
+              # Some Flutter templates omit applicationId; add it inside defaultConfig.
+              if app.suffix == ".kts":
+                  app_text, count = re.subn(r'(?m)^(\s*)defaultConfig\s*\{', lambda m: m.group(0) + '\\n' + m.group(1) + '    applicationId = "' + target_id + '"', app_text, count=1)
+              else:
+                  app_text, count = re.subn(r'(?m)^(\s*)defaultConfig\s*\{', lambda m: m.group(0) + '\\n' + m.group(1) + '    applicationId "' + target_id + '"', app_text, count=1)
+          if count != 1 or target_id not in app_text:
+              raise SystemExit("Could not configure applicationId; expected defaultConfig block in " + str(app))
 
           if "com.google.gms.google-services" not in app_text:
               app_text, count = re.subn(r"plugins\s*\{", lambda m: m.group(0) + "\n" + app_plugin, app_text, count=1)
