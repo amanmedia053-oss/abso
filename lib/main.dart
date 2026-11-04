@@ -1198,15 +1198,7 @@ class _PoetryShellState extends State<PoetryShell> {
                 return _horizontalPoetCard(entry.key, entry.value);
               }))),
         ],
-        SliverPadding(padding: const EdgeInsets.fromLTRB(16, 12, 16, 10),
-          sliver: SliverToBoxAdapter(child: _sectionHeader(
-            Icons.library_books_rounded, 'ټولې لیکنې', '\${visible.length} شعرونه'))),
-        if (visible.isEmpty)
-          const SliverToBoxAdapter(child: SizedBox(height: 8))
-        else
-          SliverPadding(padding: const EdgeInsets.fromLTRB(14, 0, 14, 26),
-            sliver: SliverList(delegate: SliverChildBuilderDelegate(
-              (context, index) => _poemCard(visible[index]), childCount: visible.length))),
+
       ],
     );
   }
