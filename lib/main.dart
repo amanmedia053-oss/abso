@@ -592,8 +592,8 @@ class _PoetryShellState extends State<PoetryShell> {
   }
 
   Future<void> _sharePoem(Poem poem) async {
-    final author = poem.poet.isEmpty ? '' : poem.poet + '\\n';
-    final content = poem.title + '\\n' + author + '\\n' + poem.text + '\\n\\n— ادبي خزانه';
+    final author = poem.poet.isEmpty ? '' : poem.poet + '\n';
+    final content = poem.title + '\n' + author + '\n' + poem.text + '\n\n— ادبي خزانه';
     await Clipboard.setData(ClipboardData(text: content));
     await _incrementPoemCounter(poem.id, 'shares');
     if (mounted) ScaffoldMessenger.of(context).showSnackBar(
@@ -2158,7 +2158,7 @@ class _PoetryShellState extends State<PoetryShell> {
                 const Spacer(),
                 IconButton.filledTonal(visualDensity: VisualDensity.compact,
                   tooltip: saved ? 'له خوښو لرې کول' : 'خوښ شعر',
-                  onPressed: () => setState(() { saved ? favorites.remove(poem.id) : favorites.add(poem.id); }),
+                  onPressed: () => _toggleFavorite(poem),
                   icon: Icon(saved ? Icons.favorite_rounded : Icons.favorite_border_rounded,
                     color: saved ? colors.error : colors.primary, size: 19)),
               ]),
