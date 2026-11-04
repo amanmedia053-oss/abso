@@ -286,7 +286,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     _IntroSlide(Icons.favorite_rounded, 'خپل خوښ شعرونه وساتئ',
       'د زړه نښه کېکاږئ، څو خوښ شعرونه مو په ځانګړې برخه کې خوندي وي.'),
     _IntroSlide(Icons.search_rounded, 'هر شعر په اسانه ومومئ',
-      'د شعرونو او شاعرانو نومونه ولټوئ او خپلې خوښې کټګورۍ وټاکئ.'),
+      'شعرونه ولولئ، ولټوئ او خپلې خوښې شعرونه وساتئ.'),
   ];
 
   @override
@@ -796,7 +796,7 @@ class _PoetryShellState extends State<PoetryShell> {
                 Row(children: [
                   _heroStat(Icons.menu_book_rounded, '${poems.length}', 'شعرونه'),
                   const SizedBox(width: 10),
-                  _heroStat(Icons.category_rounded, '${categories.length}', 'برخې'),
+                  _heroStat(Icons.text_fields_rounded, '۵', 'فونټونه'),
                   const SizedBox(width: 10),
                   _heroStat(Icons.favorite_rounded, '${favorites.length}', 'خوښ شوي'),
                 ]),
