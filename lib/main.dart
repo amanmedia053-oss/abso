@@ -1129,6 +1129,26 @@ class _PoetryShellState extends State<PoetryShell> {
 
   Widget _homePage() {
     final colors = Theme.of(context).colorScheme;
+    if (_loadingPoems || _databaseError != null || poems.isEmpty) {
+      return ListView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.only(top: 24),
+        children: [
+          if (_loadingPoems)
+            const Padding(padding: EdgeInsets.all(45),
+              child: Center(child: CircularProgressIndicator()))
+          else if (_databaseError != null)
+            _emptyPoemsState(icon: Icons.cloud_off_rounded,
+              title: 'له ډیټابېس سره اړیکه ټینګه نه شوه',
+              subtitle: 'انټرنېټ وګورئ او بیا هڅه وکړئ.',
+              action: 'بیا هڅه', onAction: _listenAgain)
+          else
+            _emptyPoemsState(icon: Icons.menu_book_outlined,
+              title: 'د شعرونو لېست تش دی',
+              subtitle: 'تر اوسه کوم شعر نه دی خپور شوی. کله چې اډمین شعر خپور کړي، دلته به ښکاره شي.'),
+        ],
+      );
+    }
     final visible = filteredPoems;
     final categories = <String>['ټول', ...{for (final poem in poems) if (poem.category.isNotEmpty) poem.category}];
     final poets = <String>{for (final poem in poems) if (poem.poet.isNotEmpty) poem.poet}.toList();
