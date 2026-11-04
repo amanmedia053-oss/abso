@@ -585,7 +585,7 @@ class _PoetryShellState extends State<PoetryShell> {
           poet: _poetNames[(data['poetId'] ?? '').toString()] ?? '',
           category: _categoryNames[categoryId] ?? '',
           text: body,
-          lines: body.split(RegExp(r'\\r?\\n')),
+          lines: body.split(RegExp(r'\r?\n')),
           views: _count(data['views']), likes: _count(data['likes']),
           shares: _count(data['shares']), saves: _count(data['saves']),
           imageUrl: data['imageUrl']?.toString(), featured: data['featured'] == true,
