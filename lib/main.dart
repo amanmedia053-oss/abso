@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -408,6 +409,7 @@ class _PoetryShellState extends State<PoetryShell> {
   final Set<String> favorites = {};
   String query = '';
   String category = 'ټول';
+  bool _exitDialogOpen = false;
   final categories = const ['ټول', 'مینه', 'عرفاني', 'ژوند', 'وطن'];
 
   List<Poem> get filteredPoems => poems.where((poem) {
@@ -424,7 +426,18 @@ class _PoetryShellState extends State<PoetryShell> {
     const titles = ['ادبي خزانه', 'خوښ شوي شعرونه', 'شاعران', 'زموږ په اړه'];
     return Directionality(
       textDirection: TextDirection.rtl,
-      child: Scaffold(
+      child: PopScope<Object?>(
+        canPop: false,
+        onPopInvokedWithResult: (didPop, result) {
+          if (didPop) return;
+          if (selectedPage != 0) {
+            setState(() => selectedPage = 0);
+          } else {
+            _confirmExit();
+          }
+        },
+        child: Scaffold(
+        drawer: _buildDrawer(),
         appBar: AppBar(
           title: Text(titles[selectedPage]),
           actions: [
@@ -461,8 +474,143 @@ class _PoetryShellState extends State<PoetryShell> {
               selectedIcon: Icon(Icons.info_rounded), label: 'زموږ په اړه'),
           ],
         ),
+        ),
       ),
     );
+  }
+
+  Widget _buildDrawer() {
+    final colors = Theme.of(context).colorScheme;
+    return Drawer(
+      width: 300,
+      child: SafeArea(
+        child: Column(
+          children: [
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.fromLTRB(20, 25, 20, 22),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [colors.primary, colors.tertiary],
+                  begin: Alignment.topRight,
+                  end: Alignment.bottomLeft,
+                ),
+              ),
+              child: const Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  CircleAvatar(
+                    radius: 29,
+                    backgroundColor: Colors.white24,
+                    child: Icon(Icons.auto_stories_rounded,
+                      size: 32, color: Colors.white),
+                  ),
+                  SizedBox(height: 13),
+                  Text('ادبي خزانه',
+                    style: TextStyle(color: Colors.white,
+                      fontSize: 21, fontWeight: FontWeight.w800)),
+                  SizedBox(height: 3),
+                  Text('د پښتو شعر او ادب نړۍ',
+                    style: TextStyle(color: Colors.white70, fontSize: 12)),
+                ],
+              ),
+            ),
+            const SizedBox(height: 10),
+            _drawerItem(Icons.home_rounded, 'کور پاڼه', 0),
+            _drawerItem(Icons.favorite_rounded, 'خوښ شوي شعرونه', 1),
+            _drawerItem(Icons.people_alt_rounded, 'شاعران', 2),
+            _drawerItem(Icons.info_rounded, 'زموږ په اړه', 3),
+            const Divider(height: 24, indent: 18, endIndent: 18),
+            SwitchListTile(
+              secondary: Icon(widget.isDark
+                ? Icons.dark_mode_rounded : Icons.light_mode_rounded,
+                color: colors.primary),
+              title: const Text('تیاره بڼه'),
+              value: widget.isDark,
+              onChanged: (_) {
+                Navigator.pop(context);
+                widget.onTheme();
+              },
+            ),
+            const Spacer(),
+            const Divider(height: 1),
+            ListTile(
+              leading: Icon(Icons.exit_to_app_rounded, color: colors.error),
+              title: Text('له اپلیکیشن څخه وتل',
+                style: TextStyle(color: colors.error,
+                  fontWeight: FontWeight.w700)),
+              onTap: () {
+                Navigator.pop(context);
+                _confirmExit();
+              },
+            ),
+            Padding(
+              padding: const EdgeInsets.only(bottom: 12, top: 4),
+              child: Text('نسخه 1.0.0',
+                style: TextStyle(fontSize: 10,
+                  color: colors.onSurfaceVariant)),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _drawerItem(IconData icon, String title, int index) {
+    final colors = Theme.of(context).colorScheme;
+    final selected = selectedPage == index;
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
+      child: ListTile(
+        selected: selected,
+        selectedTileColor: colors.secondaryContainer.withValues(alpha: .65),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(14)),
+        leading: Icon(icon),
+        title: Text(title,
+          style: TextStyle(fontWeight: selected
+            ? FontWeight.w800 : FontWeight.w500)),
+        trailing: selected
+          ? Icon(Icons.check_circle_rounded, size: 18, color: colors.primary)
+          : null,
+        onTap: () {
+          Navigator.pop(context);
+          setState(() => selectedPage = index);
+        },
+      ),
+    );
+  }
+
+  Future<void> _confirmExit() async {
+    if (_exitDialogOpen || !mounted) return;
+    _exitDialogOpen = true;
+    final shouldExit = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) => AlertDialog(
+        icon: const Icon(Icons.exit_to_app_rounded, size: 30),
+        title: const Text('له اپلیکیشن څخه وتل؟',
+          textAlign: TextAlign.center),
+        content: const Text('ایا ډاډه یاست چې غواړئ له ادبي خزانه څخه ووځئ؟',
+          textAlign: TextAlign.center),
+        actionsAlignment: MainAxisAlignment.spaceEvenly,
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('نه، پاتې کېږم'),
+          ),
+          FilledButton.icon(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            icon: const Icon(Icons.exit_to_app_rounded, size: 18),
+            label: const Text('هو، ووځم'),
+          ),
+        ],
+      ),
+    );
+    _exitDialogOpen = false;
+    if (shouldExit == true && mounted) {
+      await SystemNavigator.pop();
+    }
   }
 
   Widget _homePage() {
