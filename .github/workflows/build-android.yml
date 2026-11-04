@@ -26,8 +26,6 @@ jobs:
           from pathlib import Path
           import re
 
-          # Flutter's generated Android project may use either Kotlin DSL (.kts)
-          # or Groovy (.gradle), depending on the Flutter version.
           settings = next((p for p in (Path("android/settings.gradle.kts"), Path("android/settings.gradle")) if p.exists()), None)
           app = next((p for p in (Path("android/app/build.gradle.kts"), Path("android/app/build.gradle")) if p.exists()), None)
           if settings is None or app is None:
@@ -37,30 +35,31 @@ jobs:
           app_text = app.read_text()
 
           if settings.suffix == ".kts":
-              plugin_line = '    id("com.google.gms.google-services") version "4.4.2" apply false'
+              settings_plugin = '    id("com.google.gms.google-services") version "4.4.2" apply false'
+              app_plugin = '    id("com.google.gms.google-services")'
           else:
-              plugin_line = '    id "com.google.gms.google-services" version "4.4.2" apply false'
+              settings_plugin = '    id "com.google.gms.google-services" version "4.4.2" apply false'
+              app_plugin = '    id "com.google.gms.google-services"'
+
           if "com.google.gms.google-services" not in settings_text:
-              settings_text = re.sub(r"plugins\\s*\\{", lambda m: m.group(0) + "\\n" + plugin_line, settings_text, count=1)
+              settings_text, count = re.subn(r"plugins\s*\{", lambda m: m.group(0) + "\n" + settings_plugin, settings_text, count=1)
+              if count != 1:
+                  raise SystemExit("Could not locate plugins block in Gradle settings.")
           settings.write_text(settings_text)
 
           if app.suffix == ".kts":
-              app_plugin = '    id("com.google.gms.google-services")'
-              app_text = re.sub(r'applicationId\\s*=\\s*"[^"]+"', 'applicationId = "com.obaidapp.soraerahman"', app_text, count=1)
-              if 'applicationId = "com.obaidapp.soraerahman"' not in app_text:
-                  raise SystemExit("Could not set Android applicationId in build.gradle.kts")
-              if "com.google.gms.google-services" not in app_text:
-                  app_text = re.sub(r"plugins\\s*\\{", lambda m: m.group(0) + "\\n" + app_plugin, app_text, count=1)
+              app_text, count = re.subn(r'applicationId\s*=\s*"[^"]+"', 'applicationId = "com.obaidapp.soraerahman"', app_text, count=1)
           else:
-              app_plugin = '    id "com.google.gms.google-services"'
-              app_text = re.sub(r'applicationId\\s+"[^"]+"', 'applicationId "com.obaidapp.soraerahman"', app_text, count=1)
-              if 'applicationId "com.obaidapp.soraerahman"' not in app_text:
-                  raise SystemExit("Could not set Android applicationId in build.gradle")
-              if "com.google.gms.google-services" not in app_text:
-                  app_text = re.sub(r"plugins\\s*\\{", lambda m: m.group(0) + "\\n" + app_plugin, app_text, count=1)
+              app_text, count = re.subn(r'applicationId\s+"[^"]+"', 'applicationId "com.obaidapp.soraerahman"', app_text, count=1)
+          if count != 1:
+              raise SystemExit("Could not set applicationId in app Gradle file.")
 
+          if "com.google.gms.google-services" not in app_text:
+              app_text, count = re.subn(r"plugins\s*\{", lambda m: m.group(0) + "\n" + app_plugin, app_text, count=1)
+              if count != 1:
+                  raise SystemExit("Could not locate app plugins block.")
           app.write_text(app_text)
-          print(f"Configured Firebase using {settings} and {app}")
+          print(f"Firebase configured with {settings} and {app}")
           PY
       - name: Apply app branding and icon
         shell: bash
