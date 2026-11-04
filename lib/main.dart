@@ -238,7 +238,7 @@ class _SplashScreenState extends State<SplashScreen>
             gradient: LinearGradient(
               begin: Alignment.topRight,
               end: Alignment.bottomLeft,
-              colors: [Color(0xFF30205F), Color(0xFF6750A4), Color(0xFF9878C8)],
+              colors: [Color(0xFF123B32), Color(0xFF245B50), Color(0xFFB77928)],
             ),
           ),
           child: FadeTransition(
@@ -518,6 +518,7 @@ class PoetryShell extends StatefulWidget {
 class _PoetryShellState extends State<PoetryShell> {
   int selectedPage = 0;
   final Set<String> favorites = {};
+  final Set<String> likedPoems = {};
   final List<Poem> poems = [];
   Map<String, String> _categoryNames = {};
   Map<String, String> _poetNames = {};
@@ -531,6 +532,7 @@ class _PoetryShellState extends State<PoetryShell> {
   @override
   void initState() {
     super.initState();
+    _loadEngagementState();
     _categorySub = FirebaseDatabase.instance.ref('categories').onValue.listen((e) {
       _categoryNames = _names(e.snapshot.value);
       _reloadPoems();
@@ -544,6 +546,58 @@ class _PoetryShellState extends State<PoetryShell> {
     }, onError: (Object e) {
       if (mounted) setState(() { _loadingPoems = false; _databaseError = e.toString(); });
     });
+  }
+
+  Future<void> _loadEngagementState() async {
+    final prefs = await SharedPreferences.getInstance();
+    if (!mounted) return;
+    setState(() {
+      favorites..clear()..addAll(prefs.getStringList('favorite_poem_ids') ?? const []);
+      likedPoems..clear()..addAll(prefs.getStringList('liked_poem_ids') ?? const []);
+    });
+  }
+
+  Future<void> _toggleFavorite(Poem poem) async {
+    final adding = !favorites.contains(poem.id);
+    setState(() {
+      if (adding) { favorites.add(poem.id); } else { favorites.remove(poem.id); }
+    });
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setStringList('favorite_poem_ids', favorites.toList());
+    if (adding) await _incrementPoemCounter(poem.id, 'saves');
+  }
+
+  Future<void> _likePoem(Poem poem) async {
+    if (likedPoems.contains(poem.id)) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('دا شعر مو مخکې خوښ کړی دی.')));
+      return;
+    }
+    setState(() => likedPoems.add(poem.id));
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setStringList('liked_poem_ids', likedPoems.toList());
+    await _incrementPoemCounter(poem.id, 'likes');
+  }
+
+  Future<void> _incrementPoemCounter(String poemId, String field) async {
+    try {
+      await FirebaseDatabase.instance.ref('poems/$poemId/$field').runTransaction((value) {
+        final current = value is num ? value.toInt() : 0;
+        return Transaction.success(current + 1);
+      });
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('شمېر تازه نه شو: $e')));
+    }
+  }
+
+  Future<void> _sharePoem(Poem poem) async {
+    final author = poem.poet.isEmpty ? '' : poem.poet + '\\n';
+    final content = poem.title + '\\n' + author + '\\n' + poem.text + '\\n\\n— ادبي خزانه';
+    await Clipboard.setData(ClipboardData(text: content));
+    await _incrementPoemCounter(poem.id, 'shares');
+    if (mounted) ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('د شعر متن کاپي شو؛ اوس یې شریکولی شئ.')));
   }
 
   Map<String, String> _names(Object? raw) {
@@ -793,7 +847,7 @@ class _PoetryShellState extends State<PoetryShell> {
                   gradient: const LinearGradient(
                     begin: Alignment.topRight,
                     end: Alignment.bottomLeft,
-                    colors: [Color(0xFF392B91), Color(0xFF7652CE), Color(0xFFE17AA7)],
+                    colors: [Color(0xFF153F37), Color(0xFF245B50), Color(0xFFB77928)],
                   ),
                   borderRadius: BorderRadius.circular(27),
                   boxShadow: [
@@ -2022,10 +2076,7 @@ class _PoetryShellState extends State<PoetryShell> {
   }
 
   void _openPoem(Poem poem) {
-    FirebaseDatabase.instance.ref('poems/${poem.id}/views').runTransaction((value) {
-      final current = value is num ? value.toInt() : 0;
-      return Transaction.success(current + 1);
-    });
+    _incrementPoemCounter(poem.id, 'views');
     Navigator.push(context, MaterialPageRoute(builder: (_) => Directionality(
       textDirection: TextDirection.rtl,
       child: Scaffold(
@@ -2054,9 +2105,26 @@ class _PoetryShellState extends State<PoetryShell> {
           const SizedBox(height: 18),
           Wrap(alignment: WrapAlignment.spaceEvenly, spacing: 10, runSpacing: 10, children: [
             _statPill(Icons.visibility_outlined, poem.views + 1),
-            _statPill(Icons.favorite_border_rounded, poem.likes),
+            _statPill(Icons.favorite_border_rounded, poem.likes + (likedPoems.contains(poem.id) ? 1 : 0)),
             _statPill(Icons.share_outlined, poem.shares),
             _statPill(Icons.bookmark_border_rounded, poem.saves),
+          ]),
+          const SizedBox(height: 18),
+          Row(children: [
+            Expanded(child: FilledButton.tonalIcon(
+              onPressed: () => _likePoem(poem),
+              icon: Icon(likedPoems.contains(poem.id) ? Icons.favorite_rounded : Icons.favorite_border_rounded),
+              label: Text(likedPoems.contains(poem.id) ? 'خوښ شوی' : 'خوښول'))),
+            const SizedBox(width: 9),
+            Expanded(child: FilledButton.tonalIcon(
+              onPressed: () => _toggleFavorite(poem),
+              icon: Icon(favorites.contains(poem.id) ? Icons.bookmark_added_rounded : Icons.bookmark_add_outlined),
+              label: Text(favorites.contains(poem.id) ? 'خوندي شوی' : 'خوندي کول'))),
+            const SizedBox(width: 9),
+            IconButton.filledTonal(
+              tooltip: 'شریکول',
+              onPressed: () => _sharePoem(poem),
+              icon: const Icon(Icons.share_rounded)),
           ]),
         ]),
       ),
