@@ -1910,7 +1910,19 @@ class _PoetryShellState extends State<PoetryShell> {
               const SizedBox(height: 12), Container(height: 1, color: Colors.white30),
               const SizedBox(height: 10), Text(poem.category, style: const TextStyle(color: Color(0xFFFFD98A), fontSize: 12)),
             ])),
-          const SizedBox(height: 17),
+          if (poem.imageUrl != null && poem.imageUrl!.isNotEmpty) ...[
+            ClipRRect(
+              borderRadius: BorderRadius.circular(22),
+              child: Image.network(
+                poem.imageUrl!,
+                width: double.infinity,
+                height: 220,
+                fit: BoxFit.cover,
+                errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+              ),
+            ),
+            const SizedBox(height: 16),
+          ],
           Container(padding: const EdgeInsets.fromLTRB(20, 24, 20, 24),
             decoration: BoxDecoration(color: Theme.of(context).colorScheme.surface, borderRadius: BorderRadius.circular(25),
               border: Border.all(color: Theme.of(context).colorScheme.outlineVariant.withValues(alpha: .5))),
@@ -1965,6 +1977,19 @@ class _PoetryShellState extends State<PoetryShell> {
             border: Border(right: BorderSide(color: colors.secondary, width: 4))),
           child: Padding(padding: const EdgeInsets.fromLTRB(17, 16, 17, 16),
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              if (poem.imageUrl != null && poem.imageUrl!.isNotEmpty) ...[
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(18),
+                  child: Image.network(
+                    poem.imageUrl!,
+                    width: double.infinity,
+                    height: 168,
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+                  ),
+                ),
+                const SizedBox(height: 12),
+              ],
               Row(children: [
                 Container(padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                   decoration: BoxDecoration(color: colors.primary.withValues(alpha: .09), borderRadius: BorderRadius.circular(11)),
