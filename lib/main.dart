@@ -1169,7 +1169,7 @@ class _PoetryShellState extends State<PoetryShell> {
             padding: const WidgetStatePropertyAll(EdgeInsets.symmetric(horizontal: 18))))),
         SliverPadding(padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
           sliver: SliverToBoxAdapter(child: _sectionHeader(
-            Icons.auto_stories_rounded, 'نوي خپاره شوي لیکنې', '\${visible.length} لیکنې'))),
+            Icons.auto_stories_rounded, 'د شعرونو ټولګه', '\${visible.length} لیکنې'))),
         if (visible.isEmpty)
           const SliverToBoxAdapter(child: Padding(padding: EdgeInsets.all(25),
             child: Center(child: Text('په دې لټون کې څه پیدا نه شول.'))))
@@ -1185,7 +1185,7 @@ class _PoetryShellState extends State<PoetryShell> {
         if (poetGroups.isNotEmpty) ...[
           SliverPadding(padding: const EdgeInsets.fromLTRB(16, 13, 16, 12),
             sliver: SliverToBoxAdapter(child: _sectionHeader(
-              Icons.people_alt_rounded, 'د شاعرانو خپرونې', '\${poetGroups.length} شاعران'))),
+              Icons.people_alt_rounded, 'شاعران', '\${poetGroups.length} شاعران'))),
           SliverToBoxAdapter(child: SizedBox(height: 190,
             child: ListView.separated(
               padding: const EdgeInsets.fromLTRB(16, 2, 16, 15),
