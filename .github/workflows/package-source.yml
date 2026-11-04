@@ -1,0 +1,19 @@
+name: Package both Flutter apps
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+jobs:
+  source-zip:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Create source ZIP
+        run: |
+          zip -r adabi-khazana-both-apps.zip . \
+            -x ".git/*" "build/*" "admin_app/build/*" ".dart_tool/*" "admin_app/.dart_tool/*"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: adabi-khazana-and-admin-source
+          path: adabi-khazana-both-apps.zip
+          retention-days: 30
