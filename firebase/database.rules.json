@@ -1,0 +1,26 @@
+{
+  "rules": {
+    ".read": true,
+    ".write": false,
+    "poems": {
+      ".indexOn": ["createdAt", "categoryId", "featured", "isPublished"],
+      "$poemId": {
+        ".write": "auth != null && root.child('admins').child(auth.uid).child('role').val() == 'admin'"
+      }
+    },
+    "categories": {
+      "$categoryId": {
+        ".write": "auth != null && root.child('admins').child(auth.uid).child('role').val() == 'admin'"
+      }
+    },
+    "poets": {
+      "$poetId": {
+        ".write": "auth != null && root.child('admins').child(auth.uid).child('role').val() == 'admin'"
+      }
+    },
+    "admins": {
+      ".read": "auth != null && root.child('admins').child(auth.uid).child('role').val() == 'admin'",
+      ".write": false
+    }
+  }
+}
