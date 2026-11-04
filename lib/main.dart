@@ -1891,6 +1891,9 @@ class _PoetryShellState extends State<PoetryShell> {
 
   void _openPoem(Poem poem) {
     _incrementPoemCounter(poem.id, 'views');
+    var displayedLikes = poem.likes;
+    var displayedSaves = poem.saves;
+    var displayedShares = poem.shares;
     Navigator.push(context, MaterialPageRoute(builder: (_) => Directionality(
       textDirection: TextDirection.rtl,
       child: Scaffold(
@@ -1933,25 +1936,39 @@ class _PoetryShellState extends State<PoetryShell> {
           const SizedBox(height: 18),
           Wrap(alignment: WrapAlignment.spaceEvenly, spacing: 10, runSpacing: 10, children: [
             _statPill(Icons.visibility_outlined, poem.views + 1),
-            _statPill(Icons.favorite_border_rounded, poem.likes),
-            _statPill(Icons.share_outlined, poem.shares),
-            _statPill(Icons.bookmark_border_rounded, poem.saves),
+            _statPill(Icons.favorite_border_rounded, displayedLikes),
+            _statPill(Icons.share_outlined, displayedShares),
+            _statPill(Icons.bookmark_border_rounded, displayedSaves),
           ]),
           const SizedBox(height: 18),
           Row(children: [
             Expanded(child: FilledButton.tonalIcon(
-              onPressed: () async { await _likePoem(poem); refreshDetail(() {}); },
+              onPressed: () async {
+                final wasLiked = likedPoems.contains(poem.id);
+                await _likePoem(poem);
+                if (!wasLiked && likedPoems.contains(poem.id)) displayedLikes++;
+                refreshDetail(() {});
+              },
               icon: Icon(likedPoems.contains(poem.id) ? Icons.favorite_rounded : Icons.favorite_border_rounded),
               label: Text(likedPoems.contains(poem.id) ? 'خوښ شوی' : 'خوښول'))),
             const SizedBox(width: 9),
             Expanded(child: FilledButton.tonalIcon(
-              onPressed: () async { await _toggleFavorite(poem); refreshDetail(() {}); },
+              onPressed: () async {
+                final wasSaved = favorites.contains(poem.id);
+                await _toggleFavorite(poem);
+                if (!wasSaved && favorites.contains(poem.id)) displayedSaves++;
+                refreshDetail(() {});
+              },
               icon: Icon(favorites.contains(poem.id) ? Icons.bookmark_added_rounded : Icons.bookmark_add_outlined),
               label: Text(favorites.contains(poem.id) ? 'خوندي شوی' : 'خوندي کول'))),
             const SizedBox(width: 9),
             IconButton.filledTonal(
               tooltip: 'شریکول',
-              onPressed: () => _sharePoem(poem),
+              onPressed: () async {
+                await _sharePoem(poem);
+                displayedShares++;
+                refreshDetail(() {});
+              },
               icon: const Icon(Icons.share_rounded)),
           ]),
             ],
