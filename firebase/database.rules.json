@@ -75,6 +75,12 @@
           ".validate": "newData.hasChildren(['uid','displayName','reason','status','createdAt'])"
         }
       }
+    },
+    "gallery": {
+      ".read": true,
+      "$imageId": {
+        ".write": "auth != null && root.child('admins').child(auth.uid).child('role').val() == 'admin'"
+      }
     }
   }
 }
