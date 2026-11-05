@@ -2978,8 +2978,18 @@ class _PoetrySearchPageState extends State<PoetrySearchPage> {
           padding: const EdgeInsets.symmetric(horizontal: 16), scrollDirection: Axis.horizontal,
           children: ['ټول', 'عنوان', 'شاعر', 'متن'].map((v) => Padding(
             padding: const EdgeInsets.only(left: 8),
-            child: ChoiceChip(label: Text(v), selected: _field == v,
-              onSelected: (_) => setState(() => _field = v)),
+            child: ChoiceChip(
+              label: Text(v, style: TextStyle(
+                color: _field == v ? c.onPrimary : c.onSurface,
+                fontWeight: FontWeight.w800,
+              )),
+              selected: _field == v,
+              selectedColor: c.primary,
+              backgroundColor: c.surface,
+              side: BorderSide(color: c.outlineVariant.withValues(alpha: .7)),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+              onSelected: (_) => setState(() => _field = v),
+            ),
           )).toList(),
         )),
         Padding(padding: const EdgeInsets.fromLTRB(16, 10, 16, 4),
@@ -2994,15 +3004,45 @@ class _PoetrySearchPageState extends State<PoetrySearchPage> {
           child: Row(children: [
             Expanded(child: DropdownButtonFormField<String>(
               value: _category, isExpanded: true,
-              decoration: const InputDecoration(labelText: 'کټګوري', isDense: true),
-              items: _categories.map((v) => DropdownMenuItem(value: v, child: Text(v, overflow: TextOverflow.ellipsis))).toList(),
+              style: TextStyle(color: c.onSurface, fontSize: 12, fontWeight: FontWeight.w700),
+              dropdownColor: c.surface,
+              decoration: InputDecoration(
+                labelText: 'کټګوري', isDense: true, filled: true, fillColor: c.surface,
+                labelStyle: TextStyle(color: c.onSurfaceVariant, fontSize: 12),
+                floatingLabelStyle: TextStyle(color: c.primary, fontWeight: FontWeight.w800),
+                contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 13),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(16),
+                  borderSide: BorderSide(color: c.outlineVariant)),
+                enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16),
+                  borderSide: BorderSide(color: c.outlineVariant.withValues(alpha: .8))),
+                focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16),
+                  borderSide: BorderSide(color: c.primary, width: 1.5)),
+              ),
+              items: _categories.map((v) => DropdownMenuItem(value: v,
+                child: Text(v, overflow: TextOverflow.ellipsis,
+                  style: TextStyle(color: c.onSurface)))).toList(),
               onChanged: (v) => setState(() => _category = v ?? 'ټولې کټګورۍ'),
             )),
             const SizedBox(width: 10),
             Expanded(child: DropdownButtonFormField<String>(
               value: _poet, isExpanded: true,
-              decoration: const InputDecoration(labelText: 'شاعر', isDense: true),
-              items: _poets.map((v) => DropdownMenuItem(value: v, child: Text(v, overflow: TextOverflow.ellipsis))).toList(),
+              style: TextStyle(color: c.onSurface, fontSize: 12, fontWeight: FontWeight.w700),
+              dropdownColor: c.surface,
+              decoration: InputDecoration(
+                labelText: 'شاعر', isDense: true, filled: true, fillColor: c.surface,
+                labelStyle: TextStyle(color: c.onSurfaceVariant, fontSize: 12),
+                floatingLabelStyle: TextStyle(color: c.primary, fontWeight: FontWeight.w800),
+                contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 13),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(16),
+                  borderSide: BorderSide(color: c.outlineVariant)),
+                enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16),
+                  borderSide: BorderSide(color: c.outlineVariant.withValues(alpha: .8))),
+                focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16),
+                  borderSide: BorderSide(color: c.primary, width: 1.5)),
+              ),
+              items: _poets.map((v) => DropdownMenuItem(value: v,
+                child: Text(v, overflow: TextOverflow.ellipsis,
+                  style: TextStyle(color: c.onSurface)))).toList(),
               onChanged: (v) => setState(() => _poet = v ?? 'ټول شاعران'),
             )),
           ])),
@@ -3010,13 +3050,37 @@ class _PoetrySearchPageState extends State<PoetrySearchPage> {
           child: Row(children: [
             Expanded(child: DropdownButtonFormField<String>(
               value: _sort, isExpanded: true,
-              decoration: const InputDecoration(labelText: 'ترتیب', isDense: true),
-              items: ['اړوند', 'ډېر لوستل شوي', 'عنوان'].map((v) => DropdownMenuItem(value: v, child: Text(v))).toList(),
+              style: TextStyle(color: c.onSurface, fontSize: 12, fontWeight: FontWeight.w700),
+              dropdownColor: c.surface,
+              decoration: InputDecoration(
+                labelText: 'ترتیب', isDense: true, filled: true, fillColor: c.surface,
+                labelStyle: TextStyle(color: c.onSurfaceVariant, fontSize: 12),
+                floatingLabelStyle: TextStyle(color: c.primary, fontWeight: FontWeight.w800),
+                contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 13),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(16),
+                  borderSide: BorderSide(color: c.outlineVariant)),
+                enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16),
+                  borderSide: BorderSide(color: c.outlineVariant.withValues(alpha: .8))),
+                focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16),
+                  borderSide: BorderSide(color: c.primary, width: 1.5)),
+              ),
+              items: ['اړوند', 'ډېر لوستل شوي', 'عنوان'].map((v) => DropdownMenuItem(value: v,
+                child: Text(v, style: TextStyle(color: c.onSurface)))).toList(),
               onChanged: (v) => setState(() => _sort = v ?? 'اړوند'),
             )),
             const SizedBox(width: 12),
-            FilterChip(label: const Text('انځور لرونکي'), selected: _onlyWithImage,
-              onSelected: (v) => setState(() => _onlyWithImage = v)),
+            FilterChip(
+              label: Text('انځور لرونکي', style: TextStyle(
+                color: _onlyWithImage ? c.onPrimaryContainer : c.onSurface,
+                fontWeight: FontWeight.w700,
+              )),
+              selected: _onlyWithImage,
+              selectedColor: c.primaryContainer,
+              backgroundColor: c.surface,
+              side: BorderSide(color: c.outlineVariant.withValues(alpha: .8)),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+              onSelected: (v) => setState(() => _onlyWithImage = v),
+            ),
           ])),
         const Divider(height: 1),
         Expanded(child: results.isEmpty
@@ -3209,7 +3273,10 @@ class _CollectionPoemsPageState extends State<CollectionPoemsPage> {
   Widget build(BuildContext context) {
     final c = Theme.of(context).colorScheme;
     return Directionality(textDirection: TextDirection.rtl, child: Scaffold(
-      body: CustomScrollView(
+      body: SafeArea(
+        top: true,
+        bottom: false,
+        child: CustomScrollView(
         physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
         slivers: [
           SliverPersistentHeader(
@@ -3237,6 +3304,7 @@ class _CollectionPoemsPageState extends State<CollectionPoemsPage> {
                   child: _collectionPoemTile(context, widget.poems[index])),
                 childCount: widget.poems.length))),
         ],
+      ),
       ),
     ));
   }
