@@ -455,13 +455,15 @@ class Poem {
     required this.id, required this.title, required this.poet,
     required this.category, required this.text, required this.lines,
     this.views = 0, this.likes = 0, this.shares = 0, this.saves = 0,
-    this.imageUrl, this.poetImageUrl, this.categoryImageUrl, this.featured = false,
+    this.imageUrl, this.poetImageUrl, this.categoryImageUrl,
+    this.poetId = '', this.categoryId = '', this.featured = false,
   });
   final String id, title, poet, category, text;
   final List<String> lines;
   final int views, likes, shares, saves;
   final String? imageUrl;
   final String? poetImageUrl, categoryImageUrl;
+  final String poetId, categoryId;
   final bool featured;
 }
 
@@ -708,6 +710,8 @@ class _PoetryShellState extends State<PoetryShell> {
           title: (data['title'] ?? '').toString().trim().isEmpty
               ? body.split(RegExp(r'\s+')).where((w) => w.isNotEmpty).take(6).join(' ')
               : data['title'].toString().trim(),
+          poetId: (data['poetId'] ?? '').toString(),
+          categoryId: categoryId,
           poet: _poetNames[(data['poetId'] ?? '').toString()] ?? '',
           category: _categoryNames[categoryId] ?? '',
           poetImageUrl: _poetImages[(data['poetId'] ?? '').toString()],
@@ -744,9 +748,7 @@ class _PoetryShellState extends State<PoetryShell> {
 
   List<Poem> get filteredPoems => poems.where((poem) {
     final text = '${poem.title} ${poem.poet} ${poem.category} ${poem.lines.join(' ')}';
-    final matchesQuery = text.contains(query);
-    final matchesCategory = selectedCategory == 'ټول' || poem.category == selectedCategory;
-    return matchesQuery && matchesCategory;
+    return text.toLowerCase().contains(query.toLowerCase());
   }).toList();
 
   List<Poem> get favoritePoems =>
@@ -1279,7 +1281,9 @@ class _PoetryShellState extends State<PoetryShell> {
     final featuredPoems = poems.where((p) => p.featured).toList();
     final poetGroups = <String, List<Poem>>{};
     for (final poem in poems) {
-      if (poem.poet.trim().isNotEmpty) poetGroups.putIfAbsent(poem.poet, () => <Poem>[]).add(poem);
+      if (poem.poetId.isNotEmpty && poem.poet.trim().isNotEmpty) {
+        poetGroups.putIfAbsent(poem.poetId, () => <Poem>[]).add(poem);
+      }
     }
     return CustomScrollView(
       key: const PageStorageKey('home'),
@@ -1359,34 +1363,33 @@ class _PoetryShellState extends State<PoetryShell> {
             itemBuilder: (context, index) {
               final entry = _categoryNames.entries.elementAt(index);
               final count = poems.where((p) => p.category == entry.value).length;
-              final selected = selectedCategory == entry.value;
               return SizedBox(width: 104, child: Material(
-                color: selected ? colors.primary : colors.surface,
+                color: colors.surface,
                 borderRadius: BorderRadius.circular(20),
                 child: InkWell(borderRadius: BorderRadius.circular(20),
-                  onTap: () => _openCollectionPage(entry.value, _categoryImages[entry.key] ?? '', poems.where((p) => p.category == entry.value).toList(), isCategory: true),
+                  onTap: () => _openCollectionPage(entry.value, _categoryImages[entry.key] ?? '', poems.where((p) => p.categoryId == entry.key).toList(), isCategory: true),
                   child: Container(padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 8),
                     decoration: BoxDecoration(borderRadius: BorderRadius.circular(20),
-                      border: Border.all(color: selected ? colors.primary : colors.outlineVariant.withValues(alpha: .55)),
-                      gradient: selected ? null : LinearGradient(begin: Alignment.topRight, end: Alignment.bottomLeft,
+                      border: Border.all(color: colors.outlineVariant.withValues(alpha: .55)),
+                      gradient: LinearGradient(begin: Alignment.topRight, end: Alignment.bottomLeft,
                         colors: [colors.surface, colors.primaryContainer.withValues(alpha: .62)])),
                     child: Column(crossAxisAlignment: CrossAxisAlignment.start,
                       mainAxisAlignment: MainAxisAlignment.center, children: [
                         Container(width: 46, height: 46,
-                          decoration: BoxDecoration(color: selected ? Colors.white.withValues(alpha: .17) : colors.primary.withValues(alpha: .10),
+                          decoration: BoxDecoration(color: colors.primary.withValues(alpha: .10),
                             borderRadius: BorderRadius.circular(13)),
                           clipBehavior: Clip.antiAlias,
                           child: (_categoryImages[entry.key] ?? '').isNotEmpty
                             ? Image.network(_categoryImages[entry.key]!, fit: BoxFit.cover,
-                                errorBuilder: (_, __, ___) => Icon(Icons.auto_awesome_rounded, color: selected ? Colors.white : colors.primary, size: 20))
-                            : Icon(Icons.auto_awesome_rounded, color: selected ? Colors.white : colors.primary, size: 20)),
+                                errorBuilder: (_, __, ___) => Icon(Icons.auto_awesome_rounded, color: colors.primary, size: 20))
+                            : Icon(Icons.auto_awesome_rounded, color: colors.primary, size: 20)),
                         const Spacer(),
                         Text(entry.value, maxLines: 1, overflow: TextOverflow.ellipsis,
                           style: TextStyle(fontSize: 11, fontWeight: FontWeight.w900,
-                            color: selected ? Colors.white : colors.onSurface)),
+                            color: colors.onSurface)),
                         const SizedBox(height: 3),
                         Text('$count شعرونه', style: TextStyle(fontSize: 9,
-                          color: selected ? Colors.white70 : colors.onSurfaceVariant)),
+                          color: colors.onSurfaceVariant)),
                       ]),
                   ),
                 ),
@@ -1403,7 +1406,7 @@ class _PoetryShellState extends State<PoetryShell> {
             separatorBuilder: (_, __) => const SizedBox(width: 10),
             itemBuilder: (context, index) {
               final entry = poetGroups.entries.elementAt(index);
-              return _horizontalPoetCard(entry.key, entry.value);
+              return _horizontalPoetCard(entry.key, _poetNames[entry.key] ?? '', entry.value);
             }))),
         ],
       ],
@@ -1479,11 +1482,10 @@ class _PoetryShellState extends State<PoetryShell> {
         color: Colors.white.withValues(alpha: .20))));
   }
 
-  Widget _horizontalPoetCard(String name, List<Poem> poetPoems) {
+  Widget _horizontalPoetCard(String poetId, String name, List<Poem> poetPoems) {
     final colors = Theme.of(context).colorScheme;
     final initial = name.trim().isEmpty ? 'ش' : name.trim().characters.first;
-    final matchingPoetImages = _poetImages.entries.where((e) => _poetNames[e.key] == name);
-    final poetImageUrl = matchingPoetImages.isEmpty ? '' : matchingPoetImages.first.value;
+    final poetImageUrl = _poetImages[poetId] ?? '';
     return SizedBox(width: 112, child: Card(
       elevation: 1, clipBehavior: Clip.antiAlias,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
