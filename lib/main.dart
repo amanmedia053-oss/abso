@@ -501,7 +501,8 @@ class _PoetryShellState extends State<PoetryShell> {
   Map<String, String> _poetNames = {};
   Map<String, String> _categoryImages = {};
   Map<String, String> _poetImages = {};
-  StreamSubscription<DatabaseEvent>? _poemSub, _categorySub, _poetSub;
+  StreamSubscription<DatabaseEvent>? _poemSub, _categorySub, _poetSub, _connectionSub;
+  bool? _isDatabaseConnected;
   String query = '';
   bool _exitDialogOpen = false;
   bool _loadingPoems = true;
@@ -522,6 +523,19 @@ class _PoetryShellState extends State<PoetryShell> {
     });
     _loadEngagementState();
     _loadProfileName();
+    _connectionSub = FirebaseDatabase.instance.ref('.info/connected').onValue.listen((event) {
+      final connected = event.snapshot.value == true;
+      if (!mounted || _isDatabaseConnected == connected) return;
+      setState(() => _isDatabaseConnected = connected);
+      if (connected) {
+        _reloadPoems();
+      } else if (poems.isEmpty) {
+        setState(() {
+          _loadingPoems = false;
+          _databaseError = 'انټرنېټ نشته؛ ډیټا نه لوډ کېږي.';
+        });
+      }
+    });
     _initializeCachedDataAndListeners();
   }
 
@@ -795,6 +809,7 @@ class _PoetryShellState extends State<PoetryShell> {
     _poemSub?.cancel();
     _categorySub?.cancel();
     _poetSub?.cancel();
+    _connectionSub?.cancel();
     _featuredTimer?.cancel();
     _featuredController.dispose();
     super.dispose();
@@ -837,15 +852,52 @@ class _PoetryShellState extends State<PoetryShell> {
             const SizedBox(width: 4),
           ],
         ),
-        body: IndexedStack(
-          index: selectedPage,
+        body: Column(
           children: [
-            _homePage(), _favoritesPage(), _aboutPage(), _settingsPage(),
+            if (selectedPage == 0 && _isDatabaseConnected == false)
+              _offlineNotice(),
+            Expanded(child: IndexedStack(
+              index: selectedPage,
+              children: [
+                _homePage(), _favoritesPage(), _aboutPage(), _settingsPage(),
+              ],
+            )),
           ],
         ),
         bottomNavigationBar: _luxuryBottomNavigation(),
         ),
       ),
+    );
+  }
+
+  Widget _offlineNotice() {
+    final colors = Theme.of(context).colorScheme;
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.fromLTRB(14, 7, 14, 2),
+      padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 10),
+      decoration: BoxDecoration(
+        color: colors.errorContainer.withValues(alpha: .82),
+        borderRadius: BorderRadius.circular(15),
+        border: Border.all(color: colors.error.withValues(alpha: .22)),
+      ),
+      child: Row(children: [
+        Icon(Icons.wifi_off_rounded, color: colors.onErrorContainer, size: 19),
+        const SizedBox(width: 9),
+        Expanded(child: Text(
+          poems.isEmpty
+              ? 'انټرنېټ نشته؛ لیکنې نه لوډ کېږي. اړیکه وګورئ.'
+              : 'انټرنېټ نشته؛ خوندي شوې لیکنې درته ښودل کېږي.',
+          style: TextStyle(color: colors.onErrorContainer,
+            fontSize: 11, fontWeight: FontWeight.w700),
+        )),
+        TextButton(
+          onPressed: _listenAgain,
+          child: Text('بیا هڅه', style: TextStyle(
+            color: colors.onErrorContainer, fontSize: 11,
+            fontWeight: FontWeight.w900)),
+        ),
+      ]),
     );
   }
 
