@@ -1461,6 +1461,8 @@ class _PoetryShellState extends State<PoetryShell> {
   Widget _horizontalPoetCard(String name, List<Poem> poetPoems) {
     final colors = Theme.of(context).colorScheme;
     final initial = name.trim().isEmpty ? 'ش' : name.trim().characters.first;
+    final matchingPoetImages = _poetImages.entries.where((e) => _poetNames[e.key] == name);
+    final poetImageUrl = matchingPoetImages.isEmpty ? '' : matchingPoetImages.first.value;
     return SizedBox(width: 148, child: Card(
       elevation: 1.5, clipBehavior: Clip.antiAlias,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(19)),
@@ -1473,8 +1475,8 @@ class _PoetryShellState extends State<PoetryShell> {
                   colors: [colors.primary.withValues(alpha: .16), colors.secondary.withValues(alpha: .28)]),
                 border: Border.all(color: colors.primary.withValues(alpha: .12), width: 2)),
               clipBehavior: Clip.antiAlias,
-              child: (_poetImages.entries.where((e) => e.value.isNotEmpty && _poetNames[e.key] == name).map((e) => e.value).firstOrNull ?? '').isNotEmpty
-                ? Image.network(_poetImages.entries.where((e) => _poetNames[e.key] == name).map((e) => e.value).first, fit: BoxFit.cover,
+              child: poetImageUrl.isNotEmpty
+                ? Image.network(poetImageUrl, fit: BoxFit.cover,
                     errorBuilder: (_, __, ___) => Center(child: Text(initial, style: TextStyle(fontSize: 29, fontWeight: FontWeight.w900, color: colors.primary))))
                 : Center(child: Text(initial, style: TextStyle(fontSize: 29, fontWeight: FontWeight.w900, color: colors.primary))),
             const SizedBox(height: 10),
