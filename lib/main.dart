@@ -1369,6 +1369,38 @@ class _PoetryShellState extends State<PoetryShell> {
     return _ShimmerBox(height: height, width: width, radius: radius);
   }
 
+  Widget _refreshable(Widget child) {
+    final colors = Theme.of(context).colorScheme;
+    return RefreshIndicator(
+      onRefresh: _refreshHome,
+      color: colors.primary,
+      backgroundColor: colors.surface,
+      strokeWidth: 3,
+      displacement: 58,
+      edgeOffset: 8,
+      triggerMode: RefreshIndicatorTriggerMode.onEdge,
+      elevation: 5,
+      child: child,
+    );
+  }
+
+  Future<void> _refreshHome() async {
+    try {
+      final snapshot = await FirebaseDatabase.instance.ref('poems').get()
+          .timeout(const Duration(seconds: 20));
+      if (!mounted) return;
+      _saveCachedValue('cache_poems', snapshot.value);
+      _applyPoems(snapshot.value);
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('شعرونه تازه شول.'), duration: Duration(seconds: 2)),
+      );
+    } catch (_) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('تازه کول ناکام شول؛ انټرنېټ وګورئ.'), duration: Duration(seconds: 2)),
+      );
+    }
+  }
+
   Widget _homeSkeleton() {
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 28),
@@ -1391,9 +1423,9 @@ class _PoetryShellState extends State<PoetryShell> {
 
   Widget _homePage() {
     final colors = Theme.of(context).colorScheme;
-    if (poems.isEmpty && _loadingPoems) return _homeSkeleton();
+    if (poems.isEmpty && _loadingPoems) return _refreshable(_homeSkeleton());
     if (poems.isEmpty && (_databaseError != null || !_loadingPoems || poems.isEmpty)) {
-      return ListView(
+      return _refreshable(ListView(
         physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.only(top: 24),
         children: [
@@ -1406,7 +1438,7 @@ class _PoetryShellState extends State<PoetryShell> {
             _emptyPoemsState(icon: Icons.menu_book_outlined, title: 'د شعرونو لېست تش دی',
               subtitle: 'تر اوسه کوم شعر نه دی خپور شوی. کله چې اډمین شعر خپور کړي، دلته به ښکاره شي.'),
         ],
-      );
+      ));
     }
     final visible = filteredPoems;
     final featuredPoems = poems.where((p) => p.featured).toList();
@@ -1416,9 +1448,9 @@ class _PoetryShellState extends State<PoetryShell> {
         poetGroups.putIfAbsent(poem.poetId, () => <Poem>[]).add(poem);
       }
     }
-    return CustomScrollView(
+    return _refreshable(CustomScrollView(
       key: const PageStorageKey('home'),
-      physics: const BouncingScrollPhysics(),
+      physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
       slivers: [
         if (featuredPoems.isNotEmpty)
           SliverToBoxAdapter(child: Column(children: [
@@ -1542,7 +1574,7 @@ class _PoetryShellState extends State<PoetryShell> {
             }))),
         ],
       ],
-    );
+    ));
   }
   void _openCollectionPage(String title, String imageUrl, List<Poem> items, {bool isCategory = false}) {
     Navigator.push(context, MaterialPageRoute(builder: (_) => CollectionPoemsPage(
