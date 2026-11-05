@@ -522,21 +522,66 @@ class _PoetryShellState extends State<PoetryShell> {
     });
     _loadEngagementState();
     _loadProfileName();
+    _initializeCachedDataAndListeners();
+  }
+
+  Future<void> _initializeCachedDataAndListeners() async {
+    // Show the last successful dataset immediately, even without internet.
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final categoriesRaw = prefs.getString('cache_categories');
+      final poetsRaw = prefs.getString('cache_poets');
+      final poemsRaw = prefs.getString('cache_poems');
+      if (categoriesRaw != null) {
+        final value = jsonDecode(categoriesRaw);
+        _categoryNames = _names(value);
+        _categoryImages = _imageUrls(value);
+      }
+      if (poetsRaw != null) {
+        final value = jsonDecode(poetsRaw);
+        _poetNames = _names(value);
+        _poetImages = _imageUrls(value);
+      }
+      if (poemsRaw != null) {
+        _applyPoems(jsonDecode(poemsRaw));
+      }
+    } catch (_) {
+      // A damaged/old cache is ignored; fresh data will replace it.
+    }
+    if (!mounted) return;
     _categorySub = FirebaseDatabase.instance.ref('categories').onValue.listen((e) {
       _categoryNames = _names(e.snapshot.value);
       _categoryImages = _imageUrls(e.snapshot.value);
+      _saveCachedValue('cache_categories', e.snapshot.value);
       _reloadPoems();
-    }, onError: (Object e) { if (mounted) setState(() => _databaseError = e.toString()); });
+    }, onError: (Object e) {
+      if (mounted && poems.isEmpty) setState(() { _loadingPoems = false; _databaseError = e.toString(); });
+    });
     _poetSub = FirebaseDatabase.instance.ref('poets').onValue.listen((e) {
       _poetNames = _names(e.snapshot.value);
       _poetImages = _imageUrls(e.snapshot.value);
+      _saveCachedValue('cache_poets', e.snapshot.value);
       _reloadPoems();
-    }, onError: (Object e) { if (mounted) setState(() => _databaseError = e.toString()); });
+    }, onError: (Object e) {
+      if (mounted && poems.isEmpty) setState(() { _loadingPoems = false; _databaseError = e.toString(); });
+    });
     _poemSub = FirebaseDatabase.instance.ref('poems').onValue.listen((e) {
+      _saveCachedValue('cache_poems', e.snapshot.value);
       _applyPoems(e.snapshot.value);
     }, onError: (Object e) {
-      if (mounted) setState(() { _loadingPoems = false; _databaseError = e.toString(); });
+      if (mounted && poems.isEmpty) setState(() { _loadingPoems = false; _databaseError = e.toString(); });
     });
+  }
+
+  Future<void> _saveCachedValue(String key, Object? value) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      if (value == null) {
+        await prefs.remove(key);
+      } else {
+        await prefs.setString(key, jsonEncode(value));
+      }
+    } catch (_) {}
   }
 
   Future<void> _loadProfileName() async {
@@ -689,9 +734,12 @@ class _PoetryShellState extends State<PoetryShell> {
 
   void _reloadPoems() {
     FirebaseDatabase.instance.ref('poems').get().then((snapshot) {
-      if (mounted) _applyPoems(snapshot.value);
+      if (mounted) {
+        _saveCachedValue('cache_poems', snapshot.value);
+        _applyPoems(snapshot.value);
+      }
     }).catchError((Object e) {
-      if (mounted) setState(() { _loadingPoems = false; _databaseError = e.toString(); });
+      if (mounted && poems.isEmpty) setState(() { _loadingPoems = false; _databaseError = e.toString(); });
     });
   }
 
@@ -1255,9 +1303,54 @@ class _PoetryShellState extends State<PoetryShell> {
     }
   }
 
+  Widget _skeletonBlock({double height = 105, double? width, double radius = 20}) {
+    final c = Theme.of(context).colorScheme;
+    return Container(
+      width: width, height: height,
+      decoration: BoxDecoration(
+        color: c.surfaceContainerHighest.withValues(alpha: .72),
+        borderRadius: BorderRadius.circular(radius),
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(radius),
+        child: TweenAnimationBuilder<double>(
+          tween: Tween(begin: .35, end: .78),
+          duration: const Duration(milliseconds: 950),
+          curve: Curves.easeInOut,
+          builder: (context, value, child) => ColoredBox(
+            color: c.onSurface.withValues(alpha: .035 + value * .045),
+            child: child,
+          ),
+          child: const SizedBox.expand(),
+        ),
+      ),
+    );
+  }
+
+  Widget _homeSkeleton() {
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 28),
+      children: [
+        _skeletonBlock(height: 174, radius: 22),
+        const SizedBox(height: 20),
+        _skeletonBlock(height: 104, radius: 22),
+        const SizedBox(height: 20),
+        _skeletonBlock(height: 50, radius: 17),
+        const SizedBox(height: 22),
+        _skeletonBlock(height: 22, width: 150, radius: 8),
+        const SizedBox(height: 12),
+        ...List.generate(4, (_) => Padding(
+          padding: const EdgeInsets.only(bottom: 11),
+          child: _skeletonBlock(height: 112, radius: 20),
+        )),
+      ],
+    );
+  }
+
   Widget _homePage() {
     final colors = Theme.of(context).colorScheme;
-    if (_loadingPoems || _databaseError != null || poems.isEmpty) {
+    if (poems.isEmpty && _loadingPoems) return _homeSkeleton();
+    if (poems.isEmpty && (_databaseError != null || !_loadingPoems || poems.isEmpty)) {
       return ListView(
         physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.only(top: 24),
