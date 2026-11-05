@@ -1327,6 +1327,7 @@ class _PoetryShellState extends State<PoetryShell> {
                 decoration: BoxDecoration(color: _featuredIndex == index ? colors.primary : colors.outlineVariant,
                   borderRadius: BorderRadius.circular(10))))),
           ])),
+        SliverToBoxAdapter(child: _TypingCoupletBox(poems: poems)),
         SliverPadding(padding: const EdgeInsets.fromLTRB(16, 14, 16, 8),
           sliver: SliverToBoxAdapter(child: SearchBar(
             hintText: 'د شعر یا شاعر نوم ولټوئ...',
@@ -1405,7 +1406,6 @@ class _PoetryShellState extends State<PoetryShell> {
               return _horizontalPoetCard(entry.key, _poetNames[entry.key] ?? '', entry.value);
             }))),
         ],
-        SliverToBoxAdapter(child: _TypingCoupletBox(poems: poems)),
       ],
     );
   }
