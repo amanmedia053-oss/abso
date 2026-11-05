@@ -2879,17 +2879,28 @@ class _TypingCoupletBoxState extends State<_TypingCoupletBox> {
   int _holdTicks = 0;
 
   List<String> _couplet(Poem poem) {
-    final lines = poem.lines.map((e) => e.trim()).where((e) => e.isNotEmpty).toList();
+    String clean(String value) => value
+        .replaceAll(r'\n', '\n')
+        .replaceAll(r'\r', '\r')
+        .replaceAll(RegExp(r'[ \t]+'), ' ')
+        .trim();
+    final lines = poem.lines
+        .expand((line) => clean(line).split(RegExp(r'[\r\n]+')))
+        .map(clean).where((line) => line.isNotEmpty).toList();
     if (lines.length >= 2) return lines.take(2).toList();
-    final words = poem.text.replaceAll('\\n', ' ').split(RegExp(r'\\s+')).where((e) => e.isNotEmpty).toList();
-    if (words.length < 2) return [poem.text.trim()];
+    final text = clean(poem.text);
+    final textLines = text.split(RegExp(r'[\r\n]+')).map(clean)
+        .where((line) => line.isNotEmpty).toList();
+    if (textLines.length >= 2) return textLines.take(2).toList();
+    final words = text.split(RegExp(r'\s+')).where((word) => word.isNotEmpty).toList();
+    if (words.length < 2) return [text];
     final middle = (words.length / 2).ceil();
     return [words.take(middle).join(' '), words.skip(middle).join(' ')];
   }
 
   String get _currentText {
     if (widget.poems.isEmpty) return '';
-    return _couplet(widget.poems[_poemIndex % widget.poems.length]).join('\\n');
+    return _couplet(widget.poems[_poemIndex % widget.poems.length]).join('\n');
   }
 
   @override
