@@ -2486,16 +2486,31 @@ class _SimpleListAdminState extends State<SimpleListAdmin> {
     );
     controller.dispose();
     if (name == null || name.trim().isEmpty) return;
-    final imageUrl = await _chooseGalleryImage();
     try {
+      // د شاعر یا کټګورۍ انځور مستقیم له موبایل څخه وټاکئ او Cloudinary ته یې پورته کړئ.
+      final pickedImage = await ImagePicker().pickImage(
+        source: ImageSource.gallery, imageQuality: 82, maxWidth: 1800);
+      if (!mounted) return;
+      String? imageUrl;
+      if (pickedImage != null) {
+        imageUrl = await uploadImageToCloudinary(pickedImage);
+      }
       final ref = FirebaseDatabase.instance.ref(widget.path);
+      final data = <String, dynamic>{
+        'name': name.trim(),
+        if (imageUrl != null) 'imageUrl': imageUrl,
+      };
       if (id == null) {
-        await ref.push().set({'name': name.trim(), if (imageUrl != null) 'imageUrl': imageUrl, 'createdAt': ServerValue.timestamp});
+        data['createdAt'] = ServerValue.timestamp;
+        await ref.push().set(data);
       } else {
-        await ref.child(id).update({'name': name.trim(), if (imageUrl != null) 'imageUrl': imageUrl, 'updatedAt': ServerValue.timestamp});
+        data['updatedAt'] = ServerValue.timestamp;
+        await ref.child(id).update(data);
       }
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('په بریالیتوب خوندي شو.')));
+        SnackBar(content: Text(imageUrl == null
+          ? 'نوم خوندي شو؛ انځور ونه ټاکل شو.'
+          : 'نوم او انځور دواړه خوندي شول.')));
     } catch (e) {
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('خوندي کول ناکام شول: $e')));
