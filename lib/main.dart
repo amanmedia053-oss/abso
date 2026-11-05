@@ -461,6 +461,7 @@ class Poem {
   final List<String> lines;
   final int views, likes, shares, saves;
   final String? imageUrl;
+  final String? poetImageUrl, categoryImageUrl;
   final bool featured;
 }
 
@@ -494,6 +495,8 @@ class _PoetryShellState extends State<PoetryShell> {
   final List<Poem> poems = [];
   Map<String, String> _categoryNames = {};
   Map<String, String> _poetNames = {};
+  Map<String, String> _categoryImages = {};
+  Map<String, String> _poetImages = {};
   StreamSubscription<DatabaseEvent>? _poemSub, _categorySub, _poetSub;
   String query = '';
   String selectedCategory = 'ټول';
@@ -509,10 +512,12 @@ class _PoetryShellState extends State<PoetryShell> {
     _loadProfileName();
     _categorySub = FirebaseDatabase.instance.ref('categories').onValue.listen((e) {
       _categoryNames = _names(e.snapshot.value);
+      _categoryImages = _imageUrls(e.snapshot.value);
       _reloadPoems();
     }, onError: (Object e) { if (mounted) setState(() => _databaseError = e.toString()); });
     _poetSub = FirebaseDatabase.instance.ref('poets').onValue.listen((e) {
       _poetNames = _names(e.snapshot.value);
+      _poetImages = _imageUrls(e.snapshot.value);
       _reloadPoems();
     }, onError: (Object e) { if (mounted) setState(() => _databaseError = e.toString()); });
     _poemSub = FirebaseDatabase.instance.ref('poems').onValue.listen((e) {
@@ -655,6 +660,19 @@ class _PoetryShellState extends State<PoetryShell> {
     return result;
   }
 
+  Map<String, String> _imageUrls(Object? raw) {
+    final result = <String, String>{};
+    if (raw is Map) {
+      for (final entry in raw.entries) {
+        if (entry.value is Map) {
+          final url = (entry.value as Map)['imageUrl']?.toString() ?? '';
+          if (url.startsWith('http')) result[entry.key.toString()] = url;
+        }
+      }
+    }
+    return result;
+  }
+
   int _count(dynamic value) => value is num ? value.toInt() : int.tryParse('$value') ?? 0;
 
   void _reloadPoems() {
@@ -681,6 +699,8 @@ class _PoetryShellState extends State<PoetryShell> {
               : data['title'].toString().trim(),
           poet: _poetNames[(data['poetId'] ?? '').toString()] ?? '',
           category: _categoryNames[categoryId] ?? '',
+          poetImageUrl: _poetImages[(data['poetId'] ?? '').toString()],
+          categoryImageUrl: _categoryImages[categoryId],
           text: body,
           lines: body.split(RegExp(r'\r?\n')),
           views: _count(data['views']), likes: _count(data['likes']),
@@ -1338,10 +1358,14 @@ class _PoetryShellState extends State<PoetryShell> {
                         colors: [colors.surface, colors.primaryContainer.withValues(alpha: .62)])),
                     child: Column(crossAxisAlignment: CrossAxisAlignment.start,
                       mainAxisAlignment: MainAxisAlignment.center, children: [
-                        Container(width: 34, height: 34,
+                        Container(width: 42, height: 42,
                           decoration: BoxDecoration(color: selected ? Colors.white.withValues(alpha: .17) : colors.primary.withValues(alpha: .10),
-                            borderRadius: BorderRadius.circular(12)),
-                          child: Icon(Icons.auto_awesome_rounded, color: selected ? Colors.white : colors.primary, size: 19)),
+                            borderRadius: BorderRadius.circular(13)),
+                          clipBehavior: Clip.antiAlias,
+                          child: (_categoryImages[entry.key] ?? '').isNotEmpty
+                            ? Image.network(_categoryImages[entry.key]!, fit: BoxFit.cover,
+                                errorBuilder: (_, __, ___) => Icon(Icons.auto_awesome_rounded, color: selected ? Colors.white : colors.primary, size: 20))
+                            : Icon(Icons.auto_awesome_rounded, color: selected ? Colors.white : colors.primary, size: 20)),
                         const Spacer(),
                         Text(entry.value, maxLines: 1, overflow: TextOverflow.ellipsis,
                           style: TextStyle(fontSize: 11, fontWeight: FontWeight.w900,
@@ -1443,12 +1467,16 @@ class _PoetryShellState extends State<PoetryShell> {
       child: InkWell(onTap: () => setState(() => query = name),
         child: Padding(padding: const EdgeInsets.fromLTRB(12, 15, 12, 12),
           child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-            Container(width: 72, height: 72, decoration: BoxDecoration(shape: BoxShape.circle,
-              gradient: LinearGradient(begin: Alignment.topRight, end: Alignment.bottomLeft,
-                colors: [colors.primary.withValues(alpha: .16), colors.secondary.withValues(alpha: .28)]),
-              border: Border.all(color: colors.primary.withValues(alpha: .12), width: 2)),
-              child: Center(child: Text(initial, style: TextStyle(fontSize: 29,
-                fontWeight: FontWeight.w900, color: colors.primary)))),
+            Container(width: 72, height: 72,
+              decoration: BoxDecoration(shape: BoxShape.circle,
+                gradient: LinearGradient(begin: Alignment.topRight, end: Alignment.bottomLeft,
+                  colors: [colors.primary.withValues(alpha: .16), colors.secondary.withValues(alpha: .28)]),
+                border: Border.all(color: colors.primary.withValues(alpha: .12), width: 2)),
+              clipBehavior: Clip.antiAlias,
+              child: (_poetImages.entries.where((e) => e.value.isNotEmpty && _poetNames[e.key] == name).map((e) => e.value).firstOrNull ?? '').isNotEmpty
+                ? Image.network(_poetImages.entries.where((e) => _poetNames[e.key] == name).map((e) => e.value).first, fit: BoxFit.cover,
+                    errorBuilder: (_, __, ___) => Center(child: Text(initial, style: TextStyle(fontSize: 29, fontWeight: FontWeight.w900, color: colors.primary))))
+                : Center(child: Text(initial, style: TextStyle(fontSize: 29, fontWeight: FontWeight.w900, color: colors.primary))),
             const SizedBox(height: 10),
             Text(name, maxLines: 1, overflow: TextOverflow.ellipsis, textAlign: TextAlign.center,
               style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w900)),
@@ -2723,12 +2751,21 @@ class _PoemDetailScreenState extends State<PoemDetailScreen> {
         actions: [IconButton(tooltip: 'راپور ورکول', onPressed: _report, icon: const Icon(Icons.flag_outlined))]),
       body: ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 28), children: [
         Container(clipBehavior: Clip.antiAlias,
-          decoration: BoxDecoration(gradient: const LinearGradient(begin: Alignment.topRight,
-            end: Alignment.bottomLeft, colors: [Color(0xFF123B32), Color(0xFF286B5D), Color(0xFFB77928)]),
-            borderRadius: BorderRadius.circular(28),
+          decoration: BoxDecoration(borderRadius: BorderRadius.circular(28),
             boxShadow: [BoxShadow(color: c.primary.withValues(alpha: .18), blurRadius: 22, offset: const Offset(0, 9))]),
           child: Stack(children: [
-            Positioned(left: -20, top: -25, child: Icon(Icons.format_quote_rounded, size: 145, color: Colors.white.withValues(alpha: .08))),
+            Positioned.fill(child: (poem.imageUrl ?? '').isNotEmpty
+              ? Image.network(poem.imageUrl!, fit: BoxFit.cover,
+                  errorBuilder: (_, __, ___) => const DecoratedBox(decoration: BoxDecoration(
+                    gradient: LinearGradient(begin: Alignment.topRight, end: Alignment.bottomLeft,
+                      colors: [Color(0xFF123B32), Color(0xFF286B5D), Color(0xFFB77928)]))))
+              : const DecoratedBox(decoration: BoxDecoration(
+                  gradient: LinearGradient(begin: Alignment.topRight, end: Alignment.bottomLeft,
+                    colors: [Color(0xFF123B32), Color(0xFF286B5D), Color(0xFFB77928)])))),
+            Positioned.fill(child: DecoratedBox(decoration: BoxDecoration(
+              gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter,
+                colors: [Colors.black.withValues(alpha: .18), Colors.black.withValues(alpha: .72)])))),
+            Positioned(left: -20, top: -25, child: Icon(Icons.format_quote_rounded, size: 145, color: Colors.white.withValues(alpha: .12))),
             Padding(padding: const EdgeInsets.fromLTRB(22, 25, 22, 23),
               child: Column(children: [
                 Container(width: 46, height: 46, decoration: BoxDecoration(color: Colors.white.withValues(alpha: .13),
@@ -2737,20 +2774,18 @@ class _PoemDetailScreenState extends State<PoemDetailScreen> {
                 Text(poem.title, textAlign: TextAlign.center,
                   style: const TextStyle(color: Colors.white, fontSize: 22, height: 1.55, fontWeight: FontWeight.w900)),
                 if (poem.poet.isNotEmpty) ...[const SizedBox(height: 8), Text(poem.poet, style: const TextStyle(color: Colors.white70, fontSize: 13))],
-                const SizedBox(height: 14), Container(height: 1, color: Colors.white24),
+                const SizedBox(height: 14), Container(height: 1, color: Colors.white38),
                 const SizedBox(height: 11), Text(poem.category, style: const TextStyle(color: Color(0xFFFFD98A), fontSize: 12)),
               ])),
           ])),
-        if (poem.imageUrl != null && poem.imageUrl!.isNotEmpty) ...[
-          const SizedBox(height: 15), ClipRRect(borderRadius: BorderRadius.circular(22),
-            child: Image.network(poem.imageUrl!, height: 205, width: double.infinity, fit: BoxFit.cover,
-              errorBuilder: (_, __, ___) => const SizedBox.shrink())),
-        ],
         const SizedBox(height: 16),
         Container(padding: const EdgeInsets.fromLTRB(21, 26, 21, 26),
-          decoration: BoxDecoration(color: c.surface, borderRadius: BorderRadius.circular(25),
-            border: Border.all(color: c.outlineVariant.withValues(alpha: .55)),
-            boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: .035), blurRadius: 16, offset: const Offset(0, 5))]),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(begin: Alignment.topRight, end: Alignment.bottomLeft,
+              colors: [c.surface.withValues(alpha: .97), c.primaryContainer.withValues(alpha: .38), c.surface.withValues(alpha: .97)]),
+            borderRadius: BorderRadius.circular(25),
+            border: Border.all(color: c.outlineVariant.withValues(alpha: .65)),
+            boxShadow: [BoxShadow(color: c.primary.withValues(alpha: .07), blurRadius: 18, offset: const Offset(0, 5))]),
           child: SelectableText(poem.text, textAlign: TextAlign.center,
             style: const TextStyle(fontSize: 18, height: 2.25, fontWeight: FontWeight.w600))),
         const SizedBox(height: 16),
