@@ -1692,7 +1692,7 @@ class _PoetryShellState extends State<PoetryShell> {
             const SizedBox(height: 4),
             Text('${poetPoems.length} شعرونه',
               style: TextStyle(fontSize: 10, color: colors.onSurfaceVariant)),
-          ])))));
+          ]))));
   }
 
   Widget _sectionHeader(IconData icon, String title, String subtitle) {
