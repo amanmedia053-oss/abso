@@ -490,6 +490,8 @@ class PoetryShell extends StatefulWidget {
 class _PoetryShellState extends State<PoetryShell> {
   int selectedPage = 0;
   int _featuredIndex = 0;
+  final PageController _featuredController = PageController();
+  Timer? _featuredTimer;
   final Set<String> favorites = {};
   final Set<String> likedPoems = {};
   final List<Poem> poems = [];
@@ -508,6 +510,15 @@ class _PoetryShellState extends State<PoetryShell> {
   @override
   void initState() {
     super.initState();
+    _featuredTimer = Timer.periodic(const Duration(seconds: 10), (_) {
+      if (!mounted || selectedPage != 0) return;
+      final count = poems.where((p) => p.featured).length;
+      if (count < 2 || !_featuredController.hasClients) return;
+      final next = (_featuredIndex + 1) % count;
+      _featuredController.animateToPage(next,
+        duration: const Duration(milliseconds: 900),
+        curve: Curves.easeInOutCubic);
+    });
     _loadEngagementState();
     _loadProfileName();
     _categorySub = FirebaseDatabase.instance.ref('categories').onValue.listen((e) {
@@ -726,6 +737,8 @@ class _PoetryShellState extends State<PoetryShell> {
     _poemSub?.cancel();
     _categorySub?.cancel();
     _poetSub?.cancel();
+    _featuredTimer?.cancel();
+    _featuredController.dispose();
     super.dispose();
   }
 
@@ -1275,6 +1288,7 @@ class _PoetryShellState extends State<PoetryShell> {
         if (featuredPoems.isNotEmpty)
           SliverToBoxAdapter(child: Column(children: [
             SizedBox(height: 174, child: PageView.builder(
+              controller: _featuredController,
               itemCount: featuredPoems.length,
               onPageChanged: (index) => setState(() => _featuredIndex = index),
               itemBuilder: (context, index) {
