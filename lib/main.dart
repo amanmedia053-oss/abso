@@ -1421,6 +1421,16 @@ class _PoetryShellState extends State<PoetryShell> {
     );
   }
 
+  void _openSearchPage() {
+    Navigator.push(context, MaterialPageRoute(builder: (_) => PoetrySearchPage(
+      poems: poems,
+      onPoemTap: (poem) {
+        Navigator.pop(context);
+        _openPoem(poem);
+      },
+    )));
+  }
+
   Widget _homePage() {
     final colors = Theme.of(context).colorScheme;
     if (poems.isEmpty && _loadingPoems) return _refreshable(_homeSkeleton());
@@ -1494,16 +1504,26 @@ class _PoetryShellState extends State<PoetryShell> {
                 decoration: BoxDecoration(color: _featuredIndex == index ? colors.primary : colors.outlineVariant,
                   borderRadius: BorderRadius.circular(10))))),
           ])),
-        SliverToBoxAdapter(child: _TypingCoupletBox(poems: poems)),
         SliverPadding(padding: const EdgeInsets.fromLTRB(16, 14, 16, 8),
-          sliver: SliverToBoxAdapter(child: SearchBar(
-            hintText: 'د شعر یا شاعر نوم ولټوئ...',
-            textStyle: const WidgetStatePropertyAll(TextStyle(fontSize: 13)),
-            leading: Icon(Icons.search_rounded, size: 22, color: colors.primary),
-            onChanged: (value) => setState(() => query = value.trim()),
-            elevation: const WidgetStatePropertyAll(0),
-            constraints: const BoxConstraints(minHeight: 50),
-            padding: const WidgetStatePropertyAll(EdgeInsets.symmetric(horizontal: 18))))),
+          sliver: SliverToBoxAdapter(child: Material(
+            color: colors.surfaceContainerHighest.withValues(alpha: .55),
+            borderRadius: BorderRadius.circular(18),
+            child: InkWell(
+              borderRadius: BorderRadius.circular(18),
+              onTap: _openSearchPage,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 15),
+                child: Row(children: [
+                  Icon(Icons.search_rounded, color: colors.primary, size: 23),
+                  const SizedBox(width: 12),
+                  Expanded(child: Text('د شعر، شاعر او کټګورۍ لټون...',
+                    style: TextStyle(color: colors.onSurfaceVariant, fontSize: 13))),
+                  Icon(Icons.tune_rounded, color: colors.primary, size: 20),
+                ]),
+              ),
+            ),
+          ))),
+        SliverToBoxAdapter(child: _TypingCoupletBox(poems: poems)),
         SliverPadding(padding: const EdgeInsets.fromLTRB(16, 8, 16, 9),
           sliver: SliverToBoxAdapter(child: _sectionHeader(Icons.auto_stories_rounded,
             'د شعرونو ټولګه', '${visible.length} شعرونه'))),
@@ -2862,6 +2882,178 @@ class _SimpleListAdminState extends State<SimpleListAdmin> {
         ]);
       },
     );
+  }
+}
+
+class PoetrySearchPage extends StatefulWidget {
+  const PoetrySearchPage({super.key, required this.poems, required this.onPoemTap});
+  final List<Poem> poems;
+  final ValueChanged<Poem> onPoemTap;
+
+  @override
+  State<PoetrySearchPage> createState() => _PoetrySearchPageState();
+}
+
+class _PoetrySearchPageState extends State<PoetrySearchPage> {
+  final TextEditingController _controller = TextEditingController();
+  final FocusNode _focusNode = FocusNode();
+  String _query = '';
+  String _category = 'ټولې کټګورۍ';
+  String _poet = 'ټول شاعران';
+  String _field = 'ټول';
+  String _sort = 'اړوند';
+  bool _onlyWithImage = false;
+
+  List<String> get _categories => ['ټولې کټګورۍ',
+    ...widget.poems.map((p) => p.category).where((v) => v.trim().isNotEmpty).toSet().toList()..sort()];
+  List<String> get _poets => ['ټول شاعران',
+    ...widget.poems.map((p) => p.poet).where((v) => v.trim().isNotEmpty).toSet().toList()..sort()];
+
+  List<Poem> get _results {
+    final q = _query.trim().toLowerCase();
+    var result = widget.poems.where((p) {
+      final title = p.title.toLowerCase();
+      final poet = p.poet.toLowerCase();
+      final category = p.category.toLowerCase();
+      final body = ('${p.text} ${p.lines.join(' ')}').toLowerCase();
+      final matchesQuery = q.isEmpty ||
+        (_field == 'ټول' && '$title $poet $category $body'.contains(q)) ||
+        (_field == 'عنوان' && title.contains(q)) ||
+        (_field == 'شاعر' && poet.contains(q)) ||
+        (_field == 'متن' && body.contains(q));
+      return matchesQuery &&
+        (_category == 'ټولې کټګورۍ' || p.category == _category) &&
+        (_poet == 'ټول شاعران' || p.poet == _poet) &&
+        (!_onlyWithImage || (p.imageUrl ?? '').isNotEmpty);
+    }).toList();
+    if (_sort == 'ډېر لوستل شوي') {
+      result.sort((a, b) => b.views.compareTo(a.views));
+    } else if (_sort == 'عنوان') {
+      result.sort((a, b) => a.title.compareTo(b.title));
+    }
+    return result;
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    _focusNode.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final c = Theme.of(context).colorScheme;
+    final results = _results;
+    return Directionality(textDirection: TextDirection.rtl, child: Scaffold(
+      appBar: AppBar(
+        title: const Text('عمومي لټون'),
+        actions: [
+          IconButton(tooltip: 'پاکول', onPressed: () {
+            _controller.clear();
+            setState(() { _query = ''; _category = 'ټولې کټګورۍ'; _poet = 'ټول شاعران'; _field = 'ټول'; _sort = 'اړوند'; _onlyWithImage = false; });
+          }, icon: const Icon(Icons.restart_alt_rounded)),
+        ],
+      ),
+      body: Column(children: [
+        Padding(padding: const EdgeInsets.fromLTRB(16, 8, 16, 10),
+          child: Container(
+            decoration: BoxDecoration(color: c.surfaceContainerHighest,
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: c.outlineVariant.withValues(alpha: .55))),
+            child: TextField(
+              controller: _controller, focusNode: _focusNode, autofocus: true,
+              textInputAction: TextInputAction.search,
+              onChanged: (v) => setState(() => _query = v),
+              decoration: InputDecoration(
+                hintText: 'د شعر، شاعر، کټګورۍ یا متن لټون...',
+                prefixIcon: Icon(Icons.search_rounded, color: c.primary),
+                suffixIcon: _query.isEmpty ? null : IconButton(
+                  onPressed: () { _controller.clear(); setState(() => _query = ''); },
+                  icon: const Icon(Icons.close_rounded)),
+                border: InputBorder.none, contentPadding: const EdgeInsets.symmetric(vertical: 17)),
+            ),
+          )),
+        SizedBox(height: 42, child: ListView(
+          padding: const EdgeInsets.symmetric(horizontal: 16), scrollDirection: Axis.horizontal,
+          children: ['ټول', 'عنوان', 'شاعر', 'متن'].map((v) => Padding(
+            padding: const EdgeInsets.only(left: 8),
+            child: ChoiceChip(label: Text(v), selected: _field == v,
+              onSelected: (_) => setState(() => _field = v)),
+          )).toList(),
+        )),
+        Padding(padding: const EdgeInsets.fromLTRB(16, 10, 16, 4),
+          child: Row(children: [
+            Icon(Icons.filter_list_rounded, color: c.primary, size: 19),
+            const SizedBox(width: 6),
+            const Text('فلټرونه', style: TextStyle(fontWeight: FontWeight.w900)),
+            const Spacer(),
+            Text('${results.length} پایلې', style: TextStyle(color: c.onSurfaceVariant, fontSize: 12)),
+          ])),
+        Padding(padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: Row(children: [
+            Expanded(child: DropdownButtonFormField<String>(
+              value: _category, isExpanded: true,
+              decoration: const InputDecoration(labelText: 'کټګوري', isDense: true),
+              items: _categories.map((v) => DropdownMenuItem(value: v, child: Text(v, overflow: TextOverflow.ellipsis))).toList(),
+              onChanged: (v) => setState(() => _category = v ?? 'ټولې کټګورۍ'),
+            )),
+            const SizedBox(width: 10),
+            Expanded(child: DropdownButtonFormField<String>(
+              value: _poet, isExpanded: true,
+              decoration: const InputDecoration(labelText: 'شاعر', isDense: true),
+              items: _poets.map((v) => DropdownMenuItem(value: v, child: Text(v, overflow: TextOverflow.ellipsis))).toList(),
+              onChanged: (v) => setState(() => _poet = v ?? 'ټول شاعران'),
+            )),
+          ])),
+        Padding(padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+          child: Row(children: [
+            Expanded(child: DropdownButtonFormField<String>(
+              value: _sort, isExpanded: true,
+              decoration: const InputDecoration(labelText: 'ترتیب', isDense: true),
+              items: ['اړوند', 'ډېر لوستل شوي', 'عنوان'].map((v) => DropdownMenuItem(value: v, child: Text(v))).toList(),
+              onChanged: (v) => setState(() => _sort = v ?? 'اړوند'),
+            )),
+            const SizedBox(width: 12),
+            FilterChip(label: const Text('انځور لرونکي'), selected: _onlyWithImage,
+              onSelected: (v) => setState(() => _onlyWithImage = v)),
+          ])),
+        const Divider(height: 1),
+        Expanded(child: results.isEmpty
+          ? Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
+              Icon(Icons.search_off_rounded, size: 54, color: c.outline),
+              const SizedBox(height: 10),
+              const Text('هیڅ شعر پیدا نه شو.'),
+              const SizedBox(height: 5),
+              Text('د لټون کلمه یا فلټرونه بدل کړئ.',
+                style: TextStyle(color: c.onSurfaceVariant, fontSize: 12)),
+            ]))
+          : ListView.separated(
+              keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+              padding: const EdgeInsets.all(14),
+              itemCount: results.length,
+              separatorBuilder: (_, __) => const SizedBox(height: 9),
+              itemBuilder: (context, index) {
+                final poem = results[index];
+                return Card(
+                  clipBehavior: Clip.antiAlias,
+                  child: ListTile(
+                    onTap: () => widget.onPoemTap(poem),
+                    leading: Container(width: 44, height: 44,
+                      decoration: BoxDecoration(color: c.primaryContainer, borderRadius: BorderRadius.circular(14)),
+                      child: Icon(Icons.auto_stories_rounded, color: c.primary)),
+                    title: Text(poem.title.isEmpty ? 'بې عنوانه شعر' : poem.title,
+                      maxLines: 1, overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(fontWeight: FontWeight.w800)),
+                    subtitle: Text([poem.poet, poem.category].where((v) => v.isNotEmpty).join(' • '),
+                      maxLines: 1, overflow: TextOverflow.ellipsis),
+                    trailing: Icon(Icons.chevron_left_rounded, color: c.onSurfaceVariant),
+                  ),
+                );
+              },
+            )),
+      ]),
+    ));
   }
 }
 
