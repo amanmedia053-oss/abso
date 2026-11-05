@@ -16,7 +16,7 @@ const String cloudinaryUploadPreset = 'adabi_gallery';
 Future<String> uploadImageToCloudinary(XFile file) async {
   final request = http.MultipartRequest(
     'POST',
-    Uri.parse('https://api.cloudinary.com/v1_1/\$cloudinaryCloudName/image/upload'),
+    Uri.parse('https://api.cloudinary.com/v1_1/$cloudinaryCloudName/image/upload'),
   );
   request.fields['upload_preset'] = cloudinaryUploadPreset;
   request.files.add(http.MultipartFile.fromBytes(
