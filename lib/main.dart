@@ -1531,7 +1531,7 @@ class _PoetryShellState extends State<PoetryShell> {
                 color: colors.surface,
                 borderRadius: BorderRadius.circular(20),
                 child: InkWell(borderRadius: BorderRadius.circular(20),
-                  onTap: () => _openCollectionPage(entry.value, _categoryImages[entry.key] ?? '', poems.where((p) => p.categoryId == entry.key).toList(), isCategory: true),
+                  onTap: () => _openCollectionPage(entry.value, _categoryImages[entry.key] ?? '', poems.where((p) => p.categoryId == entry.key).toList(), collectionId: entry.key, isCategory: true),
                   child: Container(padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 8),
                     decoration: BoxDecoration(borderRadius: BorderRadius.circular(20),
                       border: Border.all(color: colors.outlineVariant.withValues(alpha: .55)),
@@ -1576,10 +1576,10 @@ class _PoetryShellState extends State<PoetryShell> {
       ],
     ));
   }
-  void _openCollectionPage(String title, String imageUrl, List<Poem> items, {bool isCategory = false}) {
+  void _openCollectionPage(String title, String imageUrl, List<Poem> items, {required String collectionId, bool isCategory = false}) {
     Navigator.push(context, MaterialPageRoute(builder: (_) => CollectionPoemsPage(
-      title: title, imageUrl: imageUrl, poems: items, isCategory: isCategory,
-      onPoemTap: _openPoem,
+      title: title, imageUrl: imageUrl, poems: items, collectionId: collectionId,
+      isCategory: isCategory, onPoemTap: _openPoem,
     )));
   }
 
@@ -1653,7 +1653,7 @@ class _PoetryShellState extends State<PoetryShell> {
     return SizedBox(width: 112, child: Card(
       elevation: 1, clipBehavior: Clip.antiAlias,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      child: InkWell(onTap: () => _openCollectionPage(name, poetImageUrl, poetPoems),
+      child: InkWell(onTap: () => _openCollectionPage(name, poetImageUrl, poetPoems, collectionId: poetId),
         child: Padding(padding: const EdgeInsets.fromLTRB(7, 8, 7, 7),
           child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
             Container(width: 54, height: 54,
@@ -2985,83 +2985,117 @@ class _TypingCoupletBoxState extends State<_TypingCoupletBox> {
   }
 }
 
-class CollectionPoemsPage extends StatelessWidget {
-  const CollectionPoemsPage({super.key, required this.title, required this.imageUrl, required this.poems, required this.onPoemTap, this.isCategory = false});
-  final String title, imageUrl;
+class CollectionPoemsPage extends StatefulWidget {
+  const CollectionPoemsPage({super.key, required this.title, required this.imageUrl,
+    required this.poems, required this.collectionId, required this.onPoemTap,
+    this.isCategory = false});
+  final String title, imageUrl, collectionId;
   final List<Poem> poems;
   final bool isCategory;
   final ValueChanged<Poem> onPoemTap;
+  @override
+  State<CollectionPoemsPage> createState() => _CollectionPoemsPageState();
+}
+
+class _CollectionPoemsPageState extends State<CollectionPoemsPage> {
+  late final DatabaseReference _viewsRef;
+  @override
+  void initState() {
+    super.initState();
+    final group = widget.isCategory ? 'categoryViews' : 'poetViews';
+    _viewsRef = FirebaseDatabase.instance.ref('$group/${widget.collectionId}');
+    _viewsRef.runTransaction((value) {
+      final current = value is num ? value.toInt() : 0;
+      return Transaction.success(current + 1);
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
     final c = Theme.of(context).colorScheme;
     return Directionality(textDirection: TextDirection.rtl, child: Scaffold(
-      appBar: AppBar(title: Text(title)),
+      appBar: AppBar(title: Text(widget.title)),
       body: CustomScrollView(slivers: [
         SliverToBoxAdapter(child: Container(
-          margin: const EdgeInsets.fromLTRB(16, 8, 16, 16), height: 154,
+          margin: const EdgeInsets.fromLTRB(16, 8, 16, 16), height: 174,
           clipBehavior: Clip.antiAlias,
           decoration: BoxDecoration(borderRadius: BorderRadius.circular(24),
             gradient: const LinearGradient(begin: Alignment.topRight, end: Alignment.bottomLeft,
               colors: [Color(0xFF123B32), Color(0xFF286B5D), Color(0xFFB77928)]),
             boxShadow: [BoxShadow(color: c.primary.withValues(alpha: .15), blurRadius: 18, offset: const Offset(0, 7))]),
           child: Stack(fit: StackFit.expand, children: [
-            if (imageUrl.isNotEmpty) Image.network(imageUrl, fit: BoxFit.cover, errorBuilder: (_, __, ___) => const SizedBox.shrink()),
+            if (widget.imageUrl.isNotEmpty) Image.network(widget.imageUrl, fit: BoxFit.cover,
+              errorBuilder: (_, __, ___) => const SizedBox.shrink()),
             DecoratedBox(decoration: BoxDecoration(gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter,
-              colors: [Colors.black.withValues(alpha: .15), Colors.black.withValues(alpha: .72)]))),
-            Positioned(right: 18, bottom: 17, left: 18, child: Row(children: [
-              Container(width: 50, height: 50, decoration: BoxDecoration(color: Colors.white24, borderRadius: BorderRadius.circular(15)),
-                child: Icon(isCategory ? Icons.category_rounded : Icons.person_rounded, color: Colors.white, size: 27)),
-              const SizedBox(width: 12),
-              Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text(title, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.w900)),
-                const SizedBox(height: 4),
-                Text('${poems.length} شعرونه', style: const TextStyle(color: Colors.white70, fontSize: 12)),
-              ])),
-            ])),
+              colors: [Colors.black.withValues(alpha: .12), Colors.black.withValues(alpha: .76)]))),
+            Positioned(top: 15, left: 16, child: Container(
+              width: 76, height: 76, padding: const EdgeInsets.all(3),
+              decoration: BoxDecoration(shape: BoxShape.circle, color: Colors.white.withValues(alpha: .92),
+                boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: .22), blurRadius: 12)]),
+              child: ClipOval(child: widget.imageUrl.isNotEmpty
+                ? Image.network(widget.imageUrl, fit: BoxFit.cover,
+                    errorBuilder: (_, __, ___) => _collectionAvatarIcon())
+                : _collectionAvatarIcon()),
+            )),
+            Positioned(right: 18, bottom: 15, left: 18, child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(widget.title, maxLines: 1, overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.w900)),
+                const SizedBox(height: 8),
+                Row(children: [
+                  _collectionStat(Icons.menu_book_rounded, '${widget.poems.length} شعرونه'),
+                  const SizedBox(width: 14),
+                  StreamBuilder<DatabaseEvent>(stream: _viewsRef.onValue,
+                    builder: (context, snapshot) {
+                      final value = snapshot.data?.snapshot.value;
+                      final count = value is num ? value.toInt() : 0;
+                      return _collectionStat(Icons.visibility_rounded, '$count لیدنې');
+                    }),
+                ]),
+              ],
+            )),
           ]),
         )),
-        if (poems.isEmpty)
-          const SliverFillRemaining(hasScrollBody: false, child: Center(child: Text('په دې برخه کې تر اوسه شعرونه نشته.')))
-        else SliverPadding(padding: const EdgeInsets.fromLTRB(14, 0, 14, 24),
-          sliver: SliverList(delegate: SliverChildBuilderDelegate((context, index) {
-            final poem = poems[index];
-            return Padding(padding: const EdgeInsets.only(bottom: 10), child: Material(
-              color: c.surface, borderRadius: BorderRadius.circular(18),
-              child: InkWell(borderRadius: BorderRadius.circular(18), onTap: () => onPoemTap(poem),
-                child: Container(padding: const EdgeInsets.all(11),
-                  decoration: BoxDecoration(borderRadius: BorderRadius.circular(18), border: Border.all(color: c.outlineVariant.withValues(alpha: .55))),
-                  child: Row(children: [
-                    ClipRRect(borderRadius: BorderRadius.circular(12), child: SizedBox(width: 74, height: 82,
-                      child: (poem.imageUrl ?? '').isNotEmpty
-                        ? Image.network(poem.imageUrl!, fit: BoxFit.cover, errorBuilder: (_, __, ___) => _placeholder(c))
-                        : _placeholder(c))),
-                    const SizedBox(width: 12),
-                    Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                      Text(poem.title, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(color: c.onSurface, fontSize: 14, fontWeight: FontWeight.w900)),
-                      if (poem.poet.isNotEmpty) ...[const SizedBox(height: 4), Text(poem.poet, style: TextStyle(color: c.primary, fontSize: 11, fontWeight: FontWeight.w700))],
-                      const SizedBox(height: 6),
-                      Text(poem.text, maxLines: 2, overflow: TextOverflow.ellipsis, style: TextStyle(color: c.onSurfaceVariant, fontSize: 11, height: 1.6)),
-                      const SizedBox(height: 6),
-                      Row(children: [Icon(Icons.visibility_outlined, size: 13, color: c.onSurfaceVariant), const SizedBox(width: 4),
-                        Text('${poem.views}', style: TextStyle(fontSize: 10, color: c.onSurfaceVariant)), const Spacer(),
-                        Icon(Icons.arrow_back_ios_new_rounded, size: 13, color: c.primary)]),
-                    ])),
-                  ]),
-                ),
-              ),
-            ));
-          }, childCount: poems.length)),
-        ),
+        if (widget.poems.isEmpty)
+          const SliverFillRemaining(hasScrollBody: false,
+            child: Center(child: Text('په دې برخه کې تر اوسه شعرونه نشته.')))
+        else
+          SliverPadding(padding: const EdgeInsets.fromLTRB(14, 0, 14, 24),
+            sliver: SliverList(delegate: SliverChildBuilderDelegate(
+              (context, index) => Padding(padding: const EdgeInsets.only(bottom: 10),
+                child: _collectionPoemTile(context, widget.poems[index])),
+              childCount: widget.poems.length))),
       ]),
     ));
   }
 
-  Widget _placeholder(ColorScheme c) => Container(
-    decoration: BoxDecoration(gradient: LinearGradient(begin: Alignment.topRight, end: Alignment.bottomLeft,
-      colors: [c.primary, const Color(0xFF285B50), const Color(0xFFB77928)])),
-    child: const Center(child: Icon(Icons.format_quote_rounded, color: Colors.white70, size: 34)),
-  );
+  Widget _collectionAvatarIcon() => Container(color: const Color(0xFF286B5D),
+    child: Icon(widget.isCategory ? Icons.category_rounded : Icons.person_rounded,
+      color: Colors.white, size: 34));
+
+  Widget _collectionStat(IconData icon, String label) => Row(mainAxisSize: MainAxisSize.min,
+    children: [Icon(icon, color: Colors.white70, size: 15), const SizedBox(width: 5),
+      Text(label, style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w700))]);
+
+  Widget _collectionPoemTile(BuildContext context, Poem poem) {
+    final c = Theme.of(context).colorScheme;
+    return Card(child: InkWell(borderRadius: BorderRadius.circular(20),
+      onTap: () => widget.onPoemTap(poem),
+      child: Padding(padding: const EdgeInsets.all(15), child: Row(children: [
+        Container(width: 42, height: 42, decoration: BoxDecoration(
+          color: c.primaryContainer, borderRadius: BorderRadius.circular(14)),
+          child: Icon(Icons.auto_stories_rounded, color: c.primary)),
+        const SizedBox(width: 12),
+        Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text(poem.title.isEmpty ? 'بې عنوانه شعر' : poem.title, maxLines: 1,
+            overflow: TextOverflow.ellipsis, style: TextStyle(color: c.onSurface, fontWeight: FontWeight.w900)),
+          if (poem.poet.isNotEmpty) Text(poem.poet,
+            style: TextStyle(color: c.onSurfaceVariant, fontSize: 11)),
+        ])),
+        Icon(Icons.chevron_left_rounded, color: c.onSurfaceVariant),
+      ])))));
+  }
 }
 
 class PoemDetailScreen extends StatefulWidget {
