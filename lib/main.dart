@@ -571,6 +571,16 @@ class _PoetryShellState extends State<PoetryShell> {
     }, onError: (Object e) {
       if (mounted && poems.isEmpty) setState(() { _loadingPoems = false; _databaseError = e.toString(); });
     });
+    // Avoid leaving the skeleton on screen forever when the device is offline
+    // and there is no previously cached dataset.
+    Future.delayed(const Duration(seconds: 12), () {
+      if (mounted && _loadingPoems && poems.isEmpty) {
+        setState(() {
+          _loadingPoems = false;
+          _databaseError = 'د انټرنېټ اړیکه نشته';
+        });
+      }
+    });
   }
 
   Future<void> _saveCachedValue(String key, Object? value) async {
@@ -1304,27 +1314,7 @@ class _PoetryShellState extends State<PoetryShell> {
   }
 
   Widget _skeletonBlock({double height = 105, double? width, double radius = 20}) {
-    final c = Theme.of(context).colorScheme;
-    return Container(
-      width: width, height: height,
-      decoration: BoxDecoration(
-        color: c.surfaceContainerHighest.withValues(alpha: .72),
-        borderRadius: BorderRadius.circular(radius),
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(radius),
-        child: TweenAnimationBuilder<double>(
-          tween: Tween(begin: .35, end: .78),
-          duration: const Duration(milliseconds: 950),
-          curve: Curves.easeInOut,
-          builder: (context, value, child) => ColoredBox(
-            color: c.onSurface.withValues(alpha: .035 + value * .045),
-            child: child,
-          ),
-          child: const SizedBox.expand(),
-        ),
-      ),
-    );
+    return _ShimmerBox(height: height, width: width, radius: radius);
   }
 
   Widget _homeSkeleton() {
@@ -3369,4 +3359,60 @@ class _PoemEditorState extends State<PoemEditor> {
       },
     ),
   );
+}
+
+
+class _ShimmerBox extends StatefulWidget {
+  const _ShimmerBox({this.height = 105, this.width, this.radius = 20});
+  final double height;
+  final double? width;
+  final double radius;
+
+  @override
+  State<_ShimmerBox> createState() => _ShimmerBoxState();
+}
+
+class _ShimmerBoxState extends State<_ShimmerBox>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller = AnimationController(
+    vsync: this, duration: const Duration(milliseconds: 1350),
+  )..repeat();
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final c = Theme.of(context).colorScheme;
+    return SizedBox(
+      width: widget.width,
+      height: widget.height,
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(widget.radius),
+        child: AnimatedBuilder(
+          animation: _controller,
+          builder: (context, _) {
+            final position = -1.5 + (_controller.value * 3);
+            return DecoratedBox(
+              decoration: BoxDecoration(
+                color: c.surfaceContainerHighest.withValues(alpha: .78),
+                gradient: LinearGradient(
+                  begin: Alignment(position - .45, 0),
+                  end: Alignment(position + .45, 0),
+                  colors: [
+                    c.surfaceContainerHighest.withValues(alpha: .55),
+                    c.onSurface.withValues(alpha: .09),
+                    c.surfaceContainerHighest.withValues(alpha: .55),
+                  ],
+                ),
+              ),
+            );
+          },
+        ),
+      ),
+    );
+  }
 }
