@@ -3070,14 +3070,20 @@ class _PoetrySearchPageState extends State<PoetrySearchPage> {
             )),
             const SizedBox(width: 12),
             FilterChip(
-              label: Text('انځور لرونکي', style: TextStyle(
-                color: _onlyWithImage ? c.onPrimaryContainer : c.onSurface,
-                fontWeight: FontWeight.w700,
-              )),
+              label: const Text('انځور لرونکي'),
+              labelStyle: TextStyle(
+                color: _onlyWithImage ? Colors.white : c.onSurface,
+                fontSize: 12,
+                fontWeight: FontWeight.w800,
+              ),
               selected: _onlyWithImage,
-              selectedColor: c.primaryContainer,
+              selectedColor: c.primary,
               backgroundColor: c.surface,
-              side: BorderSide(color: c.outlineVariant.withValues(alpha: .8)),
+              checkmarkColor: Colors.white,
+              side: BorderSide(
+                color: _onlyWithImage ? c.primary : c.outline,
+                width: 1.2,
+              ),
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
               onSelected: (v) => setState(() => _onlyWithImage = v),
             ),
