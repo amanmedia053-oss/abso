@@ -1405,6 +1405,7 @@ class _PoetryShellState extends State<PoetryShell> {
               return _horizontalPoetCard(entry.key, _poetNames[entry.key] ?? '', entry.value);
             }))),
         ],
+        SliverToBoxAdapter(child: _TypingCoupletBox(poems: poems)),
       ],
     );
   }
@@ -2693,6 +2694,115 @@ class _SimpleListAdminState extends State<SimpleListAdmin> {
           ),
         ]);
       },
+    );
+  }
+}
+
+class _TypingCoupletBox extends StatefulWidget {
+  const _TypingCoupletBox({required this.poems});
+  final List<Poem> poems;
+  @override
+  State<_TypingCoupletBox> createState() => _TypingCoupletBoxState();
+}
+
+class _TypingCoupletBoxState extends State<_TypingCoupletBox> {
+  Timer? _timer;
+  int _poemIndex = 0;
+  int _charIndex = 0;
+  int _holdTicks = 0;
+
+  List<String> _couplet(Poem poem) {
+    final lines = poem.lines.map((e) => e.trim()).where((e) => e.isNotEmpty).toList();
+    if (lines.length >= 2) return lines.take(2).toList();
+    final words = poem.text.replaceAll('\\n', ' ').split(RegExp(r'\\s+')).where((e) => e.isNotEmpty).toList();
+    if (words.length < 2) return [poem.text.trim()];
+    final middle = (words.length / 2).ceil();
+    return [words.take(middle).join(' '), words.skip(middle).join(' ')];
+  }
+
+  String get _currentText {
+    if (widget.poems.isEmpty) return '';
+    return _couplet(widget.poems[_poemIndex % widget.poems.length]).join('\\n');
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _timer = Timer.periodic(const Duration(milliseconds: 65), (_) {
+      if (!mounted || widget.poems.isEmpty) return;
+      setState(() {
+        if (_charIndex < _currentText.length) {
+          _charIndex++;
+        } else if (_holdTicks++ > 32) {
+          _poemIndex = (_poemIndex + 1) % widget.poems.length;
+          _charIndex = 0;
+          _holdTicks = 0;
+        }
+      });
+    });
+  }
+
+  @override
+  void didUpdateWidget(covariant _TypingCoupletBox oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.poems.length != widget.poems.length) {
+      _poemIndex = 0;
+      _charIndex = 0;
+      _holdTicks = 0;
+    }
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final c = Theme.of(context).colorScheme;
+    final poem = widget.poems.isEmpty ? null : widget.poems[_poemIndex % widget.poems.length];
+    final shown = _currentText.substring(0, _charIndex.clamp(0, _currentText.length));
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 25),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.fromLTRB(16, 13, 16, 13),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(20),
+          gradient: LinearGradient(begin: Alignment.topRight, end: Alignment.bottomLeft,
+            colors: [c.primaryContainer.withValues(alpha: .72), c.surface, const Color(0xFFB77928).withValues(alpha: .12)]),
+          border: Border.all(color: c.primary.withValues(alpha: .18)),
+          boxShadow: [BoxShadow(color: c.primary.withValues(alpha: .08), blurRadius: 16, offset: const Offset(0, 5))],
+        ),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Row(children: [
+            Icon(Icons.format_quote_rounded, color: c.primary, size: 19),
+            const SizedBox(width: 6),
+            Text('د ورځې دوه بيتي', style: TextStyle(color: c.primary, fontSize: 11, fontWeight: FontWeight.w900)),
+            const Spacer(),
+            Container(width: 6, height: 6, decoration: BoxDecoration(color: c.tertiary, shape: BoxShape.circle)),
+            const SizedBox(width: 5),
+            Text('ادبي شېبې', style: TextStyle(color: c.onSurfaceVariant, fontSize: 9)),
+          ]),
+          const SizedBox(height: 9),
+          AnimatedSwitcher(
+            duration: const Duration(milliseconds: 280),
+            child: Text(
+              shown + (_charIndex < _currentText.length ? '▏' : ''),
+              key: ValueKey(_poemIndex),
+              textDirection: TextDirection.rtl,
+              textAlign: TextAlign.center,
+              style: TextStyle(color: c.onSurface, fontSize: 14, height: 1.9, fontWeight: FontWeight.w800),
+            ),
+          ),
+          if (poem != null && poem.poet.isNotEmpty) ...[
+            const SizedBox(height: 5),
+            Align(alignment: Alignment.centerLeft,
+              child: Text('— ${poem.poet}', style: TextStyle(color: c.onSurfaceVariant, fontSize: 10, fontWeight: FontWeight.w700))),
+          ],
+        ]),
+      ),
     );
   }
 }
