@@ -832,7 +832,7 @@ class _PoetryShellState extends State<PoetryShell> {
                 selected: selected,
                 label: item.$3,
                 child: InkWell(
-                  borderRadius: BorderRadius.circular(20),
+                  borderRadius: BorderRadius.circular(17),
                   onTap: () => setState(() => selectedPage = index),
                   child: AnimatedContainer(
                     duration: const Duration(milliseconds: 280),
@@ -1351,7 +1351,7 @@ class _PoetryShellState extends State<PoetryShell> {
         if (_categoryNames.isNotEmpty) ...[
           SliverPadding(padding: const EdgeInsets.fromLTRB(16, 10, 16, 9),
             sliver: SliverToBoxAdapter(child: _sectionHeader(Icons.category_rounded, 'کټګورۍ', '${_categoryNames.length} کټګورۍ'))),
-          SliverToBoxAdapter(child: SizedBox(height: 116, child: ListView.separated(
+          SliverToBoxAdapter(child: SizedBox(height: 112, child: ListView.separated(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 3),
             scrollDirection: Axis.horizontal, physics: const BouncingScrollPhysics(),
             itemCount: _categoryNames.length,
@@ -1360,19 +1360,19 @@ class _PoetryShellState extends State<PoetryShell> {
               final entry = _categoryNames.entries.elementAt(index);
               final count = poems.where((p) => p.category == entry.value).length;
               final selected = selectedCategory == entry.value;
-              return SizedBox(width: 112, child: Material(
+              return SizedBox(width: 104, child: Material(
                 color: selected ? colors.primary : colors.surface,
                 borderRadius: BorderRadius.circular(20),
                 child: InkWell(borderRadius: BorderRadius.circular(20),
                   onTap: () => setState(() { selectedCategory = selected ? 'ټول' : entry.value; query = ''; }),
-                  child: Container(padding: const EdgeInsets.all(11),
+                  child: Container(padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 8),
                     decoration: BoxDecoration(borderRadius: BorderRadius.circular(20),
                       border: Border.all(color: selected ? colors.primary : colors.outlineVariant.withValues(alpha: .55)),
                       gradient: selected ? null : LinearGradient(begin: Alignment.topRight, end: Alignment.bottomLeft,
                         colors: [colors.surface, colors.primaryContainer.withValues(alpha: .62)])),
                     child: Column(crossAxisAlignment: CrossAxisAlignment.start,
                       mainAxisAlignment: MainAxisAlignment.center, children: [
-                        Container(width: 42, height: 42,
+                        Container(width: 46, height: 46,
                           decoration: BoxDecoration(color: selected ? Colors.white.withValues(alpha: .17) : colors.primary.withValues(alpha: .10),
                             borderRadius: BorderRadius.circular(13)),
                           clipBehavior: Clip.antiAlias,
@@ -1397,7 +1397,7 @@ class _PoetryShellState extends State<PoetryShell> {
           SliverPadding(padding: const EdgeInsets.fromLTRB(16, 10, 16, 9),
             sliver: SliverToBoxAdapter(child: _sectionHeader(Icons.people_alt_rounded,
               'شاعران', '${poetGroups.length} شاعران'))),
-          SliverToBoxAdapter(child: SizedBox(height: 158, child: ListView.separated(
+          SliverToBoxAdapter(child: SizedBox(height: 132, child: ListView.separated(
             padding: const EdgeInsets.fromLTRB(16, 2, 16, 10), scrollDirection: Axis.horizontal,
             physics: const BouncingScrollPhysics(), itemCount: poetGroups.length,
             separatorBuilder: (_, __) => const SizedBox(width: 10),
@@ -1477,13 +1477,13 @@ class _PoetryShellState extends State<PoetryShell> {
     final initial = name.trim().isEmpty ? 'ش' : name.trim().characters.first;
     final matchingPoetImages = _poetImages.entries.where((e) => _poetNames[e.key] == name);
     final poetImageUrl = matchingPoetImages.isEmpty ? '' : matchingPoetImages.first.value;
-    return SizedBox(width: 148, child: Card(
-      elevation: 1.5, clipBehavior: Clip.antiAlias,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(19)),
+    return SizedBox(width: 112, child: Card(
+      elevation: 1, clipBehavior: Clip.antiAlias,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: InkWell(onTap: () => setState(() => query = name),
-        child: Padding(padding: const EdgeInsets.fromLTRB(12, 15, 12, 12),
+        child: Padding(padding: const EdgeInsets.fromLTRB(7, 8, 7, 7),
           child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-            Container(width: 72, height: 72,
+            Container(width: 54, height: 54,
               decoration: BoxDecoration(shape: BoxShape.circle,
                 gradient: LinearGradient(begin: Alignment.topRight, end: Alignment.bottomLeft,
                   colors: [colors.primary.withValues(alpha: .16), colors.secondary.withValues(alpha: .28)]),
@@ -1491,13 +1491,13 @@ class _PoetryShellState extends State<PoetryShell> {
               clipBehavior: Clip.antiAlias,
               child: poetImageUrl.isNotEmpty
                 ? Image.network(poetImageUrl, fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) => Center(child: Text(initial, style: TextStyle(fontSize: 29, fontWeight: FontWeight.w900, color: colors.primary))))
+                    errorBuilder: (_, __, ___) => Center(child: Text(initial, style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: colors.primary))))
                 : Center(child: Text(initial, style: TextStyle(fontSize: 29, fontWeight: FontWeight.w900, color: colors.primary))),
-            const SizedBox(height: 10),
+            const SizedBox(height: 6),
             Text(name, maxLines: 1, overflow: TextOverflow.ellipsis, textAlign: TextAlign.center,
-              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w900)),
+              style: const TextStyle(fontSize: 10.5, fontWeight: FontWeight.w900)),
             const SizedBox(height: 4),
-            Text('${poetPoems.length} خپرونې',
+            Text('${poetPoems.length} شعرونه',
               style: TextStyle(fontSize: 10, color: colors.onSurfaceVariant)),
           ])))));
   }
