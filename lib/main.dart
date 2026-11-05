@@ -455,7 +455,7 @@ class Poem {
     required this.id, required this.title, required this.poet,
     required this.category, required this.text, required this.lines,
     this.views = 0, this.likes = 0, this.shares = 0, this.saves = 0,
-    this.imageUrl, this.featured = false,
+    this.imageUrl, this.poetImageUrl, this.categoryImageUrl, this.featured = false,
   });
   final String id, title, poet, category, text;
   final List<String> lines;
@@ -1499,7 +1499,7 @@ class _PoetryShellState extends State<PoetryShell> {
               child: poetImageUrl.isNotEmpty
                 ? Image.network(poetImageUrl, fit: BoxFit.cover,
                     errorBuilder: (_, __, ___) => Center(child: Text(initial, style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: colors.primary))))
-                : Center(child: Text(initial, style: TextStyle(fontSize: 29, fontWeight: FontWeight.w900, color: colors.primary))),
+                : Center(child: Text(initial, style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: colors.primary)))),
             const SizedBox(height: 6),
             Text(name, maxLines: 1, overflow: TextOverflow.ellipsis, textAlign: TextAlign.center,
               style: const TextStyle(fontSize: 10.5, fontWeight: FontWeight.w900)),
