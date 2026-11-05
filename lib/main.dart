@@ -2999,6 +2999,9 @@ class CollectionPoemsPage extends StatefulWidget {
 
 class _CollectionPoemsPageState extends State<CollectionPoemsPage> {
   late final DatabaseReference _viewsRef;
+  static const double _expandedHeaderHeight = 318;
+  static const double _collapsedHeaderHeight = 76;
+
   @override
   void initState() {
     super.initState();
@@ -3014,69 +3017,37 @@ class _CollectionPoemsPageState extends State<CollectionPoemsPage> {
   Widget build(BuildContext context) {
     final c = Theme.of(context).colorScheme;
     return Directionality(textDirection: TextDirection.rtl, child: Scaffold(
-      appBar: AppBar(title: Text(widget.title)),
-      body: CustomScrollView(slivers: [
-        SliverToBoxAdapter(child: Container(
-          margin: const EdgeInsets.fromLTRB(16, 8, 16, 16), height: 174,
-          clipBehavior: Clip.antiAlias,
-          decoration: BoxDecoration(borderRadius: BorderRadius.circular(24),
-            gradient: const LinearGradient(begin: Alignment.topRight, end: Alignment.bottomLeft,
-              colors: [Color(0xFF123B32), Color(0xFF286B5D), Color(0xFFB77928)]),
-            boxShadow: [BoxShadow(color: c.primary.withValues(alpha: .15), blurRadius: 18, offset: const Offset(0, 7))]),
-          child: Stack(fit: StackFit.expand, children: [
-            if (widget.imageUrl.isNotEmpty) Image.network(widget.imageUrl, fit: BoxFit.cover,
-              errorBuilder: (_, __, ___) => const SizedBox.shrink()),
-            DecoratedBox(decoration: BoxDecoration(gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter,
-              colors: [Colors.black.withValues(alpha: .12), Colors.black.withValues(alpha: .76)]))),
-            Positioned(top: 15, left: 16, child: Container(
-              width: 76, height: 76, padding: const EdgeInsets.all(3),
-              decoration: BoxDecoration(shape: BoxShape.circle, color: Colors.white.withValues(alpha: .92),
-                boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: .22), blurRadius: 12)]),
-              child: ClipOval(child: widget.imageUrl.isNotEmpty
-                ? Image.network(widget.imageUrl, fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) => _collectionAvatarIcon())
-                : _collectionAvatarIcon()),
-            )),
-            Positioned(right: 18, bottom: 15, left: 18, child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(widget.title, maxLines: 1, overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.w900)),
-                const SizedBox(height: 8),
-                Row(children: [
-                  _collectionStat(Icons.menu_book_rounded, '${widget.poems.length} شعرونه'),
-                  const SizedBox(width: 14),
-                  StreamBuilder<DatabaseEvent>(stream: _viewsRef.onValue,
-                    builder: (context, snapshot) {
-                      final value = snapshot.data?.snapshot.value;
-                      final count = value is num ? value.toInt() : 0;
-                      return _collectionStat(Icons.visibility_rounded, '$count لیدنې');
-                    }),
-                ]),
-              ],
-            )),
-          ]),
-        )),
-        if (widget.poems.isEmpty)
-          const SliverFillRemaining(hasScrollBody: false,
-            child: Center(child: Text('په دې برخه کې تر اوسه شعرونه نشته.')))
-        else
-          SliverPadding(padding: const EdgeInsets.fromLTRB(14, 0, 14, 24),
-            sliver: SliverList(delegate: SliverChildBuilderDelegate(
-              (context, index) => Padding(padding: const EdgeInsets.only(bottom: 10),
-                child: _collectionPoemTile(context, widget.poems[index])),
-              childCount: widget.poems.length))),
-      ]),
+      body: CustomScrollView(
+        physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
+        slivers: [
+          SliverPersistentHeader(
+            pinned: true,
+            delegate: _CollectionHeaderDelegate(
+              title: widget.title,
+              imageUrl: widget.imageUrl,
+              isCategory: widget.isCategory,
+              poemCount: widget.poems.length,
+              views: _viewsRef,
+              expandedHeight: _expandedHeaderHeight,
+              collapsedHeight: _collapsedHeaderHeight,
+              background: c.surface,
+              foreground: c.onSurface,
+            ),
+          ),
+          if (widget.poems.isEmpty)
+            const SliverFillRemaining(hasScrollBody: false,
+              child: Center(child: Text('په دې برخه کې تر اوسه شعرونه نشته.')))
+          else
+            SliverPadding(padding: const EdgeInsets.fromLTRB(14, 12, 14, 24),
+              sliver: SliverList(delegate: SliverChildBuilderDelegate(
+                (context, index) => Padding(
+                  padding: const EdgeInsets.only(bottom: 10),
+                  child: _collectionPoemTile(context, widget.poems[index])),
+                childCount: widget.poems.length))),
+        ],
+      ),
     ));
   }
-
-  Widget _collectionAvatarIcon() => Container(color: const Color(0xFF286B5D),
-    child: Icon(widget.isCategory ? Icons.category_rounded : Icons.person_rounded,
-      color: Colors.white, size: 34));
-
-  Widget _collectionStat(IconData icon, String label) => Row(mainAxisSize: MainAxisSize.min,
-    children: [Icon(icon, color: Colors.white70, size: 15), const SizedBox(width: 5),
-      Text(label, style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w700))]);
 
   Widget _collectionPoemTile(BuildContext context, Poem poem) {
     final c = Theme.of(context).colorScheme;
@@ -3096,6 +3067,139 @@ class _CollectionPoemsPageState extends State<CollectionPoemsPage> {
         Icon(Icons.chevron_left_rounded, color: c.onSurfaceVariant),
       ])))));
   }
+}
+
+class _CollectionHeaderDelegate extends SliverPersistentHeaderDelegate {
+  _CollectionHeaderDelegate({
+    required this.title, required this.imageUrl, required this.isCategory,
+    required this.poemCount, required this.views, required this.expandedHeight,
+    required this.collapsedHeight, required this.background, required this.foreground,
+  });
+  final String title, imageUrl;
+  final bool isCategory;
+  final int poemCount;
+  final DatabaseReference views;
+  final double expandedHeight, collapsedHeight;
+  final Color background, foreground;
+
+  @override
+  double get maxExtent => expandedHeight;
+  @override
+  double get minExtent => collapsedHeight;
+
+  @override
+  Widget build(BuildContext context, double shrinkOffset, bool overlapsContent) {
+    final range = (maxExtent - minExtent).clamp(1.0, double.infinity);
+    final t = (shrinkOffset / range).clamp(0.0, 1.0);
+    final avatarSize = 88 - (44 * t);
+    final avatarRight = 0.0 + (MediaQuery.sizeOf(context).width - 16 - 44) * t;
+    final avatarTop = 132 - (118 * t);
+    final titleTop = 222 - (198 * t);
+    final titleRight = 0.0 + (MediaQuery.sizeOf(context).width - 16 - 178) * t;
+    final bannerOpacity = (1 - t * 1.15).clamp(0.0, 1.0);
+    final expandedTextOpacity = (1 - t * 1.4).clamp(0.0, 1.0);
+    final collapsedTextOpacity = ((t - .55) / .35).clamp(0.0, 1.0);
+
+    return Material(
+      color: background,
+      elevation: overlapsContent || t > .92 ? 3 : 0,
+      child: Stack(clipBehavior: Clip.hardEdge, children: [
+        Positioned(
+          top: 8, left: 16, right: 16, height: 170,
+          child: Opacity(opacity: bannerOpacity, child: ClipRRect(
+            borderRadius: BorderRadius.circular(25),
+            child: Stack(fit: StackFit.expand, children: [
+              if (imageUrl.isNotEmpty)
+                Image.network(imageUrl, fit: BoxFit.cover,
+                  errorBuilder: (_, __, ___) => _headerFallback())
+              else _headerFallback(),
+              DecoratedBox(decoration: BoxDecoration(
+                gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter,
+                  colors: [Colors.black.withValues(alpha: .04), Colors.black.withValues(alpha: .48)]))),
+            ]),
+          )),
+        ),
+        Positioned(
+          top: 8, right: 8,
+          child: IconButton(
+            onPressed: () => Navigator.maybePop(context),
+            icon: Icon(Icons.arrow_forward_rounded,
+              color: t < .8 ? Colors.white : foreground),
+          ),
+        ),
+        Positioned(
+          top: avatarTop, right: avatarRight,
+          child: Container(
+            width: avatarSize, height: avatarSize,
+            padding: const EdgeInsets.all(3),
+            decoration: BoxDecoration(shape: BoxShape.circle, color: background,
+              boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: .18), blurRadius: 12, offset: const Offset(0, 3))]),
+            child: ClipOval(child: imageUrl.isNotEmpty
+              ? Image.network(imageUrl, fit: BoxFit.cover,
+                  errorBuilder: (_, __, ___) => _avatarFallback())
+              : _avatarFallback()),
+          ),
+        ),
+        Positioned(
+          top: titleTop, right: titleRight, left: 62,
+          child: Opacity(opacity: expandedTextOpacity,
+            child: Text(title, maxLines: 1, overflow: TextOverflow.ellipsis,
+              style: TextStyle(color: foreground, fontSize: 20, fontWeight: FontWeight.w900))),
+        ),
+        Positioned(
+          top: 270, right: 18, left: 18,
+          child: Opacity(opacity: expandedTextOpacity,
+            child: Row(children: [
+              _headerStat(Icons.menu_book_rounded, '$poemCount شعرونه', foreground),
+              const SizedBox(width: 18),
+              StreamBuilder<DatabaseEvent>(stream: views.onValue,
+                builder: (context, snapshot) {
+                  final value = snapshot.data?.snapshot.value;
+                  final count = value is num ? value.toInt() : 0;
+                  return _headerStat(Icons.visibility_rounded, '$count لیدونکي', foreground);
+                }),
+            ]),
+          ),
+        ),
+        Positioned(
+          top: 16, right: 116, left: 60,
+          child: Opacity(opacity: collapsedTextOpacity,
+            child: Text(title, maxLines: 1, overflow: TextOverflow.ellipsis,
+              style: TextStyle(color: foreground, fontSize: 17, fontWeight: FontWeight.w900))),
+        ),
+      ]),
+    );
+  }
+
+  Widget _headerFallback() => Container(
+    decoration: const BoxDecoration(gradient: LinearGradient(
+      begin: Alignment.topRight, end: Alignment.bottomLeft,
+      colors: [Color(0xFF123B32), Color(0xFF286B5D), Color(0xFFB77928)])),
+    child: const Center(child: Icon(Icons.auto_stories_rounded, color: Colors.white70, size: 42)),
+  );
+
+  Widget _avatarFallback() => Container(
+    color: const Color(0xFF286B5D),
+    child: Icon(isCategory ? Icons.category_rounded : Icons.person_rounded,
+      color: Colors.white, size: 34),
+  );
+
+  Widget _headerStat(IconData icon, String label, Color color) => Row(
+    mainAxisSize: MainAxisSize.min, children: [
+      Icon(icon, color: color.withValues(alpha: .75), size: 16),
+      const SizedBox(width: 5),
+      Text(label, style: TextStyle(color: color, fontSize: 12, fontWeight: FontWeight.w700)),
+    ],
+  );
+
+  @override
+  bool shouldRebuild(covariant _CollectionHeaderDelegate oldDelegate) =>
+      title != oldDelegate.title || imageUrl != oldDelegate.imageUrl ||
+      poemCount != oldDelegate.poemCount || views != oldDelegate.views ||
+      expandedHeight != oldDelegate.expandedHeight ||
+      collapsedHeight != oldDelegate.collapsedHeight ||
+      background != oldDelegate.background || foreground != oldDelegate.foreground ||
+      isCategory != oldDelegate.isCategory;
 }
 
 class PoemDetailScreen extends StatefulWidget {
