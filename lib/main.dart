@@ -3092,10 +3092,10 @@ class _CollectionHeaderDelegate extends SliverPersistentHeaderDelegate {
     final range = (maxExtent - minExtent).clamp(1.0, double.infinity);
     final t = (shrinkOffset / range).clamp(0.0, 1.0);
     final avatarSize = 88 - (44 * t);
-    final avatarRight = 0.0 + (MediaQuery.sizeOf(context).width - 16 - 44) * t;
+    final avatarRight = ((MediaQuery.sizeOf(context).width - avatarSize) / 2) * (1 - t) + 64 * t;
     final avatarTop = 132 - (118 * t);
     final titleTop = 222 - (198 * t);
-    final titleRight = 0.0 + (MediaQuery.sizeOf(context).width - 16 - 178) * t;
+    
     final bannerOpacity = (1 - t * 1.15).clamp(0.0, 1.0);
     final expandedTextOpacity = (1 - t * 1.4).clamp(0.0, 1.0);
     final collapsedTextOpacity = ((t - .55) / .35).clamp(0.0, 1.0);
@@ -3141,10 +3141,14 @@ class _CollectionHeaderDelegate extends SliverPersistentHeaderDelegate {
           ),
         ),
         Positioned(
-          top: titleTop, right: titleRight, left: 62,
+          top: titleTop, left: 0, right: 0,
           child: Opacity(opacity: expandedTextOpacity,
-            child: Text(title, maxLines: 1, overflow: TextOverflow.ellipsis,
-              style: TextStyle(color: foreground, fontSize: 20, fontWeight: FontWeight.w900))),
+            child: Align(
+              alignment: Alignment.lerp(Alignment.center, Alignment.centerRight, t)!,
+              child: Padding(padding: EdgeInsets.only(left: 20, right: 20 + 96 * t),
+                child: Text(title, maxLines: 1, overflow: TextOverflow.ellipsis,
+                  style: TextStyle(color: foreground, fontSize: 20, fontWeight: FontWeight.w900))),
+            )),
         ),
         Positioned(
           top: 270, right: 18, left: 18,
