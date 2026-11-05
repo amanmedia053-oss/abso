@@ -503,7 +503,6 @@ class _PoetryShellState extends State<PoetryShell> {
   Map<String, String> _poetImages = {};
   StreamSubscription<DatabaseEvent>? _poemSub, _categorySub, _poetSub;
   String query = '';
-  String selectedCategory = 'ټول';
   bool _exitDialogOpen = false;
   bool _loadingPoems = true;
   String? _databaseError;
@@ -730,9 +729,6 @@ class _PoetryShellState extends State<PoetryShell> {
       poems..clear()..addAll(next);
       _loadingPoems = false;
       _databaseError = null;
-      if (selectedCategory != 'ټول' && !poems.any((p) => p.category == selectedCategory)) {
-        selectedCategory = 'ټول';
-      }
     });
   }
 
@@ -1362,7 +1358,7 @@ class _PoetryShellState extends State<PoetryShell> {
             separatorBuilder: (_, __) => const SizedBox(width: 11),
             itemBuilder: (context, index) {
               final entry = _categoryNames.entries.elementAt(index);
-              final count = poems.where((p) => p.category == entry.value).length;
+              final count = poems.where((p) => p.categoryId == entry.key).length;
               return SizedBox(width: 104, child: Material(
                 color: colors.surface,
                 borderRadius: BorderRadius.circular(20),
