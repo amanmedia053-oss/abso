@@ -3164,16 +3164,12 @@ class _PoetrySearchPageState extends State<PoetrySearchPage> {
           )).toList(),
         )),
         Padding(
-          padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
           child: Row(children: [
-            Icon(Icons.filter_list_rounded, color: c.primary, size: 19),
-            const SizedBox(width: 7),
-            const Text('فلټرونه', style: TextStyle(fontWeight: FontWeight.w900)),
-            const SizedBox(width: 8),
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
               decoration: BoxDecoration(
-                color: c.primaryContainer,
+                color: c.primaryContainer.withValues(alpha: .65),
                 borderRadius: BorderRadius.circular(20),
               ),
               child: Text('${results.length} پایلې', style: TextStyle(
@@ -3181,16 +3177,16 @@ class _PoetrySearchPageState extends State<PoetrySearchPage> {
               )),
             ),
             const Spacer(),
-            OutlinedButton.icon(
-              onPressed: _showFilterSettings,
-              icon: const Icon(Icons.tune_rounded, size: 17),
-              label: const Text('تنظیمات'),
-              style: OutlinedButton.styleFrom(
-                foregroundColor: c.primary,
-                side: BorderSide(color: c.primary.withValues(alpha: .45)),
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                visualDensity: VisualDensity.compact,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(13)),
+            Material(
+              color: c.primaryContainer,
+              borderRadius: BorderRadius.circular(14),
+              child: InkWell(
+                onTap: _showFilterSettings,
+                borderRadius: BorderRadius.circular(14),
+                child: Padding(
+                  padding: const EdgeInsets.all(10),
+                  child: Icon(Icons.tune_rounded, color: c.onPrimaryContainer, size: 21),
+                ),
               ),
             ),
           ]),
