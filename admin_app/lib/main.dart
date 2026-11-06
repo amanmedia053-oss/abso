@@ -333,7 +333,7 @@ class _TelegramArchiveAdminPageState extends State<TelegramArchiveAdminPage> {
             if ((p['photoFileId'] ?? '').toString().isNotEmpty)
               const Padding(padding: EdgeInsets.only(top: 6), child: Text('دا پوسټ انځور لري (Telegram file ID خوندي شوی).')),
             if ((p['postUrl'] ?? '').toString().isNotEmpty)
-              TextButton.icon(onPressed: () {}, icon: const Icon(Icons.link), label: Text('د پوسټ لینک: ${p['postUrl']}')),
+              SelectableText('د پوسټ لینک: ${p['postUrl']}'),
             Align(alignment: Alignment.centerLeft, child: FilledButton.tonalIcon(
               onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => PoemEditor(initialText: (p['text'] ?? '').toString()))),
               icon: const Icon(Icons.edit_note), label: const Text('شعر ته انتقال')))
