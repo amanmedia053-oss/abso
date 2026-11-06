@@ -2934,6 +2934,177 @@ class _PoetrySearchPageState extends State<PoetrySearchPage> {
     return result;
   }
 
+  Future<void> _showFilterSettings() async {
+    final c = Theme.of(context).colorScheme;
+
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      backgroundColor: Colors.transparent,
+      builder: (sheetContext) {
+        return StatefulBuilder(
+          builder: (context, setSheetState) {
+            Widget optionChips({
+              required String title,
+              required List<String> options,
+              required String selected,
+              required ValueChanged<String> onSelected,
+            }) {
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 10),
+                    child: Text(title, style: TextStyle(
+                      color: c.onSurface, fontSize: 14, fontWeight: FontWeight.w900,
+                    )),
+                  ),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: options.map((value) {
+                      final active = selected == value;
+                      return ChoiceChip(
+                        label: Text(value, style: TextStyle(
+                          color: active ? Colors.white : c.onSurface,
+                          fontSize: 12, fontWeight: FontWeight.w700,
+                        )),
+                        selected: active,
+                        selectedColor: c.primary,
+                        backgroundColor: c.surfaceContainerHighest,
+                        checkmarkColor: Colors.white,
+                        side: BorderSide(color: active ? c.primary : c.outlineVariant),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(13)),
+                        onSelected: (_) {
+                          setState(() => onSelected(value));
+                          setSheetState(() {});
+                        },
+                      );
+                    }).toList(),
+                  ),
+                ],
+              );
+            }
+
+            return Container(
+              constraints: BoxConstraints(
+                maxHeight: MediaQuery.of(context).size.height * .86,
+              ),
+              decoration: BoxDecoration(
+                color: c.surface,
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+                boxShadow: [BoxShadow(
+                  color: Colors.black.withValues(alpha: .16),
+                  blurRadius: 24, offset: const Offset(0, -5),
+                )],
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const SizedBox(height: 10),
+                  Container(width: 42, height: 4, decoration: BoxDecoration(
+                    color: c.outlineVariant, borderRadius: BorderRadius.circular(10),
+                  )),
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 17, 16, 12),
+                    child: Row(children: [
+                      Container(width: 42, height: 42,
+                        decoration: BoxDecoration(
+                          color: c.primaryContainer,
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                        child: Icon(Icons.tune_rounded, color: c.primary)),
+                      const SizedBox(width: 12),
+                      Expanded(child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('تنظیمات او فلټرونه', style: TextStyle(
+                            color: c.onSurface, fontSize: 17, fontWeight: FontWeight.w900,
+                          )),
+                          Text('د لټون پایلې خپلې خوښې سره برابرې کړئ',
+                            style: TextStyle(color: c.onSurfaceVariant, fontSize: 11)),
+                        ],
+                      )),
+                      IconButton(
+                        tooltip: 'بندول',
+                        onPressed: () => Navigator.pop(sheetContext),
+                        icon: Icon(Icons.close_rounded, color: c.onSurfaceVariant),
+                      ),
+                    ]),
+                  ),
+                  Divider(height: 1, color: c.outlineVariant.withValues(alpha: .5)),
+                  Flexible(
+                    child: ListView(
+                      shrinkWrap: true,
+                      padding: const EdgeInsets.fromLTRB(18, 16, 18, 24),
+                      children: [
+                        optionChips(
+                          title: 'د لټون ساحه',
+                          options: const ['ټول', 'عنوان', 'شاعر', 'متن'],
+                          selected: _field,
+                          onSelected: (v) => _field = v,
+                        ),
+                        const SizedBox(height: 20),
+                        optionChips(
+                          title: 'کټګوري',
+                          options: _categories,
+                          selected: _category,
+                          onSelected: (v) => _category = v,
+                        ),
+                        const SizedBox(height: 20),
+                        optionChips(
+                          title: 'شاعر',
+                          options: _poets,
+                          selected: _poet,
+                          onSelected: (v) => _poet = v,
+                        ),
+                        const SizedBox(height: 20),
+                        optionChips(
+                          title: 'ترتیب',
+                          options: const ['اړوند', 'ډېر لوستل شوي', 'عنوان'],
+                          selected: _sort,
+                          onSelected: (v) => _sort = v,
+                        ),
+                        const SizedBox(height: 12),
+                        SwitchListTile.adaptive(
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 4),
+                          secondary: Icon(Icons.image_search_rounded, color: c.primary),
+                          title: Text('یوازې انځور لرونکي شعرونه',
+                            style: TextStyle(color: c.onSurface, fontWeight: FontWeight.w800)),
+                          subtitle: Text('هغه شعرونه وښیه چې انځور لري',
+                            style: TextStyle(color: c.onSurfaceVariant, fontSize: 11)),
+                          value: _onlyWithImage,
+                          activeColor: c.primary,
+                          onChanged: (v) {
+                            setState(() => _onlyWithImage = v);
+                            setSheetState(() {});
+                          },
+                        ),
+                        const SizedBox(height: 10),
+                        FilledButton.icon(
+                          onPressed: () => Navigator.pop(sheetContext),
+                          icon: const Icon(Icons.check_rounded),
+                          label: const Text('پایلې ښکاره کړه'),
+                          style: FilledButton.styleFrom(
+                            minimumSize: const Size.fromHeight(50),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
   @override
   void dispose() {
     _controller.dispose();
@@ -2992,103 +3163,39 @@ class _PoetrySearchPageState extends State<PoetrySearchPage> {
             ),
           )).toList(),
         )),
-        Padding(padding: const EdgeInsets.fromLTRB(16, 10, 16, 4),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
           child: Row(children: [
             Icon(Icons.filter_list_rounded, color: c.primary, size: 19),
-            const SizedBox(width: 6),
+            const SizedBox(width: 7),
             const Text('فلټرونه', style: TextStyle(fontWeight: FontWeight.w900)),
-            const Spacer(),
-            Text('${results.length} پایلې', style: TextStyle(color: c.onSurfaceVariant, fontSize: 12)),
-          ])),
-        Padding(padding: const EdgeInsets.symmetric(horizontal: 16),
-          child: Row(children: [
-            Expanded(child: DropdownButtonFormField<String>(
-              value: _category, isExpanded: true,
-              style: TextStyle(color: c.onSurface, fontSize: 12, fontWeight: FontWeight.w700),
-              dropdownColor: c.surface,
-              decoration: InputDecoration(
-                labelText: 'کټګوري', isDense: true, filled: true, fillColor: c.surface,
-                labelStyle: TextStyle(color: c.onSurfaceVariant, fontSize: 12),
-                floatingLabelStyle: TextStyle(color: c.primary, fontWeight: FontWeight.w800),
-                contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 13),
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(16),
-                  borderSide: BorderSide(color: c.outlineVariant)),
-                enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16),
-                  borderSide: BorderSide(color: c.outlineVariant.withValues(alpha: .8))),
-                focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16),
-                  borderSide: BorderSide(color: c.primary, width: 1.5)),
+            const SizedBox(width: 8),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+              decoration: BoxDecoration(
+                color: c.primaryContainer,
+                borderRadius: BorderRadius.circular(20),
               ),
-              items: _categories.map((v) => DropdownMenuItem(value: v,
-                child: Text(v, overflow: TextOverflow.ellipsis,
-                  style: TextStyle(color: c.onSurface)))).toList(),
-              onChanged: (v) => setState(() => _category = v ?? 'ټولې کټګورۍ'),
-            )),
-            const SizedBox(width: 10),
-            Expanded(child: DropdownButtonFormField<String>(
-              value: _poet, isExpanded: true,
-              style: TextStyle(color: c.onSurface, fontSize: 12, fontWeight: FontWeight.w700),
-              dropdownColor: c.surface,
-              decoration: InputDecoration(
-                labelText: 'شاعر', isDense: true, filled: true, fillColor: c.surface,
-                labelStyle: TextStyle(color: c.onSurfaceVariant, fontSize: 12),
-                floatingLabelStyle: TextStyle(color: c.primary, fontWeight: FontWeight.w800),
-                contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 13),
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(16),
-                  borderSide: BorderSide(color: c.outlineVariant)),
-                enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16),
-                  borderSide: BorderSide(color: c.outlineVariant.withValues(alpha: .8))),
-                focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16),
-                  borderSide: BorderSide(color: c.primary, width: 1.5)),
-              ),
-              items: _poets.map((v) => DropdownMenuItem(value: v,
-                child: Text(v, overflow: TextOverflow.ellipsis,
-                  style: TextStyle(color: c.onSurface)))).toList(),
-              onChanged: (v) => setState(() => _poet = v ?? 'ټول شاعران'),
-            )),
-          ])),
-        Padding(padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-          child: Row(children: [
-            Expanded(child: DropdownButtonFormField<String>(
-              value: _sort, isExpanded: true,
-              style: TextStyle(color: c.onSurface, fontSize: 12, fontWeight: FontWeight.w700),
-              dropdownColor: c.surface,
-              decoration: InputDecoration(
-                labelText: 'ترتیب', isDense: true, filled: true, fillColor: c.surface,
-                labelStyle: TextStyle(color: c.onSurfaceVariant, fontSize: 12),
-                floatingLabelStyle: TextStyle(color: c.primary, fontWeight: FontWeight.w800),
-                contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 13),
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(16),
-                  borderSide: BorderSide(color: c.outlineVariant)),
-                enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16),
-                  borderSide: BorderSide(color: c.outlineVariant.withValues(alpha: .8))),
-                focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16),
-                  borderSide: BorderSide(color: c.primary, width: 1.5)),
-              ),
-              items: ['اړوند', 'ډېر لوستل شوي', 'عنوان'].map((v) => DropdownMenuItem(value: v,
-                child: Text(v, style: TextStyle(color: c.onSurface)))).toList(),
-              onChanged: (v) => setState(() => _sort = v ?? 'اړوند'),
-            )),
-            const SizedBox(width: 12),
-            FilterChip(
-              label: const Text('انځور لرونکي'),
-              labelStyle: TextStyle(
-                color: _onlyWithImage ? Colors.white : c.onSurface,
-                fontSize: 12,
-                fontWeight: FontWeight.w800,
-              ),
-              selected: _onlyWithImage,
-              selectedColor: c.primary,
-              backgroundColor: c.surface,
-              checkmarkColor: Colors.white,
-              side: BorderSide(
-                color: _onlyWithImage ? c.primary : c.outline,
-                width: 1.2,
-              ),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-              onSelected: (v) => setState(() => _onlyWithImage = v),
+              child: Text('${results.length} پایلې', style: TextStyle(
+                color: c.onPrimaryContainer, fontSize: 11, fontWeight: FontWeight.w800,
+              )),
             ),
-          ])),
-        const Divider(height: 1),
+            const Spacer(),
+            OutlinedButton.icon(
+              onPressed: _showFilterSettings,
+              icon: const Icon(Icons.tune_rounded, size: 17),
+              label: const Text('تنظیمات'),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: c.primary,
+                side: BorderSide(color: c.primary.withValues(alpha: .45)),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                visualDensity: VisualDensity.compact,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(13)),
+              ),
+            ),
+          ]),
+        ),
+
         Expanded(child: results.isEmpty
           ? Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
               Icon(Icons.search_off_rounded, size: 54, color: c.outline),
