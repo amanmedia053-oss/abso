@@ -138,9 +138,9 @@ class _AdminHomeState extends State<AdminHome> {
   int tab = 0;
   @override
   Widget build(BuildContext context) {
-    final pages = [const PoemsAdminPage(), const SimpleListAdmin(path: 'categories', title: 'کټګورۍ'),
-      const SimpleListAdmin(path: 'poets', title: 'شاعران'), const GalleryAdminPage(),
-      const AdminCommentsPage()];
+    final pages = [const PoemsAdminPage(),
+      const SimpleListAdmin(path: 'poets', title: 'شاعران'),
+      const GalleryAdminPage(), const AdminCommentsPage()];
     return Scaffold(
       appBar: AppBar(title: const Text('د ادبي خزانه مدیریت'),
         actions: [IconButton(onPressed: () => FirebaseAuth.instance.signOut(),
@@ -153,7 +153,6 @@ class _AdminHomeState extends State<AdminHome> {
         onDestinationSelected: (v) => setState(() => tab = v),
         destinations: const [
           NavigationDestination(icon: Icon(Icons.menu_book_outlined), selectedIcon: Icon(Icons.menu_book), label: 'شعرونه'),
-          NavigationDestination(icon: Icon(Icons.category_outlined), label: 'کټګورۍ'),
           NavigationDestination(icon: Icon(Icons.people_outline), label: 'شاعران'),
           NavigationDestination(icon: Icon(Icons.photo_library_outlined), label: 'ګالري'),
           NavigationDestination(icon: Icon(Icons.forum_outlined), selectedIcon: Icon(Icons.forum_rounded), label: 'تبصرې'),
@@ -588,10 +587,19 @@ class _PoemEditorState extends State<PoemEditor> {
   String? categoryId, poetId;
   XFile? image;
   bool featured = false, saving = false;
+  static const List<String> offlineCategoryNames = [
+    'حمدیه شاعري', 'نعتیه شاعري', 'حماسي شاعري', 'عشقي شاعري',
+    'غنایي شاعري', 'عرفاني شاعري', 'تصوفي شاعري', 'فلسفي شاعري',
+    'اخلاقي شاعري', 'اصلاحي شاعري', 'ټولنیزه شاعري', 'سیاسي شاعري',
+    'ملي شاعري', 'وطني شاعري', 'رزمي شاعري', 'انتقادي شاعري',
+    'طنزي شاعري', 'هجوي شاعري', 'مرثیه', 'تاریخي شاعري',
+    'تعلیمي شاعري', 'طبیعي شاعري', 'حماسي وطني شاعري',
+    'فراق او هجران', 'تصوف او معرفت', 'نور بېلابېل شعرونه',
+  ];
   Future<void> save() async {
-    if (text.text.trim().isEmpty || categoryId == null) {
+    if (text.text.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('د شعر متن او کټګوري حتمي دي.')));
+        const SnackBar(content: Text('د شعر متن حتمي دی.')));
       return;
     }
     setState(() => saving = true);
@@ -600,7 +608,7 @@ class _PoemEditorState extends State<PoemEditor> {
       String? imageUrl;
       final data = <String, dynamic>{
         'text': text.text.trim(),
-        'categoryId': categoryId,
+        'categoryId': categoryId ?? 'offline_category_${offlineCategoryNames.length - 1}',
         'createdAt': ServerValue.timestamp,
         'featured': featured,
         'isPublished': true,
@@ -620,17 +628,12 @@ class _PoemEditorState extends State<PoemEditor> {
   @override
   Widget build(BuildContext context) => Scaffold(
     appBar: AppBar(title: const Text('نوی شعر ثبتول')),
-    body: FutureBuilder<List<DataSnapshot>>(
-      future: Future.wait([
-        FirebaseDatabase.instance.ref('categories').get(),
-        FirebaseDatabase.instance.ref('poets').get(),
-      ]),
+    body: FutureBuilder<DataSnapshot>(
+      future: FirebaseDatabase.instance.ref('poets').get(),
       builder: (context, snap) {
         if (!snap.hasData) return const Center(child: CircularProgressIndicator());
-        final categories = snap.data![0].value is Map
-          ? Map<String, dynamic>.from(snap.data![0].value as Map) : <String, dynamic>{};
-        final poets = snap.data![1].value is Map
-          ? Map<String, dynamic>.from(snap.data![1].value as Map) : <String, dynamic>{};
+        final poets = snap.data!.value is Map
+          ? Map<String, dynamic>.from(snap.data!.value as Map) : <String, dynamic>{};
         return ListView(padding: const EdgeInsets.all(16), children: [
           TextField(controller: title, decoration: const InputDecoration(
             labelText: 'د شعر عنوان (اختیاري)', border: OutlineInputBorder())),
@@ -640,10 +643,18 @@ class _PoemEditorState extends State<PoemEditor> {
               alignLabelWithHint: true, border: OutlineInputBorder())),
           const SizedBox(height: 12),
           DropdownButtonFormField<String>(
-            value: categoryId, decoration: const InputDecoration(labelText: 'کټګوري *',
+            value: categoryId,
+            decoration: const InputDecoration(labelText: 'کټګوري (اختیاري)',
+              helperText: 'که کټګوري و نه ټاکئ، شعر به «نور بېلابېل شعرونه» کې ښکاره شي.',
               border: OutlineInputBorder()),
-            items: categories.entries.map((e) => DropdownMenuItem(
-              value: e.key, child: Text((e.value is Map ? e.value['name'] : e.value).toString()))).toList(),
+            items: [
+              const DropdownMenuItem<String>(
+                value: null, child: Text('کټګوري نه ټاکل کېږي')),
+              ...List.generate(offlineCategoryNames.length, (index) =>
+                DropdownMenuItem<String>(
+                  value: 'offline_category_$index',
+                  child: Text(offlineCategoryNames[index]))),
+            ],
             onChanged: (v) => setState(() => categoryId = v)),
           const SizedBox(height: 12),
           DropdownButtonFormField<String>(
