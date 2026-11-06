@@ -3683,12 +3683,12 @@ class _TypingCoupletBoxState extends State<_TypingCoupletBox> {
     final result = <({Poem poem, String text})>[];
     for (final poem in widget.poems) {
       String clean(String value) => value
-          .replaceAll(r'\\n', '\n')
-          .replaceAll(r'\\r', '\r')
+          .replaceAll(r'\n', '\n')
+          .replaceAll(r'\r', '\r')
           .trim();
       final verses = poem.text
-          .replaceAll(r'\\n', '\n')
-          .replaceAll(r'\\r', '\r')
+          .replaceAll(r'\n', '\n')
+          .replaceAll(r'\r', '\r')
           .split(RegExp(r'[\r\n]+'))
           .map(clean)
           .where((line) => line.isNotEmpty)
@@ -7275,12 +7275,12 @@ class _TypingCoupletBoxState extends State<_TypingCoupletBox> {
     final result = <({Poem poem, String text})>[];
     for (final poem in widget.poems) {
       String clean(String value) => value
-          .replaceAll(r'\\n', '\n')
-          .replaceAll(r'\\r', '\r')
+          .replaceAll(r'\n', '\n')
+          .replaceAll(r'\r', '\r')
           .trim();
       final verses = poem.text
-          .replaceAll(r'\\n', '\n')
-          .replaceAll(r'\\r', '\r')
+          .replaceAll(r'\n', '\n')
+          .replaceAll(r'\r', '\r')
           .split(RegExp(r'[\r\n]+'))
           .map(clean)
           .where((line) => line.isNotEmpty)
