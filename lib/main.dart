@@ -3676,6 +3676,7 @@ class _TypingCoupletBoxState extends State<_TypingCoupletBox> {
   int _itemIndex = 0;
   int _charIndex = 0;
   int _holdTicks = 0;
+  bool _isDeleting = false;
 
   // هر شعر په خپلو کرښو/بیتونو وېشو؛ دوه دوه بیتونه یو کارت جوړوي.
   // که د بیتونو شمېر طاق وي، وروستی پاتې بیت یوازې ښودل کېږي.
@@ -3713,17 +3714,28 @@ class _TypingCoupletBoxState extends State<_TypingCoupletBox> {
   @override
   void initState() {
     super.initState();
-    _timer = Timer.periodic(const Duration(milliseconds: 65), (_) {
+    // لومړی شعر ورو ورو لیکل کېږي، لږ تم کېږي، بیا توري یو په یو پاکېږي.
+    // کله چې متن بشپړ پاک شو، راتلونکی شعر له سره ټایپېږي.
+    _timer = Timer.periodic(const Duration(milliseconds: 55), (_) {
       if (!mounted) return;
       final items = _items;
       if (items.isEmpty) return;
       setState(() {
-        if (_charIndex < _currentText.length) {
-          _charIndex++;
-        } else if (_holdTicks++ > 32) {
-          _itemIndex = (_itemIndex + 1) % items.length;
-          _charIndex = 0;
-          _holdTicks = 0;
+        if (!_isDeleting) {
+          if (_charIndex < _currentText.length) {
+            _charIndex++;
+          } else if (_holdTicks++ >= 28) {
+            _isDeleting = true;
+            _holdTicks = 0;
+          }
+        } else {
+          if (_charIndex > 0) {
+            _charIndex--;
+          } else {
+            _itemIndex = (_itemIndex + 1) % items.length;
+            _isDeleting = false;
+            _holdTicks = 0;
+          }
         }
       });
     });
@@ -3736,6 +3748,7 @@ class _TypingCoupletBoxState extends State<_TypingCoupletBox> {
       _itemIndex = 0;
       _charIndex = 0;
       _holdTicks = 0;
+      _isDeleting = false;
     }
   }
 
