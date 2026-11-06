@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_database/firebase_database.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
@@ -172,20 +173,230 @@ class _AbsoAppState extends State<AbsoApp> {
     darkTheme: makeTheme(Brightness.dark),
     themeMode: mode,
     home: LaunchGate(
-      appBuilder: () => PoetryShell(
-        isDark: mode == ThemeMode.dark,
-        fontName: selectedFont,
-        accentColor: Color(selectedAccentValue),
-        onTheme: _toggleTheme,
-        onFontChanged: _setFont,
-        onAccentChanged: _setAccent,
-        onResetAppearance: _resetAppearance,
+      appBuilder: () => AuthGate(
+        child: PoetryShell(
+          isDark: mode == ThemeMode.dark,
+          fontName: selectedFont,
+          accentColor: Color(selectedAccentValue),
+          onTheme: _toggleTheme,
+          onFontChanged: _setFont,
+          onAccentChanged: _setAccent,
+          onResetAppearance: _resetAppearance,
+        ),
       ),
     ),
     );
   }
 }
 
+
+class AuthGate extends StatelessWidget {
+  const AuthGate({super.key, required this.child});
+  final Widget child;
+  @override
+  Widget build(BuildContext context) => StreamBuilder<User?>(
+    stream: FirebaseAuth.instance.authStateChanges(),
+    builder: (context, snapshot) {
+      if (snapshot.connectionState == ConnectionState.waiting) {
+        return const Scaffold(body: Center(child: CircularProgressIndicator()));
+      }
+      final user = snapshot.data;
+      if (user != null && !user.isAnonymous) return child;
+      return const AccountAccessPage();
+    },
+  );
+}
+
+class AccountAccessPage extends StatefulWidget {
+  const AccountAccessPage({super.key});
+  @override
+  State<AccountAccessPage> createState() => _AccountAccessPageState();
+}
+
+class _AccountAccessPageState extends State<AccountAccessPage> {
+  final name = TextEditingController();
+  final email = TextEditingController();
+  final password = TextEditingController();
+  final phone = TextEditingController();
+  final otp = TextEditingController();
+  bool create = true, busy = false, codeSent = false;
+  String? verificationId, error;
+
+  @override
+  void dispose() {
+    name.dispose(); email.dispose(); password.dispose(); phone.dispose(); otp.dispose();
+    super.dispose();
+  }
+
+  Future<void> _saveName(User user) async {
+    final entered = name.text.trim();
+    final display = entered.isNotEmpty ? entered : (user.displayName ?? user.email?.split('@').first ?? 'لوستونکی');
+    await user.updateDisplayName(display);
+    await FirebaseDatabase.instance.ref('profiles/${user.uid}').update({
+      'displayName': display, 'email': user.email ?? '', 'phoneNumber': user.phoneNumber ?? '',
+      'updatedAt': ServerValue.timestamp,
+    });
+  }
+
+  Future<void> _run(Future<UserCredential> Function() action) async {
+    setState(() { busy = true; error = null; });
+    try {
+      final result = await action();
+      if (result.user != null) await _saveName(result.user!);
+    } on FirebaseAuthException catch (e) {
+      setState(() => error = e.message ?? 'حساب ته ننوتل بریالي نه شول.');
+    } catch (e) {
+      setState(() => error = 'ستونزه رامنځته شوه: $e');
+    } finally {
+      if (mounted) setState(() => busy = false);
+    }
+  }
+
+  Future<void> _emailAuth() async {
+    if (email.text.trim().isEmpty || password.text.length < 6) {
+      setState(() => error = 'سم ایمیل او لږ تر لږه ۶ توري پټنوم ولیکئ.');
+      return;
+    }
+    await _run(() async {
+      final current = FirebaseAuth.instance.currentUser;
+      final credential = EmailAuthProvider.credential(
+        email: email.text.trim(), password: password.text);
+      if (current?.isAnonymous == true) return current!.linkWithCredential(credential);
+      return create
+        ? FirebaseAuth.instance.createUserWithEmailAndPassword(email: email.text.trim(), password: password.text)
+        : FirebaseAuth.instance.signInWithEmailAndPassword(email: email.text.trim(), password: password.text);
+    });
+  }
+
+  Future<void> _googleAuth() async {
+    await _run(() async {
+      final googleUser = await GoogleSignIn().signIn();
+      if (googleUser == null) throw FirebaseAuthException(code: 'cancelled', message: 'ننوتل لغوه شول.');
+      final googleAuth = await googleUser.authentication;
+      final credential = GoogleAuthProvider.credential(
+        accessToken: googleAuth.accessToken, idToken: googleAuth.idToken);
+      final current = FirebaseAuth.instance.currentUser;
+      if (current?.isAnonymous == true) return current!.linkWithCredential(credential);
+      return FirebaseAuth.instance.signInWithCredential(credential);
+    });
+  }
+
+  Future<void> _phoneAuth() async {
+    if (phone.text.trim().isEmpty) {
+      setState(() => error = 'د هېواد له کوډ سره د ټیلیفون شمېره ولیکئ.');
+      return;
+    }
+    setState(() { busy = true; error = null; });
+    await FirebaseAuth.instance.verifyPhoneNumber(
+      phoneNumber: phone.text.trim(),
+      verificationCompleted: (credential) async {
+        try {
+          final current = FirebaseAuth.instance.currentUser;
+          final result = current?.isAnonymous == true
+              ? await current!.linkWithCredential(credential)
+              : await FirebaseAuth.instance.signInWithCredential(credential);
+          if (result.user != null) await _saveName(result.user!);
+        } catch (e) { if (mounted) setState(() => error = '$e'); }
+        finally { if (mounted) setState(() => busy = false); }
+      },
+      verificationFailed: (e) {
+        if (mounted) setState(() { busy = false; error = e.message ?? 'د شمېرې تایید ناکام شو.'; });
+      },
+      codeSent: (id, _) {
+        if (mounted) setState(() { verificationId = id; codeSent = true; busy = false; });
+      },
+      codeAutoRetrievalTimeout: (id) {
+        verificationId = id;
+      },
+    );
+  }
+
+  Future<void> _verifyCode() async {
+    final id = verificationId;
+    if (id == null || otp.text.trim().isEmpty) return;
+    final credential = PhoneAuthProvider.credential(
+      verificationId: id, smsCode: otp.text.trim());
+    await _run(() async {
+      final current = FirebaseAuth.instance.currentUser;
+      if (current?.isAnonymous == true) return current!.linkWithCredential(credential);
+      return FirebaseAuth.instance.signInWithCredential(credential);
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final c = Theme.of(context).colorScheme;
+    return Directionality(textDirection: TextDirection.rtl, child: Scaffold(
+      body: Container(
+        decoration: BoxDecoration(gradient: LinearGradient(
+          begin: Alignment.topRight, end: Alignment.bottomLeft,
+          colors: [c.primaryContainer.withValues(alpha: .65), c.surface, c.surface])),
+        child: SafeArea(child: Center(child: SingleChildScrollView(
+          padding: const EdgeInsets.all(22),
+          child: ConstrainedBox(constraints: const BoxConstraints(maxWidth: 430),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+              Container(width: 76, height: 76, alignment: Alignment.center,
+                decoration: BoxDecoration(color: c.primary, borderRadius: BorderRadius.circular(24)),
+                child: const Icon(Icons.auto_stories_rounded, color: Colors.white, size: 40)),
+              const SizedBox(height: 18),
+              const Text('ادبي خزانه', textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 27, fontWeight: FontWeight.w900)),
+              const SizedBox(height: 7),
+              Text('د خپلې خوښې له لارې خوندي حساب ته ننوځئ',
+                textAlign: TextAlign.center, style: TextStyle(color: c.onSurfaceVariant)),
+              const SizedBox(height: 25),
+              SegmentedButton<bool>(
+                segments: const [
+                  ButtonSegment(value: true, label: Text('نوی حساب')),
+                  ButtonSegment(value: false, label: Text('ننوتل')),
+                ],
+                selected: {create},
+                onSelectionChanged: (v) => setState(() { create = v.first; error = null; }),
+              ),
+              const SizedBox(height: 18),
+              if (create) TextField(controller: name, decoration: const InputDecoration(
+                labelText: 'ستاسو نوم', prefixIcon: Icon(Icons.person_outline_rounded))),
+              if (create) const SizedBox(height: 12),
+              TextField(controller: email, keyboardType: TextInputType.emailAddress,
+                decoration: const InputDecoration(labelText: 'ایمیل', prefixIcon: Icon(Icons.email_outlined))),
+              const SizedBox(height: 12),
+              TextField(controller: password, obscureText: true,
+                decoration: const InputDecoration(labelText: 'پټنوم', prefixIcon: Icon(Icons.lock_outline_rounded))),
+              const SizedBox(height: 14),
+              FilledButton.icon(onPressed: busy ? null : _emailAuth,
+                icon: const Icon(Icons.login_rounded),
+                label: Text(create ? 'د ایمیل له لارې حساب جوړول' : 'ایمیل سره ننوتل')),
+              const SizedBox(height: 10),
+              OutlinedButton.icon(onPressed: busy ? null : _googleAuth,
+                icon: const Icon(Icons.g_mobiledata_rounded, size: 28),
+                label: const Text('د Google حساب له لارې')),
+              const SizedBox(height: 18),
+              const Divider(),
+              TextField(controller: phone, keyboardType: TextInputType.phone,
+                decoration: const InputDecoration(labelText: 'ټیلیفون شمېره (+د هېواد کوډ)',
+                  prefixIcon: Icon(Icons.phone_android_rounded))),
+              if (codeSent) ...[
+                const SizedBox(height: 10),
+                TextField(controller: otp, keyboardType: TextInputType.number,
+                  decoration: const InputDecoration(labelText: 'د SMS تایید کوډ')),
+              ],
+              const SizedBox(height: 10),
+              OutlinedButton.icon(
+                onPressed: busy ? null : (codeSent ? _verifyCode : _phoneAuth),
+                icon: const Icon(Icons.sms_outlined),
+                label: Text(codeSent ? 'کوډ تاییدول' : 'د ټیلیفون له لارې ننوتل')),
+              if (busy) const Padding(padding: EdgeInsets.all(12),
+                child: Center(child: CircularProgressIndicator())),
+              if (error != null) Padding(padding: const EdgeInsets.only(top: 12),
+                child: Text(error!, textAlign: TextAlign.center,
+                  style: TextStyle(color: c.error, fontSize: 12))),
+            ]),
+          ),
+        ))),
+      ),
+    ));
+  }
+}
 
 class LaunchGate extends StatefulWidget {
   const LaunchGate({super.key, required this.appBuilder});
@@ -652,12 +863,11 @@ class _PoetryShellState extends State<PoetryShell> {
 
   Future<Map<String, String>?> _ensureProfile() async {
     var user = FirebaseAuth.instance.currentUser;
-    try { user ??= (await FirebaseAuth.instance.signInAnonymously()).user; }
-    catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('د کارن حساب جوړ نه شو: $e')));
+    if (user == null || user.isAnonymous) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('د تبصرې لپاره لومړی د ایمیل، Google یا ټیلیفون له لارې حساب ته ننوځئ.')));
       return null;
     }
-    if (user == null) return null;
     var name = _profileName;
     if (name.trim().isEmpty) {
       final snap = await FirebaseDatabase.instance.ref('profiles/${user.uid}/displayName').get();
