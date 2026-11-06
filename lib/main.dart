@@ -1142,7 +1142,7 @@ class _PoetryShellState extends State<PoetryShell> {
         next.add(Poem(
           id: entry.key.toString(),
           title: (data['title'] ?? '').toString().trim().isEmpty
-              ? body.split(RegExp(r'\\s+')).where((w) => w.isNotEmpty).take(6).join(' ')
+              ? body.split(RegExp(r'\s+')).where((w) => w.isNotEmpty).take(6).join(' ')
               : data['title'].toString().trim(),
           poetId: (data['poetId'] ?? '').toString(),
           categoryId: categoryId,
