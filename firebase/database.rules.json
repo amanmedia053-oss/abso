@@ -56,13 +56,26 @@
       ".read": true,
       "$poemId": {
         "$commentId": {
-          ".write": "auth != null && newData.child('uid').val() == auth.uid",
+          ".write": "auth != null && ((!data.exists() && newData.child('uid').val() == auth.uid) || (data.exists() && !newData.exists() && root.child('admins').child(auth.uid).child('role').val() == 'admin'))",
           ".validate": "newData.hasChildren(['uid','displayName','text','createdAt'])",
+          "uid": {
+            ".validate": "newData.isString() && newData.val() == auth.uid"
+          },
           "text": {
             ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 500"
           },
           "displayName": {
             ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 28"
+          },
+          "likes": {
+            "$uid": {
+              ".write": "auth != null && auth.uid == $uid && newData.val() == true",
+              ".validate": "newData.isBoolean()"
+            }
+          },
+          "adminReply": {
+            ".write": "auth != null && root.child('admins').child(auth.uid).child('role').val() == 'admin'",
+            ".validate": "newData.hasChildren(['text','adminUid','adminName','createdAt']) && newData.child('text').isString() && newData.child('text').val().length > 0 && newData.child('text').val().length <= 500"
           }
         }
       }
