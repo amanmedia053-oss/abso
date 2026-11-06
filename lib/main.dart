@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -219,6 +220,8 @@ class _AccountAccessPageState extends State<AccountAccessPage> {
   final password = TextEditingController();
   final phone = TextEditingController();
   final otp = TextEditingController();
+  XFile? profileImage;
+  String? uploadedProfileUrl;
   bool create = true, busy = false, codeSent = false;
   String? verificationId, error;
 
@@ -230,10 +233,12 @@ class _AccountAccessPageState extends State<AccountAccessPage> {
 
   Future<void> _saveName(User user) async {
     final entered = name.text.trim();
+    if (profileImage != null) uploadedProfileUrl = await uploadImageToCloudinary(profileImage!);
     final display = entered.isNotEmpty ? entered : (user.displayName ?? user.email?.split('@').first ?? 'لوستونکی');
     await user.updateDisplayName(display);
     await FirebaseDatabase.instance.ref('profiles/${user.uid}').update({
       'displayName': display, 'email': user.email ?? '', 'phoneNumber': user.phoneNumber ?? '',
+      if (uploadedProfileUrl != null) 'photoUrl': uploadedProfileUrl,
       'updatedAt': ServerValue.timestamp,
     });
   }
@@ -339,6 +344,27 @@ class _AccountAccessPageState extends State<AccountAccessPage> {
                 decoration: BoxDecoration(color: c.primary, borderRadius: BorderRadius.circular(24)),
                 child: const Icon(Icons.auto_stories_rounded, color: Colors.white, size: 40)),
               const SizedBox(height: 18),
+              Center(child: Column(children: [
+                CircleAvatar(
+                  radius: 43,
+                  backgroundColor: c.primaryContainer,
+                  backgroundImage: uploadedProfileUrl != null
+                      ? NetworkImage(uploadedProfileUrl!)
+                      : (profileImage != null ? FileImage(File(profileImage!.path)) : null) as ImageProvider?,
+                  child: profileImage == null && uploadedProfileUrl == null
+                      ? Icon(Icons.person_rounded, size: 38, color: c.primary) : null,
+                ),
+                const SizedBox(height: 7),
+                TextButton.icon(
+                  onPressed: busy ? null : () async {
+                    final picked = await ImagePicker().pickImage(source: ImageSource.gallery, imageQuality: 82, maxWidth: 900);
+                    if (picked != null && mounted) setState(() { profileImage = picked; uploadedProfileUrl = null; });
+                  },
+                  icon: const Icon(Icons.add_a_photo_outlined, size: 17),
+                  label: const Text('د پروفایل انځور ټاکل'),
+                ),
+              ])),
+              const SizedBox(height: 10),
               const Text('ادبي خزانه', textAlign: TextAlign.center,
                 style: TextStyle(fontSize: 27, fontWeight: FontWeight.w900)),
               const SizedBox(height: 7),
@@ -3966,6 +3992,45 @@ class _PoemDetailScreenState extends State<PoemDetailScreen> {
     }
   }
 
+  Future<void> _replyAsUser(String commentId) async {
+    final profile = await widget.ensureProfile();
+    if (profile == null) return;
+    final controller = TextEditingController();
+    final value = await showModalBottomSheet<String>(
+      context: context, isScrollControlled: true, showDragHandle: true,
+      builder: (ctx) => Directionality(textDirection: TextDirection.rtl,
+        child: Padding(
+          padding: EdgeInsets.fromLTRB(18, 12, 18, 18 + MediaQuery.of(ctx).viewInsets.bottom),
+          child: Column(mainAxisSize: MainAxisSize.min, children: [
+            const Text('تبصرې ته ځواب', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900)),
+            const SizedBox(height: 12),
+            TextField(controller: controller, autofocus: true, minLines: 2, maxLines: 5,
+              maxLength: 500, decoration: const InputDecoration(hintText: 'خپل ځواب ولیکئ...')),
+            const SizedBox(height: 8),
+            SizedBox(width: double.infinity, child: FilledButton(
+              onPressed: () {
+                if (controller.text.trim().isNotEmpty) Navigator.pop(ctx, controller.text.trim());
+              }, child: const Text('ځواب خپرول'))),
+          ]),
+        )),
+    );
+    controller.dispose();
+    if (value == null || value.isEmpty) return;
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+    try {
+      await FirebaseDatabase.instance.ref('comments/${widget.poem.id}/$commentId/replies').push().set({
+        'uid': user.uid,
+        'displayName': profile['name'],
+        'avatarUrl': profile['photoUrl'] ?? '',
+        'text': value,
+        'createdAt': ServerValue.timestamp,
+      });
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('ځواب ثبت نه شو: $e')));
+    }
+  }
+
   Future<void> _deleteComment(String commentId) async {
     if (!isAdmin) return;
     final confirm = await showDialog<bool>(context: context, builder: (ctx) =>
@@ -3998,7 +4063,7 @@ class _PoemDetailScreenState extends State<PoemDetailScreen> {
     setState(() => sending = true);
     try {
       await FirebaseDatabase.instance.ref('comments/${widget.poem.id}').push().set({
-        'uid': profile['uid'], 'displayName': profile['name'], 'text': body,
+        'uid': profile['uid'], 'displayName': profile['name'], 'avatarUrl': profile['photoUrl'] ?? '', 'text': body,
         'createdAt': ServerValue.timestamp,
       });
       commentController.clear();
@@ -4149,8 +4214,12 @@ class _PoemDetailScreenState extends State<PoemDetailScreen> {
                   borderRadius: BorderRadius.circular(18), border: Border.all(color: c.outlineVariant.withValues(alpha: .4))),
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                   Row(children: [
-                    CircleAvatar(radius: 16, backgroundColor: c.primaryContainer,
-                      child: Text(name.isEmpty ? 'ل' : name.characters.first, style: TextStyle(color: c.onPrimaryContainer, fontWeight: FontWeight.w900))),
+                    CircleAvatar(radius: 18, backgroundColor: c.primaryContainer,
+                      backgroundImage: (data['avatarUrl'] ?? '').toString().isNotEmpty
+                          ? NetworkImage(data['avatarUrl'].toString()) : null,
+                      child: (data['avatarUrl'] ?? '').toString().isEmpty
+                          ? Text(name.isEmpty ? 'ل' : name.characters.first, style: TextStyle(color: c.onPrimaryContainer, fontWeight: FontWeight.w900))
+                          : null),
                     const SizedBox(width: 9), Expanded(child: Text(name, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w900))),
                     Text(_date(data['createdAt']), style: TextStyle(fontSize: 9, color: c.onSurfaceVariant)),
                     if (isAdmin) PopupMenuButton<String>(
@@ -4177,12 +4246,46 @@ class _PoemDetailScreenState extends State<PoemDetailScreen> {
                       label: Text('${likes.length} خوښونې',
                         style: TextStyle(fontSize: 11, color: likedByMe ? c.error : c.onSurfaceVariant)),
                     ),
+                    TextButton.icon(
+                      onPressed: () => _replyAsUser(commentId),
+                      icon: const Icon(Icons.reply_rounded, size: 17),
+                      label: const Text('ځواب', style: TextStyle(fontSize: 11)),
+                    ),
                     if (isAdmin) TextButton.icon(
                       onPressed: () => _replyToComment(commentId),
                       icon: const Icon(Icons.reply_rounded, size: 17),
                       label: const Text('ځواب', style: TextStyle(fontSize: 11)),
                     ),
                   ]),
+                  if (data['replies'] is Map)
+                    ...Map<String, dynamic>.from(data['replies'] as Map).entries.map((replyEntry) {
+                      final replyData = Map<String, dynamic>.from(replyEntry.value as Map);
+                      final replyName = (replyData['displayName'] ?? 'لوستونکی').toString();
+                      return Container(
+                        margin: const EdgeInsets.only(top: 7, right: 24),
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: c.surfaceContainerHighest.withValues(alpha: .65),
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border(right: BorderSide(color: c.secondary, width: 2)),
+                        ),
+                        child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                          CircleAvatar(radius: 14,
+                            backgroundImage: (replyData['avatarUrl'] ?? '').toString().isNotEmpty
+                                ? NetworkImage(replyData['avatarUrl'].toString()) : null,
+                            child: (replyData['avatarUrl'] ?? '').toString().isEmpty
+                                ? Text(replyName.isEmpty ? 'ل' : replyName.characters.first,
+                                    style: const TextStyle(fontSize: 10)) : null),
+                          const SizedBox(width: 8),
+                          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                            Text(replyName, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w900)),
+                            const SizedBox(height: 3),
+                            Text((replyData['text'] ?? '').toString(),
+                              style: const TextStyle(fontSize: 12, height: 1.55)),
+                          ])),
+                        ]),
+                      );
+                    }),
                   if (reply != null && (reply['text'] ?? '').toString().isNotEmpty)
                     Container(
                       width: double.infinity,
