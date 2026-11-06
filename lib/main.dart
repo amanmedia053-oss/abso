@@ -1886,7 +1886,7 @@ class _PoetryShellState extends State<PoetryShell> {
               ),
             ),
           ))),
-        SliverToBoxAdapter(child: _TypingCoupletBox(poems: poems)),
+        SliverToBoxAdapter(child: _TypingCoupletBox(poems: poems, onPoemTap: _openPoem)),
         SliverPadding(padding: const EdgeInsets.fromLTRB(16, 8, 16, 9),
           sliver: SliverToBoxAdapter(child: _sectionHeader(Icons.auto_stories_rounded,
             'د شعرونو ټولګه', '${visible.length} شعرونه'))),
@@ -3664,53 +3664,64 @@ class _PoetrySearchPageState extends State<PoetrySearchPage> {
 }
 
 class _TypingCoupletBox extends StatefulWidget {
-  const _TypingCoupletBox({required this.poems});
+  const _TypingCoupletBox({required this.poems, required this.onPoemTap});
   final List<Poem> poems;
+  final ValueChanged<Poem> onPoemTap;
   @override
   State<_TypingCoupletBox> createState() => _TypingCoupletBoxState();
 }
 
 class _TypingCoupletBoxState extends State<_TypingCoupletBox> {
   Timer? _timer;
-  int _poemIndex = 0;
+  int _itemIndex = 0;
   int _charIndex = 0;
   int _holdTicks = 0;
 
-  List<String> _couplet(Poem poem) {
-    String clean(String value) => value
-        .replaceAll(r'\n', '\n')
-        .replaceAll(r'\r', '\r')
-        .replaceAll(RegExp(r'[ \t]+'), ' ')
-        .trim();
-    final lines = poem.lines
-        .expand((line) => clean(line).split(RegExp(r'[\r\n]+')))
-        .map(clean).where((line) => line.isNotEmpty).toList();
-    if (lines.length >= 2) return lines.take(2).toList();
-    final text = clean(poem.text);
-    final textLines = text.split(RegExp(r'[\r\n]+')).map(clean)
-        .where((line) => line.isNotEmpty).toList();
-    if (textLines.length >= 2) return textLines.take(2).toList();
-    final words = text.split(RegExp(r'\s+')).where((word) => word.isNotEmpty).toList();
-    if (words.length < 2) return [text];
-    final middle = (words.length / 2).ceil();
-    return [words.take(middle).join(' '), words.skip(middle).join(' ')];
+  // هر شعر په خپلو کرښو/بیتونو وېشو؛ دوه دوه بیتونه یو کارت جوړوي.
+  // که د بیتونو شمېر طاق وي، وروستی پاتې بیت یوازې ښودل کېږي.
+  List<({Poem poem, String text})> get _items {
+    final result = <({Poem poem, String text})>[];
+    for (final poem in widget.poems) {
+      String clean(String value) => value
+          .replaceAll(r'\\n', '\n')
+          .replaceAll(r'\\r', '\r')
+          .trim();
+      final verses = poem.text
+          .replaceAll(r'\\n', '\n')
+          .replaceAll(r'\\r', '\r')
+          .split(RegExp(r'[\r\n]+'))
+          .map(clean)
+          .where((line) => line.isNotEmpty)
+          .toList();
+      if (verses.isEmpty) continue;
+      for (var i = 0; i < verses.length; i += 2) {
+        final text = i + 1 < verses.length
+            ? '${verses[i]}\n${verses[i + 1]}'
+            : verses[i];
+        result.add((poem: poem, text: text));
+      }
+    }
+    return result;
   }
 
   String get _currentText {
-    if (widget.poems.isEmpty) return '';
-    return _couplet(widget.poems[_poemIndex % widget.poems.length]).join('\n');
+    final items = _items;
+    if (items.isEmpty) return '';
+    return items[_itemIndex % items.length].text;
   }
 
   @override
   void initState() {
     super.initState();
     _timer = Timer.periodic(const Duration(milliseconds: 65), (_) {
-      if (!mounted || widget.poems.isEmpty) return;
+      if (!mounted) return;
+      final items = _items;
+      if (items.isEmpty) return;
       setState(() {
         if (_charIndex < _currentText.length) {
           _charIndex++;
         } else if (_holdTicks++ > 32) {
-          _poemIndex = (_poemIndex + 1) % widget.poems.length;
+          _itemIndex = (_itemIndex + 1) % items.length;
           _charIndex = 0;
           _holdTicks = 0;
         }
@@ -3721,8 +3732,8 @@ class _TypingCoupletBoxState extends State<_TypingCoupletBox> {
   @override
   void didUpdateWidget(covariant _TypingCoupletBox oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.poems.length != widget.poems.length) {
-      _poemIndex = 0;
+    if (oldWidget.poems != widget.poems) {
+      _itemIndex = 0;
       _charIndex = 0;
       _holdTicks = 0;
     }
@@ -3737,47 +3748,56 @@ class _TypingCoupletBoxState extends State<_TypingCoupletBox> {
   @override
   Widget build(BuildContext context) {
     final c = Theme.of(context).colorScheme;
-    final poem = widget.poems.isEmpty ? null : widget.poems[_poemIndex % widget.poems.length];
-    final shown = _currentText.substring(0, _charIndex.clamp(0, _currentText.length));
+    final items = _items;
+    if (items.isEmpty) return const SizedBox.shrink();
+    final item = items[_itemIndex % items.length];
+    final poem = item.poem;
+    final currentText = item.text;
+    final shown = currentText.substring(0, _charIndex.clamp(0, currentText.length));
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 25),
-      child: Container(
-        width: double.infinity,
-        padding: const EdgeInsets.fromLTRB(16, 13, 16, 13),
-        decoration: BoxDecoration(
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
           borderRadius: BorderRadius.circular(20),
-          gradient: LinearGradient(begin: Alignment.topRight, end: Alignment.bottomLeft,
-            colors: [c.primaryContainer.withValues(alpha: .72), c.surface, const Color(0xFFB77928).withValues(alpha: .12)]),
-          border: Border.all(color: c.primary.withValues(alpha: .18)),
-          boxShadow: [BoxShadow(color: c.primary.withValues(alpha: .08), blurRadius: 16, offset: const Offset(0, 5))],
-        ),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Row(children: [
-            Icon(Icons.format_quote_rounded, color: c.primary, size: 19),
-            const SizedBox(width: 6),
-            Text('د ورځې دوه بيتي', style: TextStyle(color: c.primary, fontSize: 11, fontWeight: FontWeight.w900)),
-            const Spacer(),
-            Container(width: 6, height: 6, decoration: BoxDecoration(color: c.tertiary, shape: BoxShape.circle)),
-            const SizedBox(width: 5),
-            Text('ادبي شېبې', style: TextStyle(color: c.onSurfaceVariant, fontSize: 9)),
-          ]),
-          const SizedBox(height: 9),
-          AnimatedSwitcher(
-            duration: const Duration(milliseconds: 280),
-            child: Text(
-              shown + (_charIndex < _currentText.length ? '▏' : ''),
-              key: ValueKey(_poemIndex),
-              textDirection: TextDirection.rtl,
-              textAlign: TextAlign.center,
-              style: TextStyle(color: c.onSurface, fontSize: 14, height: 1.9, fontWeight: FontWeight.w800),
+          onTap: () => widget.onPoemTap(poem),
+          child: Ink(
+            width: double.infinity,
+            padding: const EdgeInsets.fromLTRB(16, 13, 16, 13),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(20),
+              gradient: LinearGradient(begin: Alignment.topRight, end: Alignment.bottomLeft,
+                colors: [c.primaryContainer.withValues(alpha: .72), c.surface, const Color(0xFFB77928).withValues(alpha: .12)]),
+              border: Border.all(color: c.primary.withValues(alpha: .18)),
+              boxShadow: [BoxShadow(color: c.primary.withValues(alpha: .08), blurRadius: 16, offset: const Offset(0, 5))],
             ),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Row(children: [
+                Icon(Icons.format_quote_rounded, color: c.primary, size: 19),
+                const SizedBox(width: 6),
+                Text('د ورځې دوه بيتي', style: TextStyle(color: c.primary, fontSize: 11, fontWeight: FontWeight.w900)),
+                const Spacer(),
+                Icon(Icons.touch_app_rounded, color: c.onSurfaceVariant, size: 15),
+              ]),
+              const SizedBox(height: 9),
+              AnimatedSwitcher(
+                duration: const Duration(milliseconds: 280),
+                child: Text(
+                  shown + (_charIndex < currentText.length ? '▏' : ''),
+                  key: ValueKey(_itemIndex),
+                  textDirection: TextDirection.rtl,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: c.onSurface, fontSize: 14, height: 1.9, fontWeight: FontWeight.w800),
+                ),
+              ),
+              if (poem.poet.isNotEmpty) ...[
+                const SizedBox(height: 5),
+                Align(alignment: Alignment.centerLeft,
+                  child: Text('— ${poem.poet}', style: TextStyle(color: c.onSurfaceVariant, fontSize: 10, fontWeight: FontWeight.w700))),
+              ],
+            ]),
           ),
-          if (poem != null && poem.poet.isNotEmpty) ...[
-            const SizedBox(height: 5),
-            Align(alignment: Alignment.centerLeft,
-              child: Text('— ${poem.poet}', style: TextStyle(color: c.onSurfaceVariant, fontSize: 10, fontWeight: FontWeight.w700))),
-          ],
-        ]),
+        ),
       ),
     );
   }
@@ -5458,7 +5478,7 @@ class _ShimmerBoxState extends State<_ShimmerBox>
               ),
             ),
           ))),
-        SliverToBoxAdapter(child: _TypingCoupletBox(poems: poems)),
+        SliverToBoxAdapter(child: _TypingCoupletBox(poems: poems, onPoemTap: _openPoem)),
         SliverPadding(padding: const EdgeInsets.fromLTRB(16, 8, 16, 9),
           sliver: SliverToBoxAdapter(child: _sectionHeader(Icons.auto_stories_rounded,
             'د شعرونو ټولګه', '${visible.length} شعرونه'))),
@@ -7236,53 +7256,64 @@ class _PoetrySearchPageState extends State<PoetrySearchPage> {
 }
 
 class _TypingCoupletBox extends StatefulWidget {
-  const _TypingCoupletBox({required this.poems});
+  const _TypingCoupletBox({required this.poems, required this.onPoemTap});
   final List<Poem> poems;
+  final ValueChanged<Poem> onPoemTap;
   @override
   State<_TypingCoupletBox> createState() => _TypingCoupletBoxState();
 }
 
 class _TypingCoupletBoxState extends State<_TypingCoupletBox> {
   Timer? _timer;
-  int _poemIndex = 0;
+  int _itemIndex = 0;
   int _charIndex = 0;
   int _holdTicks = 0;
 
-  List<String> _couplet(Poem poem) {
-    String clean(String value) => value
-        .replaceAll(r'\n', '\n')
-        .replaceAll(r'\r', '\r')
-        .replaceAll(RegExp(r'[ \t]+'), ' ')
-        .trim();
-    final lines = poem.lines
-        .expand((line) => clean(line).split(RegExp(r'[\r\n]+')))
-        .map(clean).where((line) => line.isNotEmpty).toList();
-    if (lines.length >= 2) return lines.take(2).toList();
-    final text = clean(poem.text);
-    final textLines = text.split(RegExp(r'[\r\n]+')).map(clean)
-        .where((line) => line.isNotEmpty).toList();
-    if (textLines.length >= 2) return textLines.take(2).toList();
-    final words = text.split(RegExp(r'\s+')).where((word) => word.isNotEmpty).toList();
-    if (words.length < 2) return [text];
-    final middle = (words.length / 2).ceil();
-    return [words.take(middle).join(' '), words.skip(middle).join(' ')];
+  // هر شعر په خپلو کرښو/بیتونو وېشو؛ دوه دوه بیتونه یو کارت جوړوي.
+  // که د بیتونو شمېر طاق وي، وروستی پاتې بیت یوازې ښودل کېږي.
+  List<({Poem poem, String text})> get _items {
+    final result = <({Poem poem, String text})>[];
+    for (final poem in widget.poems) {
+      String clean(String value) => value
+          .replaceAll(r'\\n', '\n')
+          .replaceAll(r'\\r', '\r')
+          .trim();
+      final verses = poem.text
+          .replaceAll(r'\\n', '\n')
+          .replaceAll(r'\\r', '\r')
+          .split(RegExp(r'[\r\n]+'))
+          .map(clean)
+          .where((line) => line.isNotEmpty)
+          .toList();
+      if (verses.isEmpty) continue;
+      for (var i = 0; i < verses.length; i += 2) {
+        final text = i + 1 < verses.length
+            ? '${verses[i]}\n${verses[i + 1]}'
+            : verses[i];
+        result.add((poem: poem, text: text));
+      }
+    }
+    return result;
   }
 
   String get _currentText {
-    if (widget.poems.isEmpty) return '';
-    return _couplet(widget.poems[_poemIndex % widget.poems.length]).join('\n');
+    final items = _items;
+    if (items.isEmpty) return '';
+    return items[_itemIndex % items.length].text;
   }
 
   @override
   void initState() {
     super.initState();
     _timer = Timer.periodic(const Duration(milliseconds: 65), (_) {
-      if (!mounted || widget.poems.isEmpty) return;
+      if (!mounted) return;
+      final items = _items;
+      if (items.isEmpty) return;
       setState(() {
         if (_charIndex < _currentText.length) {
           _charIndex++;
         } else if (_holdTicks++ > 32) {
-          _poemIndex = (_poemIndex + 1) % widget.poems.length;
+          _itemIndex = (_itemIndex + 1) % items.length;
           _charIndex = 0;
           _holdTicks = 0;
         }
@@ -7293,8 +7324,8 @@ class _TypingCoupletBoxState extends State<_TypingCoupletBox> {
   @override
   void didUpdateWidget(covariant _TypingCoupletBox oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.poems.length != widget.poems.length) {
-      _poemIndex = 0;
+    if (oldWidget.poems != widget.poems) {
+      _itemIndex = 0;
       _charIndex = 0;
       _holdTicks = 0;
     }
@@ -7309,47 +7340,56 @@ class _TypingCoupletBoxState extends State<_TypingCoupletBox> {
   @override
   Widget build(BuildContext context) {
     final c = Theme.of(context).colorScheme;
-    final poem = widget.poems.isEmpty ? null : widget.poems[_poemIndex % widget.poems.length];
-    final shown = _currentText.substring(0, _charIndex.clamp(0, _currentText.length));
+    final items = _items;
+    if (items.isEmpty) return const SizedBox.shrink();
+    final item = items[_itemIndex % items.length];
+    final poem = item.poem;
+    final currentText = item.text;
+    final shown = currentText.substring(0, _charIndex.clamp(0, currentText.length));
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 25),
-      child: Container(
-        width: double.infinity,
-        padding: const EdgeInsets.fromLTRB(16, 13, 16, 13),
-        decoration: BoxDecoration(
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
           borderRadius: BorderRadius.circular(20),
-          gradient: LinearGradient(begin: Alignment.topRight, end: Alignment.bottomLeft,
-            colors: [c.primaryContainer.withValues(alpha: .72), c.surface, const Color(0xFFB77928).withValues(alpha: .12)]),
-          border: Border.all(color: c.primary.withValues(alpha: .18)),
-          boxShadow: [BoxShadow(color: c.primary.withValues(alpha: .08), blurRadius: 16, offset: const Offset(0, 5))],
-        ),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Row(children: [
-            Icon(Icons.format_quote_rounded, color: c.primary, size: 19),
-            const SizedBox(width: 6),
-            Text('د ورځې دوه بيتي', style: TextStyle(color: c.primary, fontSize: 11, fontWeight: FontWeight.w900)),
-            const Spacer(),
-            Container(width: 6, height: 6, decoration: BoxDecoration(color: c.tertiary, shape: BoxShape.circle)),
-            const SizedBox(width: 5),
-            Text('ادبي شېبې', style: TextStyle(color: c.onSurfaceVariant, fontSize: 9)),
-          ]),
-          const SizedBox(height: 9),
-          AnimatedSwitcher(
-            duration: const Duration(milliseconds: 280),
-            child: Text(
-              shown + (_charIndex < _currentText.length ? '▏' : ''),
-              key: ValueKey(_poemIndex),
-              textDirection: TextDirection.rtl,
-              textAlign: TextAlign.center,
-              style: TextStyle(color: c.onSurface, fontSize: 14, height: 1.9, fontWeight: FontWeight.w800),
+          onTap: () => widget.onPoemTap(poem),
+          child: Ink(
+            width: double.infinity,
+            padding: const EdgeInsets.fromLTRB(16, 13, 16, 13),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(20),
+              gradient: LinearGradient(begin: Alignment.topRight, end: Alignment.bottomLeft,
+                colors: [c.primaryContainer.withValues(alpha: .72), c.surface, const Color(0xFFB77928).withValues(alpha: .12)]),
+              border: Border.all(color: c.primary.withValues(alpha: .18)),
+              boxShadow: [BoxShadow(color: c.primary.withValues(alpha: .08), blurRadius: 16, offset: const Offset(0, 5))],
             ),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Row(children: [
+                Icon(Icons.format_quote_rounded, color: c.primary, size: 19),
+                const SizedBox(width: 6),
+                Text('د ورځې دوه بيتي', style: TextStyle(color: c.primary, fontSize: 11, fontWeight: FontWeight.w900)),
+                const Spacer(),
+                Icon(Icons.touch_app_rounded, color: c.onSurfaceVariant, size: 15),
+              ]),
+              const SizedBox(height: 9),
+              AnimatedSwitcher(
+                duration: const Duration(milliseconds: 280),
+                child: Text(
+                  shown + (_charIndex < currentText.length ? '▏' : ''),
+                  key: ValueKey(_itemIndex),
+                  textDirection: TextDirection.rtl,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: c.onSurface, fontSize: 14, height: 1.9, fontWeight: FontWeight.w800),
+                ),
+              ),
+              if (poem.poet.isNotEmpty) ...[
+                const SizedBox(height: 5),
+                Align(alignment: Alignment.centerLeft,
+                  child: Text('— ${poem.poet}', style: TextStyle(color: c.onSurfaceVariant, fontSize: 10, fontWeight: FontWeight.w700))),
+              ],
+            ]),
           ),
-          if (poem != null && poem.poet.isNotEmpty) ...[
-            const SizedBox(height: 5),
-            Align(alignment: Alignment.centerLeft,
-              child: Text('— ${poem.poet}', style: TextStyle(color: c.onSurfaceVariant, fontSize: 10, fontWeight: FontWeight.w700))),
-          ],
-        ]),
+        ),
       ),
     );
   }
