@@ -69,7 +69,7 @@
           },
           "likes": {
             "$uid": {
-              ".write": "auth != null && auth.uid == $uid && newData.val() == true",
+              ".write": "auth != null && auth.uid == $uid && (!newData.exists() || newData.val() == true)",
               ".validate": "newData.isBoolean()"
             }
           },
