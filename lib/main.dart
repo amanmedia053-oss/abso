@@ -3896,6 +3896,97 @@ class PoemDetailScreen extends StatefulWidget {
 class _PoemDetailScreenState extends State<PoemDetailScreen> {
   final commentController = TextEditingController();
   bool sending = false, liked = false, saved = false;
+  bool isAdmin = false;
+  @override
+  void initState() {
+    super.initState();
+    _checkAdmin();
+  }
+
+  Future<void> _checkAdmin() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+    try {
+      final snap = await FirebaseDatabase.instance.ref('admins/${user.uid}/role').get();
+      if (mounted) setState(() => isAdmin = snap.value == 'admin');
+    } catch (_) {}
+  }
+
+  Future<void> _toggleCommentLike(String commentId, bool alreadyLiked) async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null || user.isAnonymous) return;
+    final ref = FirebaseDatabase.instance.ref('comments/${widget.poem.id}/$commentId/likes/${user.uid}');
+    try {
+      if (alreadyLiked) {
+        await ref.remove();
+      } else {
+        await ref.set(true);
+      }
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('لایک ثبت نه شو: $e')));
+    }
+  }
+
+  Future<void> _replyToComment(String commentId) async {
+    if (!isAdmin) return;
+    final controller = TextEditingController();
+    final reply = await showModalBottomSheet<String>(
+      context: context, isScrollControlled: true, showDragHandle: true,
+      builder: (ctx) => Directionality(textDirection: TextDirection.rtl,
+        child: Padding(
+          padding: EdgeInsets.fromLTRB(18, 12, 18, 18 + MediaQuery.of(ctx).viewInsets.bottom),
+          child: Column(mainAxisSize: MainAxisSize.min, children: [
+            const Text('د اډمین ځواب', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900)),
+            const SizedBox(height: 12),
+            TextField(controller: controller, autofocus: true, minLines: 2, maxLines: 5,
+              maxLength: 500, decoration: const InputDecoration(hintText: 'خپل ځواب ولیکئ...')),
+            const SizedBox(height: 8),
+            SizedBox(width: double.infinity, child: FilledButton(
+              onPressed: () {
+                if (controller.text.trim().isNotEmpty) Navigator.pop(ctx, controller.text.trim());
+              }, child: const Text('ځواب خپرول'))),
+          ]),
+        )),
+    );
+    controller.dispose();
+    if (reply == null || reply.isEmpty) return;
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+    try {
+      await FirebaseDatabase.instance.ref('comments/${widget.poem.id}/$commentId/adminReply').set({
+        'text': reply,
+        'adminUid': user.uid,
+        'adminName': user.displayName ?? 'د ادبي خزانه اداره',
+        'createdAt': ServerValue.timestamp,
+      });
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('ځواب ثبت نه شو: $e')));
+    }
+  }
+
+  Future<void> _deleteComment(String commentId) async {
+    if (!isAdmin) return;
+    final confirm = await showDialog<bool>(context: context, builder: (ctx) =>
+      Directionality(textDirection: TextDirection.rtl, child: AlertDialog(
+        title: const Text('تبصره ړنګول؟'),
+        content: const Text('دا تبصره به د ټولو لوستونکو لپاره حذف شي.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('بندول')),
+          FilledButton.tonal(onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('هو، ړنګول')),
+        ],
+      )));
+    if (confirm != true) return;
+    try {
+      await FirebaseDatabase.instance.ref('comments/${widget.poem.id}/$commentId').remove();
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('تبصره حذف نه شوه: $e')));
+    }
+  }
+
   @override
   void dispose() { commentController.dispose(); super.dispose(); }
 
@@ -4047,6 +4138,12 @@ class _PoemDetailScreenState extends State<PoemDetailScreen> {
             return Column(children: entries.map((entry) {
               final data = Map<String, dynamic>.from(entry.value as Map);
               final name = (data['displayName'] ?? 'لوستونکی').toString();
+              final commentId = entry.key.toString();
+              final user = FirebaseAuth.instance.currentUser;
+              final likes = data['likes'] is Map ? Map<String, dynamic>.from(data['likes'] as Map) : <String, dynamic>{};
+              final likedByMe = user != null && likes[user.uid] == true;
+              final reply = data['adminReply'] is Map
+                  ? Map<String, dynamic>.from(data['adminReply'] as Map) : null;
               return Container(width: double.infinity, margin: const EdgeInsets.only(bottom: 9),
                 padding: const EdgeInsets.all(13), decoration: BoxDecoration(color: c.surface,
                   borderRadius: BorderRadius.circular(18), border: Border.all(color: c.outlineVariant.withValues(alpha: .4))),
@@ -4056,8 +4153,59 @@ class _PoemDetailScreenState extends State<PoemDetailScreen> {
                       child: Text(name.isEmpty ? 'ل' : name.characters.first, style: TextStyle(color: c.onPrimaryContainer, fontWeight: FontWeight.w900))),
                     const SizedBox(width: 9), Expanded(child: Text(name, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w900))),
                     Text(_date(data['createdAt']), style: TextStyle(fontSize: 9, color: c.onSurfaceVariant)),
+                    if (isAdmin) PopupMenuButton<String>(
+                      tooltip: 'د تبصرې اداره',
+                      onSelected: (v) {
+                        if (v == 'reply') _replyToComment(commentId);
+                        if (v == 'delete') _deleteComment(commentId);
+                      },
+                      itemBuilder: (_) => const [
+                        PopupMenuItem(value: 'reply', child: ListTile(
+                          dense: true, leading: Icon(Icons.reply_rounded), title: Text('ځواب ورکول'))),
+                        PopupMenuItem(value: 'delete', child: ListTile(
+                          dense: true, leading: Icon(Icons.delete_outline_rounded), title: Text('تبصره ړنګول'))),
+                      ],
+                    ),
                   ]),
-                  const SizedBox(height: 9), Text((data['text'] ?? '').toString(), style: const TextStyle(fontSize: 13, height: 1.7)),
+                  const SizedBox(height: 9),
+                  Text((data['text'] ?? '').toString(), style: const TextStyle(fontSize: 13, height: 1.7)),
+                  Row(children: [
+                    TextButton.icon(
+                      onPressed: () => _toggleCommentLike(commentId, likedByMe),
+                      icon: Icon(likedByMe ? Icons.favorite_rounded : Icons.favorite_border_rounded,
+                        size: 17, color: likedByMe ? c.error : c.onSurfaceVariant),
+                      label: Text('${likes.length} خوښونې',
+                        style: TextStyle(fontSize: 11, color: likedByMe ? c.error : c.onSurfaceVariant)),
+                    ),
+                    if (isAdmin) TextButton.icon(
+                      onPressed: () => _replyToComment(commentId),
+                      icon: const Icon(Icons.reply_rounded, size: 17),
+                      label: const Text('ځواب', style: TextStyle(fontSize: 11)),
+                    ),
+                  ]),
+                  if (reply != null && (reply['text'] ?? '').toString().isNotEmpty)
+                    Container(
+                      width: double.infinity,
+                      margin: const EdgeInsets.only(top: 5),
+                      padding: const EdgeInsets.all(11),
+                      decoration: BoxDecoration(
+                        color: c.primaryContainer.withValues(alpha: .48),
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border(right: BorderSide(color: c.primary, width: 3)),
+                      ),
+                      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                        Row(children: [
+                          Icon(Icons.verified_rounded, color: c.primary, size: 15),
+                          const SizedBox(width: 5),
+                          Text((reply['adminName'] ?? 'د ادبي خزانه اداره').toString(),
+                            style: TextStyle(color: c.primary, fontSize: 11, fontWeight: FontWeight.w900)),
+                          const Spacer(),
+                          Text('د ادارې ځواب', style: TextStyle(color: c.onSurfaceVariant, fontSize: 9)),
+                        ]),
+                        const SizedBox(height: 6),
+                        Text(reply['text'].toString(), style: const TextStyle(fontSize: 12, height: 1.6)),
+                      ]),
+                    ),
                 ]));
             }).toList());
           }),
