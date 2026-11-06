@@ -467,6 +467,12 @@ class Poem {
   final bool featured;
 }
 
+class LocalPoetryCategory {
+  const LocalPoetryCategory(this.title, this.icon);
+  final String title;
+  final IconData icon;
+}
+
 class PoetryShell extends StatefulWidget {
   const PoetryShell({
     super.key,
@@ -497,6 +503,33 @@ class _PoetryShellState extends State<PoetryShell> {
   final Set<String> favorites = {};
   final Set<String> likedPoems = {};
   final List<Poem> poems = [];
+  static const List<LocalPoetryCategory> _offlineCategories = [
+    LocalPoetryCategory('حمدیه شاعري', Icons.volunteer_activism_rounded),
+    LocalPoetryCategory('نعتیه شاعري', Icons.mosque_rounded),
+    LocalPoetryCategory('حماسي شاعري', Icons.shield_rounded),
+    LocalPoetryCategory('عشقي شاعري', Icons.favorite_rounded),
+    LocalPoetryCategory('غنایي شاعري', Icons.music_note_rounded),
+    LocalPoetryCategory('عرفاني شاعري', Icons.auto_awesome_rounded),
+    LocalPoetryCategory('تصوفي شاعري', Icons.spa_rounded),
+    LocalPoetryCategory('فلسفي شاعري', Icons.psychology_rounded),
+    LocalPoetryCategory('اخلاقي شاعري', Icons.balance_rounded),
+    LocalPoetryCategory('اصلاحي شاعري', Icons.lightbulb_rounded),
+    LocalPoetryCategory('ټولنیزه شاعري', Icons.groups_rounded),
+    LocalPoetryCategory('سیاسي شاعري', Icons.account_balance_rounded),
+    LocalPoetryCategory('ملي شاعري', Icons.flag_rounded),
+    LocalPoetryCategory('وطني شاعري', Icons.public_rounded),
+    LocalPoetryCategory('رزمي شاعري', Icons.military_tech_rounded),
+    LocalPoetryCategory('انتقادي شاعري', Icons.rate_review_rounded),
+    LocalPoetryCategory('طنزي شاعري', Icons.mood_rounded),
+    LocalPoetryCategory('هجوي شاعري', Icons.theater_comedy_rounded),
+    LocalPoetryCategory('مرثیه', Icons.local_florist_rounded),
+    LocalPoetryCategory('تاریخي شاعري', Icons.history_edu_rounded),
+    LocalPoetryCategory('تعلیمي شاعري', Icons.school_rounded),
+    LocalPoetryCategory('طبیعي شاعري', Icons.nature_rounded),
+    LocalPoetryCategory('حماسي وطني شاعري', Icons.emoji_events_rounded),
+    LocalPoetryCategory('فراق او هجران', Icons.nights_stay_rounded),
+    LocalPoetryCategory('تصوف او معرفت', Icons.self_improvement_rounded),
+  ];
   Map<String, String> _categoryNames = {};
   Map<String, String> _poetNames = {};
   Map<String, String> _categoryImages = {};
@@ -1536,50 +1569,123 @@ class _PoetryShellState extends State<PoetryShell> {
             scrollDirection: Axis.horizontal, physics: const BouncingScrollPhysics(),
             itemCount: visible.length, separatorBuilder: (_, __) => const SizedBox(width: 10),
             itemBuilder: (context, index) => _horizontalPoemCard(visible[index])))),
-        if (_categoryNames.isNotEmpty) ...[
-          SliverPadding(padding: const EdgeInsets.fromLTRB(16, 10, 16, 9),
-            sliver: SliverToBoxAdapter(child: _sectionHeader(Icons.category_rounded, 'کټګورۍ', '${_categoryNames.length} کټګورۍ'))),
-          SliverToBoxAdapter(child: SizedBox(height: 112, child: ListView.separated(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 3),
-            scrollDirection: Axis.horizontal, physics: const BouncingScrollPhysics(),
-            itemCount: _categoryNames.length,
-            separatorBuilder: (_, __) => const SizedBox(width: 11),
-            itemBuilder: (context, index) {
-              final entry = _categoryNames.entries.elementAt(index);
-              final count = poems.where((p) => p.categoryId == entry.key).length;
-              return SizedBox(width: 104, child: Material(
-                color: colors.surface,
-                borderRadius: BorderRadius.circular(20),
-                child: InkWell(borderRadius: BorderRadius.circular(20),
-                  onTap: () => _openCollectionPage(entry.value, _categoryImages[entry.key] ?? '', poems.where((p) => p.categoryId == entry.key).toList(), collectionId: entry.key, isCategory: true),
-                  child: Container(padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 8),
-                    decoration: BoxDecoration(borderRadius: BorderRadius.circular(20),
-                      border: Border.all(color: colors.outlineVariant.withValues(alpha: .55)),
-                      gradient: LinearGradient(begin: Alignment.topRight, end: Alignment.bottomLeft,
-                        colors: [colors.surface, colors.primaryContainer.withValues(alpha: .62)])),
-                    child: Column(crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisAlignment: MainAxisAlignment.center, children: [
-                        Container(width: 46, height: 46,
-                          decoration: BoxDecoration(color: colors.primary.withValues(alpha: .10),
-                            borderRadius: BorderRadius.circular(13)),
-                          clipBehavior: Clip.antiAlias,
-                          child: (_categoryImages[entry.key] ?? '').isNotEmpty
-                            ? Image.network(_categoryImages[entry.key]!, fit: BoxFit.cover,
-                                errorBuilder: (_, __, ___) => Icon(Icons.auto_awesome_rounded, color: colors.primary, size: 20))
-                            : Icon(Icons.auto_awesome_rounded, color: colors.primary, size: 20)),
-                        const Spacer(),
-                        Text(entry.value, maxLines: 1, overflow: TextOverflow.ellipsis,
-                          style: TextStyle(fontSize: 11, fontWeight: FontWeight.w900,
-                            color: colors.onSurface)),
-                        const SizedBox(height: 3),
-                        Text('$count شعرونه', style: TextStyle(fontSize: 9,
-                          color: colors.onSurfaceVariant)),
-                      ]),
+        SliverPadding(
+          padding: const EdgeInsets.fromLTRB(16, 10, 16, 12),
+          sliver: SliverToBoxAdapter(
+            child: _sectionHeader(
+              Icons.category_rounded,
+              'د شعرونو موضوعي کټګورۍ',
+              '${_offlineCategories.length} کټګورۍ',
+            ),
+          ),
+        ),
+        SliverPadding(
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+          sliver: SliverGrid(
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 2,
+              mainAxisSpacing: 10,
+              crossAxisSpacing: 10,
+              mainAxisExtent: 76,
+            ),
+            delegate: SliverChildBuilderDelegate(
+              (context, index) {
+                final category = _offlineCategories[index];
+                final remoteEntry = _categoryNames.entries.cast<MapEntry<String, String>?>()
+                    .firstWhere(
+                      (entry) => entry!.value.trim() == category.title,
+                      orElse: () => null,
+                    );
+                final categoryId = remoteEntry?.key ?? 'offline_category_$index';
+                final categoryImage = remoteEntry == null ? '' : (_categoryImages[categoryId] ?? '');
+                final categoryPoems = poems.where((poem) =>
+                  poem.category.trim() == category.title ||
+                  (remoteEntry != null && poem.categoryId == categoryId)
+                ).toList();
+                final palette = Theme.of(context).colorScheme;
+                return Material(
+                  color: palette.surface,
+                  borderRadius: BorderRadius.circular(19),
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(19),
+                    onTap: () => _openCollectionPage(
+                      category.title,
+                      categoryImage,
+                      categoryPoems,
+                      collectionId: categoryId,
+                      isCategory: true,
+                    ),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(19),
+                        gradient: LinearGradient(
+                          begin: Alignment.topRight,
+                          end: Alignment.bottomLeft,
+                          colors: [
+                            palette.surface,
+                            palette.primaryContainer.withValues(alpha: .58),
+                          ],
+                        ),
+                        border: Border.all(
+                          color: palette.outlineVariant.withValues(alpha: .55),
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          Container(
+                            width: 46,
+                            height: 46,
+                            decoration: BoxDecoration(
+                              color: palette.primary.withValues(alpha: .12),
+                              borderRadius: BorderRadius.circular(15),
+                            ),
+                            child: Icon(
+                              category.icon,
+                              color: palette.primary,
+                              size: 24,
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  category.title,
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    color: palette.onSurface,
+                                    fontSize: 11,
+                                    height: 1.25,
+                                    fontWeight: FontWeight.w900,
+                                  ),
+                                ),
+                                const SizedBox(height: 3),
+                                Text(
+                                  '${categoryPoems.length} شعرونه',
+                                  style: TextStyle(
+                                    color: palette.onSurfaceVariant,
+                                    fontSize: 9,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          Icon(Icons.chevron_left_rounded,
+                            color: palette.onSurfaceVariant, size: 19),
+                        ],
+                      ),
+                    ),
                   ),
-                ),
-              ));
-            }))),
-        ],
+                );
+              },
+              childCount: _offlineCategories.length,
+            ),
+          ),
+        ),
         if (poetGroups.isNotEmpty) ...[
           SliverPadding(padding: const EdgeInsets.fromLTRB(16, 10, 16, 9),
             sliver: SliverToBoxAdapter(child: _sectionHeader(Icons.people_alt_rounded,
