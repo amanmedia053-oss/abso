@@ -586,6 +586,7 @@ class _PoemEditorState extends State<PoemEditor> {
   final picker = ImagePicker();
   String? categoryId, poetId;
   XFile? image;
+  String? existingImageUrl;
   bool featured = false, saving = false;
   static const List<String> offlineCategoryNames = [
     'حمدیه شاعري', 'نعتیه شاعري', 'حماسي شاعري', 'عشقي شاعري',
@@ -605,7 +606,7 @@ class _PoemEditorState extends State<PoemEditor> {
     setState(() => saving = true);
     try {
       final ref = FirebaseDatabase.instance.ref('poems').push();
-      String? imageUrl;
+      final imageUrl = existingImageUrl;
       final data = <String, dynamic>{
         'text': text.text.trim(),
         'categoryId': categoryId ?? 'offline_category_${offlineCategoryNames.length - 1}',
