@@ -139,7 +139,8 @@ class _AdminHomeState extends State<AdminHome> {
   @override
   Widget build(BuildContext context) {
     final pages = [const PoemsAdminPage(), const SimpleListAdmin(path: 'categories', title: 'کټګورۍ'),
-      const SimpleListAdmin(path: 'poets', title: 'شاعران'), const GalleryAdminPage()];
+      const SimpleListAdmin(path: 'poets', title: 'شاعران'), const GalleryAdminPage(),
+      const AdminCommentsPage()];
     return Scaffold(
       appBar: AppBar(title: const Text('د ادبي خزانه مدیریت'),
         actions: [IconButton(onPressed: () => FirebaseAuth.instance.signOut(),
@@ -155,9 +156,128 @@ class _AdminHomeState extends State<AdminHome> {
           NavigationDestination(icon: Icon(Icons.category_outlined), label: 'کټګورۍ'),
           NavigationDestination(icon: Icon(Icons.people_outline), label: 'شاعران'),
           NavigationDestination(icon: Icon(Icons.photo_library_outlined), label: 'ګالري'),
+          NavigationDestination(icon: Icon(Icons.forum_outlined), selectedIcon: Icon(Icons.forum_rounded), label: 'تبصرې'),
         ]),
     );
   }
+}
+
+class AdminCommentsPage extends StatelessWidget {
+  const AdminCommentsPage({super.key});
+
+  Future<void> _reply(BuildContext context, String poemId, String commentId) async {
+    final controller = TextEditingController();
+    final value = await showModalBottomSheet<String>(
+      context: context, isScrollControlled: true, showDragHandle: true,
+      builder: (ctx) => Directionality(textDirection: TextDirection.rtl,
+        child: Padding(
+          padding: EdgeInsets.fromLTRB(18, 12, 18, 18 + MediaQuery.of(ctx).viewInsets.bottom),
+          child: Column(mainAxisSize: MainAxisSize.min, children: [
+            const Text('د لوستونکي تبصرې ته ځواب', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900)),
+            const SizedBox(height: 12),
+            TextField(controller: controller, autofocus: true, minLines: 2, maxLines: 5,
+              maxLength: 500, decoration: const InputDecoration(hintText: 'ځواب ولیکئ...')),
+            const SizedBox(height: 8),
+            SizedBox(width: double.infinity, child: FilledButton(
+              onPressed: () {
+                if (controller.text.trim().isNotEmpty) Navigator.pop(ctx, controller.text.trim());
+              }, child: const Text('ځواب خپرول'))),
+          ]),
+        )),
+    );
+    controller.dispose();
+    if (value == null) return;
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+    await FirebaseDatabase.instance.ref('comments/$poemId/$commentId/adminReply').set({
+      'text': value, 'adminUid': user.uid,
+      'adminName': user.displayName ?? 'د ادبي خزانه اداره',
+      'createdAt': ServerValue.timestamp,
+    });
+  }
+
+  Future<void> _delete(BuildContext context, String poemId, String commentId) async {
+    final yes = await showDialog<bool>(context: context, builder: (ctx) =>
+      Directionality(textDirection: TextDirection.rtl, child: AlertDialog(
+        title: const Text('تبصره ړنګول؟'),
+        content: const Text('دا تبصره به د شعر له پاڼې هم حذف شي.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('بندول')),
+          FilledButton.tonal(onPressed: () => Navigator.pop(ctx, true), child: const Text('ړنګول')),
+        ],
+      )));
+    if (yes == true) {
+      await FirebaseDatabase.instance.ref('comments/$poemId/$commentId').remove();
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) => StreamBuilder<DatabaseEvent>(
+    stream: FirebaseDatabase.instance.ref('comments').onValue,
+    builder: (context, snapshot) {
+      if (snapshot.hasError) return Center(child: Text('تبصرې نه لوډ کېږي: ${snapshot.error}'));
+      if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
+      final root = snapshot.data!.snapshot.value;
+      if (root is! Map || root.isEmpty) return const Center(child: Text('تر اوسه تبصرې نشته.'));
+      final rows = <({String poemId, String commentId, Map<String, dynamic> data})>[];
+      for (final poemEntry in root.entries) {
+        if (poemEntry.value is! Map) continue;
+        for (final commentEntry in (poemEntry.value as Map).entries) {
+          if (commentEntry.value is! Map) continue;
+          rows.add((
+            poemId: poemEntry.key.toString(),
+            commentId: commentEntry.key.toString(),
+            data: Map<String, dynamic>.from(commentEntry.value as Map),
+          ));
+        }
+      }
+      rows.sort((a, b) => ((b.data['createdAt'] as num?) ?? 0)
+          .compareTo((a.data['createdAt'] as num?) ?? 0));
+      return ListView.separated(
+        padding: const EdgeInsets.all(14), itemCount: rows.length,
+        separatorBuilder: (_, __) => const SizedBox(height: 9),
+        itemBuilder: (context, index) {
+          final row = rows[index];
+          final data = row.data;
+          final reply = data['adminReply'] is Map
+              ? Map<String, dynamic>.from(data['adminReply'] as Map) : null;
+          final likes = data['likes'] is Map ? (data['likes'] as Map).length : 0;
+          return Card(child: Padding(
+            padding: const EdgeInsets.all(14),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Row(children: [
+                const CircleAvatar(child: Icon(Icons.person_outline_rounded)),
+                const SizedBox(width: 9),
+                Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Text((data['displayName'] ?? 'لوستونکی').toString(),
+                    style: const TextStyle(fontWeight: FontWeight.w900)),
+                  Text('د شعر پېژند: ${row.poemId}',
+                    style: TextStyle(fontSize: 10, color: Theme.of(context).colorScheme.onSurfaceVariant)),
+                ])),
+                Text('$likes خوښونې', style: const TextStyle(fontSize: 11)),
+              ]),
+              const SizedBox(height: 10),
+              Text((data['text'] ?? '').toString(), style: const TextStyle(height: 1.6)),
+              if (reply != null) Padding(
+                padding: const EdgeInsets.only(top: 8),
+                child: Text('اوسنی ځواب: ${reply['text'] ?? ''}',
+                  style: TextStyle(color: Theme.of(context).colorScheme.primary, fontSize: 12))),
+              const SizedBox(height: 8),
+              Row(children: [
+                Expanded(child: OutlinedButton.icon(
+                  onPressed: () => _reply(context, row.poemId, row.commentId),
+                  icon: const Icon(Icons.reply_rounded), label: const Text('ځواب'))),
+                const SizedBox(width: 8),
+                Expanded(child: FilledButton.tonalIcon(
+                  onPressed: () => _delete(context, row.poemId, row.commentId),
+                  icon: const Icon(Icons.delete_outline_rounded), label: const Text('ړنګول'))),
+              ]),
+            ]),
+          ));
+        },
+      );
+    },
+  );
 }
 
 class PoemsAdminPage extends StatelessWidget {
