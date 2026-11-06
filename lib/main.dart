@@ -1944,6 +1944,8 @@ class _PoetryShellState extends State<PoetryShell> {
                         categoryPoems,
                         collectionId: categoryId,
                         isCategory: true,
+                        categoryIcon: category.icon,
+                        categoryColor: accent,
                       ),
                       child: Container(
                         padding: const EdgeInsets.fromLTRB(10, 10, 10, 9),
@@ -2013,10 +2015,11 @@ class _PoetryShellState extends State<PoetryShell> {
       ],
     ));
   }
-  void _openCollectionPage(String title, String imageUrl, List<Poem> items, {required String collectionId, bool isCategory = false}) {
+  void _openCollectionPage(String title, String imageUrl, List<Poem> items, {required String collectionId, bool isCategory = false, IconData? categoryIcon, Color? categoryColor}) {
     Navigator.push(context, MaterialPageRoute(builder: (_) => CollectionPoemsPage(
       title: title, imageUrl: imageUrl, poems: items, collectionId: collectionId,
-      isCategory: isCategory, onPoemTap: _openPoem,
+      isCategory: isCategory, categoryIcon: categoryIcon,
+      categoryColor: categoryColor, onPoemTap: _openPoem,
     )));
   }
 
@@ -3772,10 +3775,12 @@ class _TypingCoupletBoxState extends State<_TypingCoupletBox> {
 class CollectionPoemsPage extends StatefulWidget {
   const CollectionPoemsPage({super.key, required this.title, required this.imageUrl,
     required this.poems, required this.collectionId, required this.onPoemTap,
-    this.isCategory = false});
+    this.isCategory = false, this.categoryIcon, this.categoryColor});
   final String title, imageUrl, collectionId;
   final List<Poem> poems;
   final bool isCategory;
+  final IconData? categoryIcon;
+  final Color? categoryColor;
   final ValueChanged<Poem> onPoemTap;
   @override
   State<CollectionPoemsPage> createState() => _CollectionPoemsPageState();
@@ -3971,9 +3976,11 @@ class _CollectionHeaderDelegate extends SliverPersistentHeaderDelegate {
   );
 
   Widget _avatarFallback() => Container(
-    color: const Color(0xFF286B5D),
-    child: Icon(isCategory ? Icons.category_rounded : Icons.person_rounded,
-      color: Colors.white, size: 34),
+    color: (widget.categoryColor ?? const Color(0xFF286B5D)).withValues(alpha: .20),
+    child: Icon(widget.isCategory
+        ? (widget.categoryIcon ?? Icons.category_rounded)
+        : Icons.person_rounded,
+      color: widget.categoryColor ?? const Color(0xFF286B5D), size: 42),
   );
 
   Widget _headerStat(IconData icon, String label, Color color) => Row(
