@@ -139,6 +139,7 @@ class _AdminHomeState extends State<AdminHome> {
   @override
   Widget build(BuildContext context) {
     final pages = [const PoemsAdminPage(),
+      const SimpleListAdmin(path: 'categories', title: 'کټګورۍ'),
       const SimpleListAdmin(path: 'poets', title: 'شاعران'),
       const GalleryAdminPage(), const AdminCommentsPage()];
     return Scaffold(
@@ -153,6 +154,7 @@ class _AdminHomeState extends State<AdminHome> {
         onDestinationSelected: (v) => setState(() => tab = v),
         destinations: const [
           NavigationDestination(icon: Icon(Icons.menu_book_outlined), selectedIcon: Icon(Icons.menu_book), label: 'شعرونه'),
+          NavigationDestination(icon: Icon(Icons.category_outlined), selectedIcon: Icon(Icons.category_rounded), label: 'کټګورۍ'),
           NavigationDestination(icon: Icon(Icons.people_outline), label: 'شاعران'),
           NavigationDestination(icon: Icon(Icons.photo_library_outlined), label: 'ګالري'),
           NavigationDestination(icon: Icon(Icons.forum_outlined), selectedIcon: Icon(Icons.forum_rounded), label: 'تبصرې'),
