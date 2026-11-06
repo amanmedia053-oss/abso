@@ -1579,17 +1579,16 @@ class _PoetryShellState extends State<PoetryShell> {
             ),
           ),
         ),
-        SliverPadding(
-          padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-          sliver: SliverGrid(
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 2,
-              mainAxisSpacing: 10,
-              crossAxisSpacing: 10,
-              mainAxisExtent: 76,
-            ),
-            delegate: SliverChildBuilderDelegate(
-              (context, index) {
+        SliverToBoxAdapter(
+          child: SizedBox(
+            height: 126,
+            child: ListView.separated(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+              scrollDirection: Axis.horizontal,
+              physics: const BouncingScrollPhysics(),
+              itemCount: _offlineCategories.length,
+              separatorBuilder: (_, __) => const SizedBox(width: 10),
+              itemBuilder: (context, index) {
                 final category = _offlineCategories[index];
                 final remoteEntry = _categoryNames.entries.cast<MapEntry<String, String>?>()
                     .firstWhere(
@@ -1602,87 +1601,80 @@ class _PoetryShellState extends State<PoetryShell> {
                   poem.category.trim() == category.title ||
                   (remoteEntry != null && poem.categoryId == categoryId)
                 ).toList();
+
+                // Muted topic accents: distinct, soft colors rather than saturated tones.
+                const accents = <Color>[
+                  Color(0xFF8D9B78), Color(0xFF7895A8), Color(0xFF9A806D),
+                  Color(0xFFB47D86), Color(0xFF8C86A8), Color(0xFF78998F),
+                  Color(0xFF9A9275), Color(0xFF7F91A8), Color(0xFF9B8878),
+                  Color(0xFF829B87), Color(0xFF8B91A2), Color(0xFFA18478),
+                ];
+                final accent = accents[index % accents.length];
                 final palette = Theme.of(context).colorScheme;
-                return Material(
-                  color: palette.surface,
-                  borderRadius: BorderRadius.circular(19),
-                  child: InkWell(
-                    borderRadius: BorderRadius.circular(19),
-                    onTap: () => _openCollectionPage(
-                      category.title,
-                      categoryImage,
-                      categoryPoems,
-                      collectionId: categoryId,
-                      isCategory: true,
-                    ),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(19),
-                        gradient: LinearGradient(
-                          begin: Alignment.topRight,
-                          end: Alignment.bottomLeft,
-                          colors: [
-                            palette.surface,
-                            palette.primaryContainer.withValues(alpha: .58),
+
+                return SizedBox(
+                  width: 116,
+                  child: Material(
+                    color: palette.surface,
+                    borderRadius: BorderRadius.circular(20),
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(20),
+                      onTap: () => _openCollectionPage(
+                        category.title,
+                        categoryImage,
+                        categoryPoems,
+                        collectionId: categoryId,
+                        isCategory: true,
+                      ),
+                      child: Container(
+                        padding: const EdgeInsets.fromLTRB(10, 10, 10, 9),
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(20),
+                          color: accent.withValues(alpha: .075),
+                          border: Border.all(
+                            color: accent.withValues(alpha: .24),
+                            width: 1,
+                          ),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Container(
+                              width: 43,
+                              height: 43,
+                              decoration: BoxDecoration(
+                                color: accent.withValues(alpha: .16),
+                                borderRadius: BorderRadius.circular(14),
+                              ),
+                              child: Icon(category.icon, color: accent, size: 23),
+                            ),
+                            const Spacer(),
+                            Text(
+                              category.title,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                color: palette.onSurface,
+                                fontSize: 11,
+                                height: 1.2,
+                                fontWeight: FontWeight.w900,
+                              ),
+                            ),
+                            const SizedBox(height: 3),
+                            Text(
+                              '${categoryPoems.length} شعرونه',
+                              style: TextStyle(
+                                color: palette.onSurfaceVariant,
+                                fontSize: 9,
+                              ),
+                            ),
                           ],
                         ),
-                        border: Border.all(
-                          color: palette.outlineVariant.withValues(alpha: .55),
-                        ),
-                      ),
-                      child: Row(
-                        children: [
-                          Container(
-                            width: 46,
-                            height: 46,
-                            decoration: BoxDecoration(
-                              color: palette.primary.withValues(alpha: .12),
-                              borderRadius: BorderRadius.circular(15),
-                            ),
-                            child: Icon(
-                              category.icon,
-                              color: palette.primary,
-                              size: 24,
-                            ),
-                          ),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  category.title,
-                                  maxLines: 2,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: TextStyle(
-                                    color: palette.onSurface,
-                                    fontSize: 11,
-                                    height: 1.25,
-                                    fontWeight: FontWeight.w900,
-                                  ),
-                                ),
-                                const SizedBox(height: 3),
-                                Text(
-                                  '${categoryPoems.length} شعرونه',
-                                  style: TextStyle(
-                                    color: palette.onSurfaceVariant,
-                                    fontSize: 9,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          Icon(Icons.chevron_left_rounded,
-                            color: palette.onSurfaceVariant, size: 19),
-                        ],
                       ),
                     ),
                   ),
                 );
               },
-              childCount: _offlineCategories.length,
             ),
           ),
         ),
