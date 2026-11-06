@@ -139,9 +139,9 @@ class _AdminHomeState extends State<AdminHome> {
   @override
   Widget build(BuildContext context) {
     final pages = [const PoemsAdminPage(),
-      const SimpleListAdmin(path: 'categories', title: 'کټګورۍ'),
       const SimpleListAdmin(path: 'poets', title: 'شاعران'),
-      const GalleryAdminPage(), const AdminCommentsPage()];
+      const GalleryAdminPage(), const AdminCommentsPage(),
+      const TelegramArchiveAdminPage()];
     return Scaffold(
       appBar: AppBar(title: const Text('د ادبي خزانه مدیریت'),
         actions: [IconButton(onPressed: () => FirebaseAuth.instance.signOut(),
@@ -154,13 +154,54 @@ class _AdminHomeState extends State<AdminHome> {
         onDestinationSelected: (v) => setState(() => tab = v),
         destinations: const [
           NavigationDestination(icon: Icon(Icons.menu_book_outlined), selectedIcon: Icon(Icons.menu_book), label: 'شعرونه'),
-          NavigationDestination(icon: Icon(Icons.category_outlined), selectedIcon: Icon(Icons.category_rounded), label: 'کټګورۍ'),
+          NavigationDestination(icon: Icon(Icons.telegram), selectedIcon: Icon(Icons.telegram), label: 'ټیلیګرام'),
           NavigationDestination(icon: Icon(Icons.people_outline), label: 'شاعران'),
           NavigationDestination(icon: Icon(Icons.photo_library_outlined), label: 'ګالري'),
           NavigationDestination(icon: Icon(Icons.forum_outlined), selectedIcon: Icon(Icons.forum_rounded), label: 'تبصرې'),
         ]),
     );
   }
+}
+
+class TelegramArchiveAdminPage extends StatefulWidget {
+  const TelegramArchiveAdminPage({super.key});
+  @override
+  State<TelegramArchiveAdminPage> createState() => _TelegramArchiveAdminPageState();
+}
+
+class _TelegramArchiveAdminPageState extends State<TelegramArchiveAdminPage> {
+  final channel = TextEditingController();
+  final token = TextEditingController();
+  bool hideToken = true;
+  @override
+  void dispose() { channel.dispose(); token.dispose(); super.dispose(); }
+  @override
+  Widget build(BuildContext context) => ListView(padding: const EdgeInsets.all(16), children: [
+    Container(padding: const EdgeInsets.all(20), decoration: BoxDecoration(
+      gradient: const LinearGradient(colors: [Color(0xFF173D69), Color(0xFF287CA5), Color(0xFF38A58A)]),
+      borderRadius: BorderRadius.circular(24)), child: const Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Icon(Icons.telegram, color: Colors.white, size: 38), SizedBox(height: 10),
+        Text('د ټیلیګرام پوسټونو استخراج', style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.w900)),
+        Text('د چینل لینک او Bot Token ورکړئ؛ له نښلولو وروسته نوي پوسټونه آرشیف ته راټولېږي.', style: TextStyle(color: Colors.white70, height: 1.7)),
+      ])),
+    const SizedBox(height: 18),
+    TextField(controller: channel, keyboardType: TextInputType.url, textDirection: TextDirection.ltr,
+      decoration: const InputDecoration(labelText: 'د ټیلیګرام چینل لینک', hintText: 'https://t.me/channelname', prefixIcon: Icon(Icons.link), border: OutlineInputBorder())),
+    const SizedBox(height: 12),
+    TextField(controller: token, obscureText: hideToken, textDirection: TextDirection.ltr,
+      decoration: InputDecoration(labelText: 'د Bot Token', prefixIcon: const Icon(Icons.key), suffixIcon: IconButton(
+        onPressed: () => setState(() => hideToken = !hideToken), icon: Icon(hideToken ? Icons.visibility : Icons.visibility_off)), border: const OutlineInputBorder())),
+    const SizedBox(height: 14),
+    const Text('بوټ باید د چینل اډمین وي. د امنیت لپاره ټوکن باید خوندي HTTPS سرور ته ولېږل شي. عادي Bot API زاړه پوسټونه نه راوباسي؛ یوازې نوي پوسټونه ترلاسه کوي.', style: TextStyle(height: 1.7, fontSize: 12)),
+    const SizedBox(height: 14),
+    FilledButton.icon(onPressed: () {
+      if (channel.text.trim().isEmpty || token.text.trim().isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('د چینل لینک او Bot Token دواړه ولیکئ.')));
+        return;
+      }
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('د خوندي ټیلیګرام سرور نښلون لا نه دی بشپړ شوی؛ ټوکن مو نه دی لېږل شوی.')));
+    }, icon: const Icon(Icons.cloud_download_outlined), label: const Text('د پوسټونو استخراج پیل')),
+  ]);
 }
 
 class AdminCommentsPage extends StatelessWidget {
