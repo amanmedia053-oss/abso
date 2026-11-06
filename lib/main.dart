@@ -1132,9 +1132,17 @@ class _PoetryShellState extends State<PoetryShell> {
             ? 'offline_category_${_offlineCategories.length - 1}'
             : storedCategoryId;
         if (body.isEmpty || data['isPublished'] == false) continue;
-        final localCategoryMatch = RegExp(r'^offline_category_(\\d+)
+        final localCategoryIndex = categoryId.startsWith('offline_category_')
+            ? int.tryParse(categoryId.substring('offline_category_'.length)) ?? -1
+            : -1;
+        final localCategoryName = localCategoryIndex >= 0 &&
+                localCategoryIndex < _offlineCategories.length
+            ? _offlineCategories[localCategoryIndex].title
+            : '';
+        next.add(Poem(
+          id: entry.key.toString(),
           title: (data['title'] ?? '').toString().trim().isEmpty
-              ? body.split(RegExp(r'\s+')).where((w) => w.isNotEmpty).take(6).join(' ')
+              ? body.split(RegExp(r'\\s+')).where((w) => w.isNotEmpty).take(6).join(' ')
               : data['title'].toString().trim(),
           poetId: (data['poetId'] ?? '').toString(),
           categoryId: categoryId,
