@@ -202,7 +202,7 @@ class AuthGate extends StatelessWidget {
         return const Scaffold(body: Center(child: CircularProgressIndicator()));
       }
       final user = snapshot.data;
-      if (user != null && !user.isAnonymous) return child;
+      if (user != null) return child;
       return const AccountAccessPage();
     },
   );
@@ -258,19 +258,34 @@ class _AccountAccessPageState extends State<AccountAccessPage> {
   }
 
   Future<void> _emailAuth() async {
-    if (email.text.trim().isEmpty || password.text.length < 6) {
-      setState(() => error = 'سم ایمیل او لږ تر لږه ۶ توري پټنوم ولیکئ.');
+    if (email.text.trim().isEmpty || password.text.length < 6 ||
+        (create && name.text.trim().isEmpty)) {
+      setState(() => error = create
+          ? 'نوم، سم ایمیل او لږ تر لږه ۶ توري پټنوم ولیکئ.'
+          : 'سم ایمیل او لږ تر لږه ۶ توري پټنوم ولیکئ.');
       return;
     }
     await _run(() async {
-      final current = FirebaseAuth.instance.currentUser;
-      final credential = EmailAuthProvider.credential(
-        email: email.text.trim(), password: password.text);
-      if (current?.isAnonymous == true) return current!.linkWithCredential(credential);
-      return create
-        ? FirebaseAuth.instance.createUserWithEmailAndPassword(email: email.text.trim(), password: password.text)
-        : FirebaseAuth.instance.signInWithEmailAndPassword(email: email.text.trim(), password: password.text);
+      final credential = create
+        ? await FirebaseAuth.instance.createUserWithEmailAndPassword(
+            email: email.text.trim(), password: password.text)
+        : await FirebaseAuth.instance.signInWithEmailAndPassword(
+            email: email.text.trim(), password: password.text);
+      return credential;
     });
+  }
+
+  Future<void> _continueAsGuest() async {
+    setState(() { busy = true; error = null; });
+    try {
+      await FirebaseAuth.instance.signInAnonymously();
+    } on FirebaseAuthException catch (e) {
+      if (mounted) setState(() => error = e.message ?? 'د مېلمه ننوتل ناکام شول.');
+    } catch (e) {
+      if (mounted) setState(() => error = 'ستونزه: $e');
+    } finally {
+      if (mounted) setState(() => busy = false);
+    }
   }
 
   Future<void> _googleAuth() async {
@@ -393,24 +408,16 @@ class _AccountAccessPageState extends State<AccountAccessPage> {
                 icon: const Icon(Icons.login_rounded),
                 label: Text(create ? 'د ایمیل له لارې حساب جوړول' : 'ایمیل سره ننوتل')),
               const SizedBox(height: 10),
-              OutlinedButton.icon(onPressed: busy ? null : _googleAuth,
-                icon: const Icon(Icons.g_mobiledata_rounded, size: 28),
-                label: const Text('د Google حساب له لارې')),
               const SizedBox(height: 18),
               const Divider(),
-              TextField(controller: phone, keyboardType: TextInputType.phone,
-                decoration: const InputDecoration(labelText: 'ټیلیفون شمېره (+د هېواد کوډ)',
-                  prefixIcon: Icon(Icons.phone_android_rounded))),
-              if (codeSent) ...[
-                const SizedBox(height: 10),
-                TextField(controller: otp, keyboardType: TextInputType.number,
-                  decoration: const InputDecoration(labelText: 'د SMS تایید کوډ')),
-              ],
-              const SizedBox(height: 10),
               OutlinedButton.icon(
-                onPressed: busy ? null : (codeSent ? _verifyCode : _phoneAuth),
-                icon: const Icon(Icons.sms_outlined),
-                label: Text(codeSent ? 'کوډ تاییدول' : 'د ټیلیفون له لارې ننوتل')),
+                onPressed: busy ? null : _continueAsGuest,
+                icon: const Icon(Icons.person_outline_rounded),
+                label: const Text('د مېلمه په توګه دوام')),
+              const SizedBox(height: 8),
+              Text('مېلمه حساب د محدودو ځانګړنو لپاره دی؛ د شعرونو د تبصرو او شخصي حساب لپاره ایمیل وکاروئ.',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: c.onSurfaceVariant, fontSize: 11)),
               if (busy) const Padding(padding: EdgeInsets.all(12),
                 child: Center(child: CircularProgressIndicator())),
               if (error != null) Padding(padding: const EdgeInsets.only(top: 12),
@@ -930,25 +937,96 @@ class _PoetryShellState extends State<PoetryShell> {
     final profile = await _ensureProfile();
     if (profile == null) return;
     final user = FirebaseAuth.instance.currentUser;
-    if (user == null) return;
-    final controller = TextEditingController(text: profile['name']);
-    final name = await showDialog<String>(context: context,
-      builder: (ctx) => Directionality(textDirection: TextDirection.rtl, child: AlertDialog(
-        title: const Text('د پروفایل نوم بدلول'),
-        content: TextField(controller: controller, maxLength: 28, decoration: const InputDecoration(labelText: 'نوم')),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('بندول')),
-          FilledButton(onPressed: () {
-            if (controller.text.trim().isNotEmpty) Navigator.pop(ctx, controller.text.trim());
-          }, child: const Text('خوندي کول')),
-        ],
-      )));
-    controller.dispose();
-    if (name == null || name.trim().isEmpty) return;
-    await FirebaseDatabase.instance.ref('profiles/${user.uid}').update({
-      'displayName': name.trim(), 'updatedAt': ServerValue.timestamp,
-    });
-    if (mounted) setState(() => _profileName = name.trim());
+    if (user == null || user.isAnonymous) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('د پروفایل د بدلون لپاره لومړی ایمیل حساب جوړ کړئ.')));
+      return;
+    }
+    final nameController = TextEditingController(text: profile['name']);
+    final currentPassword = TextEditingController();
+    final newPassword = TextEditingController();
+    XFile? selectedPhoto;
+    bool changePassword = false;
+    final saved = await showDialog<bool>(context: context, builder: (ctx) =>
+      StatefulBuilder(builder: (ctx, setLocal) => Directionality(
+        textDirection: TextDirection.rtl,
+        child: AlertDialog(
+          title: const Text('د پروفایل تنظیمات'),
+          content: SingleChildScrollView(child: Column(mainAxisSize: MainAxisSize.min, children: [
+            GestureDetector(
+              onTap: () async {
+                final picked = await ImagePicker().pickImage(
+                  source: ImageSource.gallery, imageQuality: 82, maxWidth: 900);
+                if (picked != null) setLocal(() => selectedPhoto = picked);
+              },
+              child: CircleAvatar(radius: 38,
+                backgroundImage: selectedPhoto != null
+                  ? FileImage(File(selectedPhoto!.path))
+                  : ((user.photoURL ?? profile['photoUrl'] ?? '').isNotEmpty
+                      ? NetworkImage(user.photoURL ?? profile['photoUrl']!) : null) as ImageProvider?,
+                child: selectedPhoto == null && (user.photoURL ?? profile['photoUrl'] ?? '').isEmpty
+                  ? const Icon(Icons.add_a_photo_rounded, size: 27) : null),
+            ),
+            const SizedBox(height: 6),
+            TextButton.icon(onPressed: () async {
+              final picked = await ImagePicker().pickImage(
+                source: ImageSource.gallery, imageQuality: 82, maxWidth: 900);
+              if (picked != null) setLocal(() => selectedPhoto = picked);
+            }, icon: const Icon(Icons.photo_camera_back_rounded),
+              label: const Text('د پروفایل انځور بدلول')),
+            TextField(controller: nameController, maxLength: 28,
+              decoration: const InputDecoration(labelText: 'نوم')),
+            const SizedBox(height: 10),
+            SwitchListTile(
+              contentPadding: EdgeInsets.zero,
+              title: const Text('پټنوم بدلول'),
+              value: changePassword,
+              onChanged: (v) => setLocal(() => changePassword = v)),
+            if (changePassword) ...[
+              TextField(controller: currentPassword, obscureText: true,
+                decoration: const InputDecoration(labelText: 'اوسنی پټنوم')),
+              TextField(controller: newPassword, obscureText: true,
+                decoration: const InputDecoration(labelText: 'نوی پټنوم (لږ تر لږه ۶ توري)')),
+            ],
+          ])),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('بندول')),
+            FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('بدلونونه خوندي کول')),
+          ],
+        ))));
+    final newName = nameController.text.trim();
+    final oldPass = currentPassword.text;
+    final nextPass = newPassword.text;
+    nameController.dispose(); currentPassword.dispose(); newPassword.dispose();
+    if (saved != true) return;
+    try {
+      if (newName.isEmpty) throw Exception('نوم تش نه شي پاتې کېدای.');
+      String? photoUrl;
+      if (selectedPhoto != null) photoUrl = await uploadImageToCloudinary(selectedPhoto!);
+      if (changePassword) {
+        if (oldPass.isEmpty || nextPass.length < 6) {
+          throw Exception('اوسنی او نوی پټنوم سم ولیکئ؛ نوی پټنوم لږ تر لږه ۶ توري لري.');
+        }
+        final emailAddress = user.email;
+        if (emailAddress == null) throw Exception('دا حساب د ایمیل له لارې نه دی جوړ شوی.');
+        final credential = EmailAuthProvider.credential(email: emailAddress, password: oldPass);
+        await user.reauthenticateWithCredential(credential);
+        await user.updatePassword(nextPass);
+      }
+      await user.updateDisplayName(newName);
+      if (photoUrl != null) await user.updatePhotoURL(photoUrl);
+      await FirebaseDatabase.instance.ref('profiles/${user.uid}').update({
+        'displayName': newName,
+        if (photoUrl != null) 'photoUrl': photoUrl,
+        'updatedAt': ServerValue.timestamp,
+      });
+      if (mounted) setState(() => _profileName = newName);
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('پروفایل په بریالیتوب تازه شو.')));
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('بدلون ترسره نه شو: $e')));
+    }
   }
 
   Future<void> _loadEngagementState() async {
@@ -2204,10 +2282,12 @@ class _PoetryShellState extends State<PoetryShell> {
         Card(clipBehavior: Clip.antiAlias, child: InkWell(
           onTap: _editProfile,
           child: Padding(padding: const EdgeInsets.all(16), child: Row(children: [
-            Container(width: 52, height: 52,
-              decoration: BoxDecoration(gradient: const LinearGradient(colors: [Color(0xFF17483E), Color(0xFFB77928)]),
-                borderRadius: BorderRadius.circular(18)),
-              child: const Icon(Icons.person_rounded, color: Colors.white, size: 29)),
+            CircleAvatar(radius: 26,
+              backgroundImage: (FirebaseAuth.instance.currentUser?.photoURL ?? '').isNotEmpty
+                ? NetworkImage(FirebaseAuth.instance.currentUser!.photoURL!) : null,
+              backgroundColor: colors.primaryContainer,
+              child: (FirebaseAuth.instance.currentUser?.photoURL ?? '').isEmpty
+                ? Icon(Icons.person_rounded, color: colors.primary, size: 29) : null),
             const SizedBox(width: 13),
             Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               const Text('زما پروفایل', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 14)),
