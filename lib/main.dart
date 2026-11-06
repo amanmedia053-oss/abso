@@ -895,9 +895,14 @@ class _PoetryShellState extends State<PoetryShell> {
       return null;
     }
     var name = _profileName;
-    if (name.trim().isEmpty) {
-      final snap = await FirebaseDatabase.instance.ref('profiles/${user.uid}/displayName').get();
-      name = snap.value?.toString() ?? '';
+    var photoUrl = user.photoURL ?? '';
+    if (name.trim().isEmpty || photoUrl.isEmpty) {
+      final snap = await FirebaseDatabase.instance.ref('profiles/${user.uid}').get();
+      if (snap.value is Map) {
+        final profileData = Map<String, dynamic>.from(snap.value as Map);
+        if (name.trim().isEmpty) name = profileData['displayName']?.toString() ?? '';
+        if (photoUrl.isEmpty) photoUrl = profileData['photoUrl']?.toString() ?? '';
+      }
     }
     if (name.trim().isEmpty) {
       final controller = TextEditingController();
@@ -918,7 +923,7 @@ class _PoetryShellState extends State<PoetryShell> {
       });
     }
     if (mounted) setState(() => _profileName = name);
-    return {'uid': user.uid, 'name': name};
+    return {'uid': user.uid, 'name': name, 'photoUrl': photoUrl};
   }
 
   Future<void> _editProfile() async {
