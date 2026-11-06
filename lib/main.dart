@@ -3818,6 +3818,8 @@ class _CollectionPoemsPageState extends State<CollectionPoemsPage> {
               title: widget.title,
               imageUrl: widget.imageUrl,
               isCategory: widget.isCategory,
+              categoryIcon: widget.categoryIcon,
+              categoryColor: widget.categoryColor,
               poemCount: widget.poems.length,
               views: _viewsRef,
               expandedHeight: _expandedHeaderHeight,
@@ -3865,11 +3867,14 @@ class _CollectionPoemsPageState extends State<CollectionPoemsPage> {
 class _CollectionHeaderDelegate extends SliverPersistentHeaderDelegate {
   _CollectionHeaderDelegate({
     required this.title, required this.imageUrl, required this.isCategory,
+    this.categoryIcon, this.categoryColor,
     required this.poemCount, required this.views, required this.expandedHeight,
     required this.collapsedHeight, required this.background, required this.foreground,
   });
   final String title, imageUrl;
   final bool isCategory;
+  final IconData? categoryIcon;
+  final Color? categoryColor;
   final int poemCount;
   final DatabaseReference views;
   final double expandedHeight, collapsedHeight;
@@ -3976,11 +3981,11 @@ class _CollectionHeaderDelegate extends SliverPersistentHeaderDelegate {
   );
 
   Widget _avatarFallback() => Container(
-    color: (widget.categoryColor ?? const Color(0xFF286B5D)).withValues(alpha: .20),
-    child: Icon(widget.isCategory
-        ? (widget.categoryIcon ?? Icons.category_rounded)
+    color: (categoryColor ?? const Color(0xFF286B5D)).withValues(alpha: .20),
+    child: Icon(isCategory
+        ? (categoryIcon ?? Icons.category_rounded)
         : Icons.person_rounded,
-      color: widget.categoryColor ?? const Color(0xFF286B5D), size: 42),
+      color: categoryColor ?? const Color(0xFF286B5D), size: 42),
   );
 
   Widget _headerStat(IconData icon, String label, Color color) => Row(
