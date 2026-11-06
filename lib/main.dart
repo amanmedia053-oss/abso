@@ -4271,7 +4271,9 @@ class _PoemDetailScreenState extends State<PoemDetailScreen> {
           Icon(Icons.forum_rounded, color: c.primary), const SizedBox(width: 9),
           const Expanded(child: Text('د لوستونکو نظرونه', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w900))),
           StreamBuilder<DatabaseEvent>(stream: FirebaseDatabase.instance.ref('comments/${poem.id}').onValue,
-            builder: (context, snap) { final v = snap.data?.snapshot.value; return Text('${v is Map ? v.length : 0} تبصرې',
+            builder: (context, snap) { final v = snap.data?.snapshot.value;
+              final count = v is Map ? v.values.where((item) => item is Map).length : 0;
+              return Text('${count} تبصرې',
               style: TextStyle(color: c.onSurfaceVariant, fontSize: 11)); }),
         ]),
         const SizedBox(height: 11),
@@ -4294,9 +4296,21 @@ class _PoemDetailScreenState extends State<PoemDetailScreen> {
             if (snap.hasError) return const Text('تبصرې نه لوډ کېږي.');
             if (!snap.hasData) return const Center(child: Padding(padding: EdgeInsets.all(18), child: CircularProgressIndicator()));
             final raw = snap.data!.snapshot.value;
-            if (raw is! Map || raw.isEmpty) return Padding(padding: const EdgeInsets.all(22),
-              child: Center(child: Text('تر اوسه تبصره نشته. لومړی خپل نظر ولیکئ.', style: TextStyle(color: c.onSurfaceVariant, fontSize: 12))));
-            final entries = raw.entries.toList().reversed.toList();
+            if (raw is! Map || raw.isEmpty) return Padding(
+              padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 12),
+              child: Center(child: Text('تر اوسه تبصره نشته. لومړی خپل نظر ولیکئ.',
+                style: TextStyle(color: c.onSurfaceVariant, fontSize: 12))));
+            // Ignore malformed/null nodes so one damaged comment cannot break
+            // the whole poem detail page after a comment is deleted.
+            final entries = raw.entries
+                .where((entry) => entry.value is Map)
+                .toList()
+                .reversed
+                .toList();
+            if (entries.isEmpty) return Padding(
+              padding: const EdgeInsets.symmetric(vertical: 20),
+              child: Center(child: Text('تر اوسه تبصره نشته.',
+                style: TextStyle(color: c.onSurfaceVariant, fontSize: 12))));
             return Column(children: entries.map((entry) {
               final data = Map<String, dynamic>.from(entry.value as Map);
               final name = (data['displayName'] ?? 'لوستونکی').toString();
@@ -4355,7 +4369,8 @@ class _PoemDetailScreenState extends State<PoemDetailScreen> {
                     ),
                   ]),
                   if (data['replies'] is Map)
-                    ...Map<String, dynamic>.from(data['replies'] as Map).entries.map((replyEntry) {
+                    ...Map<String, dynamic>.from(data['replies'] as Map)
+                        .entries.where((replyEntry) => replyEntry.value is Map).map((replyEntry) {
                       final replyData = Map<String, dynamic>.from(replyEntry.value as Map);
                       final replyName = (replyData['displayName'] ?? 'لوستونکی').toString();
                       return Container(
