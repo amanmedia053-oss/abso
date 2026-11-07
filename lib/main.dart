@@ -206,6 +206,7 @@ class AuthGate extends StatelessWidget {
       final user = snapshot.data;
       if (user != null) return child;
       return AccountAccessPage(
+        allowGuest: true,
         onSkip: () => Navigator.of(context).pushReplacement(
           MaterialPageRoute(builder: (_) => child),
         ),
@@ -215,9 +216,10 @@ class AuthGate extends StatelessWidget {
 }
 
 class AccountAccessPage extends StatefulWidget {
-  const AccountAccessPage({super.key, this.onSkip, this.onAuthenticated});
+  const AccountAccessPage({super.key, this.onSkip, this.onAuthenticated, this.allowGuest = false});
   final VoidCallback? onSkip;
   final VoidCallback? onAuthenticated;
+  final bool allowGuest;
   @override
   State<AccountAccessPage> createState() => _AccountAccessPageState();
 }
@@ -428,16 +430,18 @@ class _AccountAccessPageState extends State<AccountAccessPage> {
                 icon: const Icon(Icons.login_rounded),
                 label: Text(create ? 'د ایمیل له لارې حساب جوړول' : 'ایمیل سره ننوتل')),
               const SizedBox(height: 10),
-              const SizedBox(height: 18),
-              const Divider(),
-              OutlinedButton.icon(
-                onPressed: busy ? null : _continueAsGuest,
-                icon: const Icon(Icons.person_outline_rounded),
-                label: const Text('د مېلمه په توګه دوام')),
-              const SizedBox(height: 8),
-              Text('مېلمه حساب د محدودو ځانګړنو لپاره دی؛ د شعرونو د تبصرو او شخصي حساب لپاره ایمیل وکاروئ.',
-                textAlign: TextAlign.center,
-                style: TextStyle(color: c.onSurfaceVariant, fontSize: 11)),
+              if (widget.allowGuest) ...[
+                const SizedBox(height: 18),
+                const Divider(),
+                OutlinedButton.icon(
+                  onPressed: busy ? null : _continueAsGuest,
+                  icon: const Icon(Icons.person_outline_rounded),
+                  label: const Text('د مېلمه په توګه دوام')),
+                const SizedBox(height: 8),
+                Text('مېلمه حساب د محدودو ځانګړنو لپاره دی؛ د شعرونو د تبصرو او شخصي حساب لپاره ایمیل وکاروئ.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: c.onSurfaceVariant, fontSize: 11)),
+              ],
               if (busy) const Padding(padding: EdgeInsets.all(12),
                 child: Center(child: CircularProgressIndicator())),
               if (error != null) Padding(padding: const EdgeInsets.only(top: 12),
@@ -4538,9 +4542,9 @@ class _PoemDetailScreenState extends State<PoemDetailScreen> {
   }
 
   Future<void> _toggleCommentLike(String commentId, bool alreadyLiked) async {
-    final user = FirebaseAuth.instance.currentUser;
-    if (user == null || user.isAnonymous) return;
-    final ref = FirebaseDatabase.instance.ref('comments/${widget.poem.id}/$commentId/likes/${user.uid}');
+    final profile = await widget.ensureProfile();
+    if (profile == null) return;
+    final ref = FirebaseDatabase.instance.ref('comments/${widget.poem.id}/$commentId/likes/${profile['uid']}');
     try {
       if (alreadyLiked) {
         await ref.remove();
