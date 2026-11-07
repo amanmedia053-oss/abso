@@ -5169,7 +5169,7 @@ class ShortVideoFeedPage extends StatefulWidget {
 class _ShortVideoFeedPageState extends State<ShortVideoFeedPage> {
   late final PageController _controller;
   final Set<String> _liked = {};
-  final Set<String> _saved = {};
+  int _activeIndex = 0;
   List<String> _savedIds = [];
 
   @override
@@ -5243,12 +5243,13 @@ class _ShortVideoFeedPageState extends State<ShortVideoFeedPage> {
         PageView.builder(
           controller: _controller,
           scrollDirection: Axis.vertical,
+          onPageChanged: (index) => setState(() => _activeIndex = index),
           itemCount: widget.videos.length,
           itemBuilder: (context, index) {
             final video = widget.videos[index];
             final id = (video['id'] ?? '').toString();
             return Stack(fit: StackFit.expand, children: [
-              _TelegramVideoEmbed(url: (video['embedUrl'] ?? '').toString()),
+              _TelegramVideoEmbed(url: (video['embedUrl'] ?? '').toString(), active: index == _activeIndex),
               const DecoratedBox(decoration: BoxDecoration(
                 gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter,
                   colors: [Color(0x88000000), Colors.transparent, Color(0xAA000000)],
@@ -5311,8 +5312,9 @@ class _VideoAction extends StatelessWidget {
 }
 
 class _TelegramVideoEmbed extends StatefulWidget {
-  const _TelegramVideoEmbed({required this.url});
+  const _TelegramVideoEmbed({required this.url, required this.active});
   final String url;
+  final bool active;
 
   @override
   State<_TelegramVideoEmbed> createState() => _TelegramVideoEmbedState();
@@ -5332,6 +5334,15 @@ class _TelegramVideoEmbedState extends State<_TelegramVideoEmbed> {
         onPageFinished: (_) { if (mounted) setState(() => _loaded = true); },
       ))
       ..loadRequest(Uri.parse(widget.url));
+  }
+
+  @override
+  void didUpdateWidget(covariant _TelegramVideoEmbed oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.active != widget.active && !widget.active) {
+      _webController.runJavaScript("document.querySelectorAll('video').forEach((v) => v.pause());");
+    }
+    if (oldWidget.url != widget.url) _webController.loadRequest(Uri.parse(widget.url));
   }
 
   @override
