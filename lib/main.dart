@@ -1519,7 +1519,7 @@ class _PoetryShellState extends State<PoetryShell> {
                 child: ListTile(
                   leading: Icon(Icons.admin_panel_settings_rounded, color: colors.primary),
                   title: const Text('د اډمین مدیریت', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w900)),
-                  subtitle: const Text('شعرونه او کټګورۍ اداره کړئ', style: TextStyle(fontSize: 10)),
+                  subtitle: const Text('شعرونه او ټیلیګرام اداره کړئ', style: TextStyle(fontSize: 10)),
                   trailing: Icon(Icons.arrow_back_ios_new_rounded, size: 13, color: colors.primary),
                   onTap: () {
                     Navigator.pop(context);
@@ -2933,8 +2933,12 @@ class _AdminHomeState extends State<AdminHome> {
   int tab = 0;
   @override
   Widget build(BuildContext context) {
-    final pages = [const PoemsAdminPage(), const SimpleListAdmin(path: 'categories', title: 'کټګورۍ'),
-      const SimpleListAdmin(path: 'poets', title: 'شاعران'), const GalleryAdminPage()];
+    final pages = [
+      const PoemsAdminPage(),
+      const TelegramArchiveAdminPage(),
+      const SimpleListAdmin(path: 'poets', title: 'شاعران'),
+      const GalleryAdminPage(),
+    ];
     return Scaffold(
       appBar: AppBar(title: const Text('د ادبي خزانه مدیریت'),
         actions: [IconButton(onPressed: () => FirebaseAuth.instance.signOut(),
@@ -2947,12 +2951,191 @@ class _AdminHomeState extends State<AdminHome> {
         onDestinationSelected: (v) => setState(() => tab = v),
         destinations: const [
           NavigationDestination(icon: Icon(Icons.menu_book_outlined), selectedIcon: Icon(Icons.menu_book), label: 'شعرونه'),
-          NavigationDestination(icon: Icon(Icons.category_outlined), label: 'کټګورۍ'),
+          NavigationDestination(icon: Icon(Icons.telegram), selectedIcon: Icon(Icons.telegram), label: 'ټیلیګرام'),
           NavigationDestination(icon: Icon(Icons.people_outline), label: 'شاعران'),
           NavigationDestination(icon: Icon(Icons.photo_library_outlined), label: 'ګالري'),
         ]),
     );
   }
+}
+
+class TelegramArchiveAdminPage extends StatefulWidget {
+  const TelegramArchiveAdminPage({super.key});
+  @override
+  State<TelegramArchiveAdminPage> createState() => _TelegramArchiveAdminPageState();
+}
+
+class _TelegramArchiveAdminPageState extends State<TelegramArchiveAdminPage> {
+  final channel = TextEditingController();
+  final token = TextEditingController();
+  bool hideToken = true, extracting = false;
+  String status = '';
+  String? channelId;
+  String? channelUsername;
+
+  @override
+  void dispose() { channel.dispose(); token.dispose(); super.dispose(); }
+
+  String _channelName(String value) {
+    final v = value.trim();
+    final uri = Uri.tryParse(v);
+    if (uri != null && uri.host.toLowerCase().contains('t.me')) {
+      final parts = uri.pathSegments.where((e) => e.isNotEmpty).toList();
+      if (parts.isNotEmpty && parts.first != 's') return '@${parts.first.replaceAll('@', '')}';
+    }
+    return v.startsWith('@') ? v : '@$v';
+  }
+
+  Future<Map<String, dynamic>> _api(String method, Map<String, dynamic> body) async {
+    final key = token.text.trim();
+    final response = await http.post(
+      Uri.parse('https://api.telegram.org/bot$key/$method'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode(body),
+    ).timeout(const Duration(seconds: 35));
+    final decoded = jsonDecode(response.body);
+    if (decoded is! Map<String, dynamic> || decoded['ok'] != true) {
+      throw Exception(decoded is Map ? (decoded['description'] ?? 'Telegram API error') : 'ناسم ځواب');
+    }
+    return decoded;
+  }
+
+  Future<void> extractPosts() async {
+    if (channel.text.trim().isEmpty || token.text.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('د چینل لینک او Bot Token دواړه ولیکئ.')));
+      return;
+    }
+    setState(() { extracting = true; status = 'له ټیلیګرام سره نښلي...'; });
+    try {
+      final me = await _api('getMe', {});
+      final bot = Map<String, dynamic>.from(me['result'] as Map);
+      final chat = await _api('getChat', {'chat_id': _channelName(channel.text)});
+      final chatData = Map<String, dynamic>.from(chat['result'] as Map);
+      channelId = chatData['id'].toString();
+      channelUsername = (chatData['username'] ?? '').toString();
+      final member = await _api('getChatMember', {
+        'chat_id': chatData['id'], 'user_id': bot['id']
+      });
+      final memberData = Map<String, dynamic>.from(member['result'] as Map);
+      final role = memberData['status']?.toString();
+      if (role != 'administrator' && role != 'creator') {
+        throw Exception('بوټ د چینل اډمین نه دی؛ لومړی یې اډمین کړئ.');
+      }
+      setState(() => status = 'نوي پوسټونه لټوي...');
+      final updates = await _api('getUpdates', {
+        'allowed_updates': ['channel_post', 'edited_channel_post'],
+        'limit': 100,
+        'timeout': 0,
+      });
+      final list = updates['result'] as List? ?? [];
+      var saved = 0;
+      for (final raw in list) {
+        if (raw is! Map) continue;
+        final update = Map<String, dynamic>.from(raw);
+        final postRaw = update['channel_post'] ?? update['edited_channel_post'];
+        if (postRaw is! Map) continue;
+        final post = Map<String, dynamic>.from(postRaw);
+        final chatPost = post['chat'] is Map ? Map<String, dynamic>.from(post['chat'] as Map) : <String, dynamic>{};
+        if (chatPost['id'].toString() != channelId) continue;
+        final messageId = post['message_id'];
+        final textValue = (post['text'] ?? post['caption'] ?? '').toString();
+        final photos = post['photo'] is List ? post['photo'] as List : const [];
+        String? photoFileId;
+        if (photos.isNotEmpty && photos.last is Map) {
+          photoFileId = (photos.last as Map)['file_id']?.toString();
+        }
+        final postUrl = channelUsername != null && channelUsername!.isNotEmpty
+            ? 'https://t.me/$channelUsername/$messageId'
+            : null;
+        final id = messageId?.toString() ?? update['update_id'].toString();
+        await FirebaseDatabase.instance.ref('telegram_posts/$channelId/$id').update({
+          'messageId': messageId,
+          'text': textValue,
+          'photoFileId': photoFileId,
+          'postUrl': postUrl,
+          'date': post['date'],
+          'updateId': update['update_id'],
+          'channelTitle': chatPost['title'] ?? '',
+        });
+        saved++;
+      }
+      if (list.isNotEmpty) {
+        final last = list.map((e) => (e as Map)['update_id'] as int).reduce((a, b) => a > b ? a : b);
+        await _api('getUpdates', {'offset': last + 1, 'limit': 1, 'timeout': 0,
+          'allowed_updates': ['channel_post', 'edited_channel_post']});
+      }
+      if (!mounted) return;
+      setState(() => status = saved == 0
+          ? 'نوي پوسټونه ونه موندل شول. بوټ به له دې وروسته نوي پوسټونه ترلاسه کړي.'
+          : '$saved پوسټونه په آرشیف کې خوندي شول.');
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(status)));
+    } catch (e) {
+      if (mounted) {
+        setState(() => status = 'ستونزه: $e');
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('استخراج ناکام شو: $e')));
+      }
+    } finally { if (mounted) setState(() => extracting = false); }
+  }
+
+  @override
+  Widget build(BuildContext context) => ListView(padding: const EdgeInsets.all(16), children: [
+    Container(padding: const EdgeInsets.all(20), decoration: BoxDecoration(
+      gradient: const LinearGradient(colors: [Color(0xFF173D69), Color(0xFF287CA5), Color(0xFF38A58A)]),
+      borderRadius: BorderRadius.circular(24)), child: const Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Icon(Icons.telegram, color: Colors.white, size: 38), SizedBox(height: 10),
+        Text('د ټیلیګرام پوسټونو استخراج', style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.w900)),
+        Text('چینل او ټوکن ورکړئ؛ پوسټونه به مستقیم له Telegram Bot API څخه آرشیف ته راوړل شي.', style: TextStyle(color: Colors.white70, height: 1.7)),
+      ])),
+    const SizedBox(height: 18),
+    TextField(controller: channel, keyboardType: TextInputType.url, textDirection: TextDirection.ltr,
+      decoration: const InputDecoration(labelText: 'د ټیلیګرام چینل لینک', hintText: 'https://t.me/channelname', prefixIcon: Icon(Icons.link), border: OutlineInputBorder())),
+    const SizedBox(height: 12),
+    TextField(controller: token, obscureText: hideToken, textDirection: TextDirection.ltr,
+      decoration: InputDecoration(labelText: 'د Bot Token', prefixIcon: const Icon(Icons.key), suffixIcon: IconButton(
+        onPressed: () => setState(() => hideToken = !hideToken), icon: Icon(hideToken ? Icons.visibility : Icons.visibility_off)), border: const OutlineInputBorder())),
+    const SizedBox(height: 14),
+    const Text('ټوکن یوازې د دې اپ په حافظه کې د استعمال پر مهال وي او په کوډ، Firebase یا محلي ذخیره کې نه ساتل کېږي. بوټ باید د چینل اډمین وي. د Telegram Bot API له لارې زاړه تاریخي پوسټونه نه ترلاسه کېږي؛ یوازې هغه نوي پوسټونه راځي چې بوټ ته د update په بڼه رسېدلي وي. د اپ له تړلو وروسته اتومات شالیدي څارنه نه کېږي.', style: TextStyle(height: 1.7, fontSize: 12)),
+    const SizedBox(height: 14),
+    FilledButton.icon(onPressed: extracting ? null : extractPosts,
+      icon: extracting ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)) : const Icon(Icons.cloud_download_outlined),
+      label: Text(extracting ? 'پوسټونه راایستل کېږي...' : 'د پوسټونو استخراج پیل')),
+    if (status.isNotEmpty) Padding(padding: const EdgeInsets.only(top: 12), child: Text(status, style: const TextStyle(height: 1.6))),
+    const SizedBox(height: 20),
+    const Text('راایستل شوي پوسټونه', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900)),
+    const SizedBox(height: 10),
+    StreamBuilder<DatabaseEvent>(
+      stream: FirebaseDatabase.instance.ref('telegram_posts').onValue,
+      builder: (context, snap) {
+        if (!snap.hasData) return const Center(child: CircularProgressIndicator());
+        final root = snap.data!.snapshot.value;
+        final rows = <Map<String, dynamic>>[];
+        if (root is Map) {
+          for (final channelEntry in root.entries) {
+            final posts = channelEntry.value;
+            if (posts is Map) for (final entry in posts.entries) {
+              if (entry.value is Map) rows.add(Map<String, dynamic>.from(entry.value as Map)..['key'] = entry.key.toString());
+            }
+          }
+        }
+        rows.sort((a,b) => ((b['date'] ?? 0) as num).compareTo((a['date'] ?? 0) as num));
+        if (rows.isEmpty) return const Text('تر اوسه پوسټونه نه دي استخراج شوي.');
+        return Column(children: rows.map((p) => Card(
+          child: Padding(padding: const EdgeInsets.all(12), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text((p['channelTitle'] ?? 'Telegram').toString(), style: const TextStyle(fontWeight: FontWeight.bold)),
+            const SizedBox(height: 6),
+            SelectableText((p['text'] ?? '').toString()),
+            if ((p['photoFileId'] ?? '').toString().isNotEmpty)
+              const Padding(padding: EdgeInsets.only(top: 6), child: Text('دا پوسټ انځور لري (Telegram file ID خوندي شوی).')),
+            if ((p['postUrl'] ?? '').toString().isNotEmpty)
+              SelectableText('د پوسټ لینک: ${p['postUrl']}'),
+            Align(alignment: Alignment.centerLeft, child: FilledButton.tonalIcon(
+              onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => PoemEditor(initialText: (p['text'] ?? '').toString()))),
+              icon: const Icon(Icons.edit_note), label: const Text('شعر ته انتقال')))
+          ])),
+        )).toList());
+      },
+    ),
+  ]);
 }
 
 class PoemsAdminPage extends StatelessWidget {
