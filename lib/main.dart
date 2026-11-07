@@ -3013,11 +3013,11 @@ class _TelegramArchiveAdminPageState extends State<TelegramArchiveAdminPage> {
 
   String _cleanPostText(String value) {
     return value
-        .replaceAll(RegExp(r'(https?:\\/\\/\\S+|www\\.\\S+|t\\.me\\/\\S+)', caseSensitive: false), '')
-        .split('\\n')
+        .replaceAll(RegExp(r'(https?://\S+|www\.\S+|t\.me/\S+)', caseSensitive: false), '')
+        .split('\n')
         .map((line) => line.trim())
         .where((line) => line.isNotEmpty)
-        .join('\\n')
+        .join('\n')
         .trim();
   }
 
