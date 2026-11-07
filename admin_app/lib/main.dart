@@ -140,10 +140,15 @@ class _AdminHomeState extends State<AdminHome> {
   int tab = 0;
   @override
   Widget build(BuildContext context) {
-    final pages = [const PoemsAdminPage(),
+    // د پاڼو ترتیب باید د لاندې NavigationBar له ترتیب سره یو شان وي.
+    // کټګورۍ ټب په ټیلیګرام د چینل استخراج بدل شوی دی.
+    final pages = [
+      const PoemsAdminPage(),
+      const TelegramArchiveAdminPage(),
       const SimpleListAdmin(path: 'poets', title: 'شاعران'),
-      const GalleryAdminPage(), const AdminCommentsPage(),
-      const TelegramArchiveAdminPage()];
+      const GalleryAdminPage(),
+      const AdminCommentsPage(),
+    ];
     return Scaffold(
       appBar: AppBar(title: const Text('د ادبي خزانه مدیریت'),
         actions: [IconButton(onPressed: () => FirebaseAuth.instance.signOut(),
