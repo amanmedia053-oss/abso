@@ -4964,6 +4964,15 @@ class PoemEditor extends StatefulWidget {
   State<PoemEditor> createState() => _PoemEditorState();
 }
 class _PoemEditorState extends State<PoemEditor> {
+  static const List<String> offlineCategories = [
+    'حمدیه شاعري', 'نعتیه شاعري', 'حماسي شاعري', 'عشقي شاعري',
+    'غنایي شاعري', 'عرفاني شاعري', 'تصوفي شاعري', 'فلسفي شاعري',
+    'اخلاقي شاعري', 'اصلاحي شاعري', 'ټولنیزه شاعري', 'سیاسي شاعري',
+    'ملي شاعري', 'وطني شاعري', 'رزمي شاعري', 'انتقادي شاعري',
+    'طنزي شاعري', 'هجوي شاعري', 'مرثیه', 'تاریخي شاعري',
+    'تعلیمي شاعري', 'طبیعي شاعري', 'حماسي وطني شاعري',
+    'فراق او هجران', 'تصوف او معرفت', 'نور بېلابېل شعرونه',
+  ];
   final title = TextEditingController();
   final text = TextEditingController();
   final picker = ImagePicker();
@@ -5051,9 +5060,31 @@ class _PoemEditorState extends State<PoemEditor> {
           DropdownButtonFormField<String>(
             value: categoryId, decoration: const InputDecoration(labelText: 'کټګوري *',
               border: OutlineInputBorder()),
-            items: categories.entries.map((e) => DropdownMenuItem(
-              value: e.key, child: Text((e.value is Map ? e.value['name'] : e.value).toString()))).toList(),
-            onChanged: (v) => setState(() => categoryId = v)),
+            items: [
+              ...categories.entries.map((e) => DropdownMenuItem<String>(
+                value: e.key,
+                child: Text((e.value is Map ? e.value['name'] : e.value).toString()),
+              )),
+              const DropdownMenuItem<String>(
+                enabled: false,
+                value: '__offline_categories_header__',
+                child: Text('— افلاين کټګورۍ —'),
+              ),
+              ..._PoemEditorState.offlineCategories.asMap().entries.map((entry) =>
+                DropdownMenuItem<String>(
+                  value: 'offline_category_${entry.key}',
+                  child: Row(children: [
+                    const Icon(Icons.offline_pin_rounded, size: 17),
+                    const SizedBox(width: 8),
+                    Text(entry.value),
+                  ]),
+                )),
+            ],
+            onChanged: (v) {
+              if (v != null && v != '__offline_categories_header__') {
+                setState(() => categoryId = v);
+              }
+            }),
           const SizedBox(height: 12),
           DropdownButtonFormField<String>(
             value: poetId, decoration: const InputDecoration(labelText: 'شاعر (اختیاري)',
