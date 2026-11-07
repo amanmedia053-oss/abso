@@ -5169,9 +5169,9 @@ class ShortVideoFeedPage extends StatefulWidget {
 
 class _ShortVideoFeedPageState extends State<ShortVideoFeedPage> {
   late final PageController _controller;
-  final Set<String> _liked = {};
   int _activeIndex = 0;
   List<String> _savedIds = [];
+  List<String> _likedIds = [];
 
   @override
   void initState() {
@@ -5183,7 +5183,10 @@ class _ShortVideoFeedPageState extends State<ShortVideoFeedPage> {
   Future<void> _loadSaved() async {
     final prefs = await SharedPreferences.getInstance();
     if (!mounted) return;
-    setState(() => _savedIds = prefs.getStringList('saved_short_videos') ?? []);
+    setState(() {
+      _savedIds = prefs.getStringList('saved_short_videos') ?? [];
+      _likedIds = prefs.getStringList('liked_short_videos') ?? [];
+    });
   }
 
   Future<void> _increment(String id, String field) async {
@@ -5195,8 +5198,11 @@ class _ShortVideoFeedPageState extends State<ShortVideoFeedPage> {
 
   Future<void> _like(Map<String, dynamic> video) async {
     final id = (video['id'] ?? '').toString();
-    if (id.isEmpty || !_liked.add(id)) return;
-    setState(() {});
+    if (id.isEmpty || _likedIds.contains(id)) return;
+    final next = [..._likedIds, id];
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setStringList('liked_short_videos', next);
+    if (mounted) setState(() => _likedIds = next);
     await _increment(id, 'likes');
   }
 
@@ -5266,9 +5272,9 @@ class _ShortVideoFeedPageState extends State<ShortVideoFeedPage> {
                 ],
               )),
               Positioned(right: 12, bottom: 90, child: Column(children: [
-                _VideoAction(icon: _liked.contains(id) ? Icons.favorite : Icons.favorite_border,
-                  label: _count(video['likes']) + (_liked.contains(id) ? 1 : 0),
-                  color: _liked.contains(id) ? Colors.redAccent : Colors.white,
+                _VideoAction(icon: _likedIds.contains(id) ? Icons.favorite : Icons.favorite_border,
+                  label: _count(video['likes']) + (_likedIds.contains(id) ? 1 : 0),
+                  color: _likedIds.contains(id) ? Colors.redAccent : Colors.white,
                   onTap: () => _like(video)),
                 const SizedBox(height: 20),
                 _VideoAction(icon: Icons.share_rounded, label: _count(video['shares']),
