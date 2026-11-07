@@ -4634,9 +4634,10 @@ class GalleryAdminPage extends StatelessWidget {
 }
 
 class PoemEditor extends StatefulWidget {
-  const PoemEditor({super.key, this.poemId, this.initialData});
+  const PoemEditor({super.key, this.poemId, this.initialData, this.initialText});
   final String? poemId;
   final Map<String, dynamic>? initialData;
+  final String? initialText;
   @override
   State<PoemEditor> createState() => _PoemEditorState();
 }
@@ -4653,7 +4654,7 @@ class _PoemEditorState extends State<PoemEditor> {
     super.initState();
     final data = widget.initialData ?? <String, dynamic>{};
     title.text = (data['title'] ?? '').toString();
-    text.text = (data['text'] ?? '').toString();
+    text.text = (data['text'] ?? widget.initialText ?? '').toString();
     categoryId = data['categoryId']?.toString();
     poetId = data['poetId']?.toString();
     existingImageUrl = data['imageUrl']?.toString();
