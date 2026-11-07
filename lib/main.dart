@@ -5357,10 +5357,7 @@ class _TelegramVideoEmbedState extends State<_TelegramVideoEmbed> {
 
   @override
   Widget build(BuildContext context) => ClipRect(child: Stack(children: [
-    Positioned.fill(child: WebViewWidget(
-      controller: _webController,
-      gestureRecognizers: const <Factory<OneSequenceGestureRecognizer>>{},
-    )),
+    Positioned.fill(child: WebViewWidget(controller: _webController)),
     if (!_loaded) const Center(child: CircularProgressIndicator(color: Colors.white)),
   ]));
 }
