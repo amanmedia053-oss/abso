@@ -11,6 +11,7 @@ import 'dart:convert';
 import 'package:share_plus/share_plus.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:webview_flutter/webview_flutter.dart';
 
 const String cloudinaryCloudName = 'a3p2c6bi';
 const String cloudinaryUploadPreset = 'adabi_gallery';
@@ -1794,6 +1795,85 @@ class _PoetryShellState extends State<PoetryShell> {
     )));
   }
 
+  Widget _shortVideosHomeSection() {
+    return StreamBuilder<DatabaseEvent>(
+      stream: FirebaseDatabase.instance.ref('short_videos').onValue,
+      builder: (context, snapshot) {
+        final raw = snapshot.data?.snapshot.value;
+        final videos = <Map<String, dynamic>>[];
+        if (raw is Map) {
+          for (final entry in raw.entries) {
+            if (entry.value is Map) {
+              final item = Map<String, dynamic>.from(entry.value as Map)
+                ..['id'] = entry.key.toString();
+              if (item['isPublished'] == true && (item['embedUrl'] ?? '').toString().isNotEmpty) {
+                videos.add(item);
+              }
+            }
+          }
+        }
+        videos.sort((a, b) => ((b['createdAt'] ?? 0) as num).compareTo((a['createdAt'] ?? 0) as num));
+        if (videos.isEmpty) return const SizedBox.shrink();
+        return Padding(
+          padding: const EdgeInsets.fromLTRB(16, 13, 16, 9),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Row(children: [
+              const Icon(Icons.video_collection_rounded, color: Color(0xFF16A6A0), size: 22),
+              const SizedBox(width: 8),
+              const Expanded(child: Text('لنډې ویډیوګانې',
+                style: TextStyle(fontSize: 17, fontWeight: FontWeight.w900))),
+              TextButton(
+                onPressed: () => Navigator.push(context, MaterialPageRoute(
+                  builder: (_) => ShortVideoFeedPage(videos: videos))),
+                child: const Text('ټولې وګورئ'),
+              ),
+            ]),
+            SizedBox(
+              height: 150,
+              child: ListView.separated(
+                scrollDirection: Axis.horizontal,
+                itemCount: videos.length,
+                separatorBuilder: (_, __) => const SizedBox(width: 10),
+                itemBuilder: (context, index) {
+                  final video = videos[index];
+                  return InkWell(
+                    borderRadius: BorderRadius.circular(17),
+                    onTap: () => Navigator.push(context, MaterialPageRoute(
+                      builder: (_) => ShortVideoFeedPage(videos: videos, initialIndex: index))),
+                    child: Container(
+                      width: 112,
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(17),
+                        gradient: const LinearGradient(
+                          begin: Alignment.topLeft, end: Alignment.bottomRight,
+                          colors: [Color(0xFF173D69), Color(0xFF167D83), Color(0xFF20263D)]),
+                      ),
+                      child: Stack(fit: StackFit.expand, children: [
+                        Positioned(
+                          right: 0, left: 0, top: 0, bottom: 0,
+                          child: Center(child: Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(color: Colors.white.withValues(alpha: .18),
+                              shape: BoxShape.circle),
+                            child: const Icon(Icons.play_arrow_rounded, color: Colors.white, size: 34))),
+                        ),
+                        Positioned(left: 8, right: 8, bottom: 9,
+                          child: Text((video['caption'] ?? video['channelTitle'] ?? 'ویډیو').toString(),
+                            maxLines: 2, overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(color: Colors.white, fontSize: 10,
+                              fontWeight: FontWeight.w800))),
+                      ]),
+                    ),
+                  );
+                },
+              ),
+            ),
+          ]),
+        );
+      },
+    );
+  }
+
   Widget _homePage() {
     final colors = Theme.of(context).colorScheme;
     if (poems.isEmpty && _loadingPoems) return _refreshable(_homeSkeleton());
@@ -1802,6 +1882,7 @@ class _PoetryShellState extends State<PoetryShell> {
         physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.only(top: 24),
         children: [
+          _shortVideosHomeSection(),
           if (_loadingPoems)
             const Padding(padding: EdgeInsets.all(45), child: Center(child: CircularProgressIndicator()))
           else if (_databaseError != null)
@@ -1825,6 +1906,7 @@ class _PoetryShellState extends State<PoetryShell> {
       key: const PageStorageKey('home'),
       physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
       slivers: [
+        SliverToBoxAdapter(child: _shortVideosHomeSection()),
         if (featuredPoems.isNotEmpty)
           SliverToBoxAdapter(child: Column(children: [
             SizedBox(height: 174, child: PageView.builder(
@@ -3075,6 +3157,9 @@ class _TelegramArchiveAdminPageState extends State<TelegramArchiveAdminPage> {
         final photos = post['photo'] is List ? post['photo'] as List : const [];
         String? photoFileId;
         if (photos.isNotEmpty && photos.last is Map) photoFileId = (photos.last as Map)['file_id']?.toString();
+        final videoData = post['video'] is Map ? Map<String, dynamic>.from(post['video'] as Map) :
+            (post['video_note'] is Map ? Map<String, dynamic>.from(post['video_note'] as Map) : <String, dynamic>{});
+        final videoFileId = videoData['file_id']?.toString();
         final postUrl = channelUsername != null && channelUsername!.isNotEmpty
             ? 'https://t.me/$channelUsername/$messageId' : null;
         final id = messageId?.toString() ?? update['update_id'].toString();
@@ -3082,6 +3167,8 @@ class _TelegramArchiveAdminPageState extends State<TelegramArchiveAdminPage> {
           'messageId': messageId,
           'text': textValue,
           'photoFileId': photoFileId,
+          'videoFileId': videoFileId,
+          'hasVideo': videoFileId != null && videoFileId.isNotEmpty,
           'postUrl': postUrl,
           'date': post['date'],
           'updateId': update['update_id'],
@@ -3105,6 +3192,33 @@ class _TelegramArchiveAdminPageState extends State<TelegramArchiveAdminPage> {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('استخراج ناکام شو: $e')));
       }
     } finally { if (mounted) setState(() => extracting = false); }
+  }
+
+  Future<void> _publishTelegramVideo(Map<String, dynamic> post) async {
+    final postUrl = (post['postUrl'] ?? '').toString().trim();
+    if (postUrl.isEmpty || (post['videoFileId'] ?? '').toString().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('د ویډیو عامه ټیلیګرام لینک یا ویډیو معلومات نشته.')));
+      return;
+    }
+    try {
+      final id = '${post['channelId']}_${post['key']}';
+      final embedUrl = postUrl + (postUrl.contains('?') ? '&' : '?') + 'embed=1';
+      await FirebaseDatabase.instance.ref('short_videos/$id').update({
+        'postUrl': postUrl,
+        'embedUrl': embedUrl,
+        'caption': (post['text'] ?? '').toString(),
+        'channelTitle': (post['channelTitle'] ?? 'Telegram').toString(),
+        'createdAt': (post['date'] is num ? (post['date'] as num).toInt() * 1000 : ServerValue.timestamp),
+        'source': 'telegram',
+        'isPublished': true,
+      });
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('ویډیو د لنډو ویډیوګانو په برخه کې خپره شوه.')));
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('ویډیو خپره نه شوه: $e')));
+    }
   }
 
   String _selectionKey(Map<String, dynamic> post) => '${post['channelId']}/${post['key']}';
@@ -3223,6 +3337,18 @@ class _TelegramArchiveAdminPageState extends State<TelegramArchiveAdminPage> {
                 SelectableText(_cleanPostText((p['text'] ?? '').toString())),
                 if ((p['photoFileId'] ?? '').toString().isNotEmpty)
                   const Padding(padding: EdgeInsets.only(top: 6), child: Text('دا پوسټ انځور لري (Telegram file ID خوندي شوی).')),
+                if ((p['videoFileId'] ?? '').toString().isNotEmpty) ...[
+                  const SizedBox(height: 8),
+                  Row(children: [
+                    const Icon(Icons.video_library_rounded, color: Colors.teal),
+                    const SizedBox(width: 7),
+                    const Expanded(child: Text('د ټیلیګرام ویډیو پوسټ')),
+                    FilledButton.icon(
+                      onPressed: () => _publishTelegramVideo(p),
+                      icon: const Icon(Icons.publish_rounded, size: 18),
+                      label: const Text('ویډیو خپره کړه')),
+                  ]),
+                ],
               ])),
             );
           }),
@@ -5028,4 +5154,189 @@ class _ShimmerBoxState extends State<_ShimmerBox>
       ),
     );
   }
+}
+
+
+class ShortVideoFeedPage extends StatefulWidget {
+  const ShortVideoFeedPage({super.key, required this.videos, this.initialIndex = 0});
+  final List<Map<String, dynamic>> videos;
+  final int initialIndex;
+
+  @override
+  State<ShortVideoFeedPage> createState() => _ShortVideoFeedPageState();
+}
+
+class _ShortVideoFeedPageState extends State<ShortVideoFeedPage> {
+  late final PageController _controller;
+  final Set<String> _liked = {};
+  final Set<String> _saved = {};
+  List<String> _savedIds = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = PageController(initialPage: widget.initialIndex);
+    _loadSaved();
+  }
+
+  Future<void> _loadSaved() async {
+    final prefs = await SharedPreferences.getInstance();
+    if (!mounted) return;
+    setState(() => _savedIds = prefs.getStringList('saved_short_videos') ?? []);
+  }
+
+  Future<void> _increment(String id, String field) async {
+    await FirebaseDatabase.instance.ref('short_videos/$id/$field').runTransaction((value) {
+      final count = value is num ? value.toInt() : 0;
+      return Transaction.success(count + 1);
+    });
+  }
+
+  Future<void> _like(Map<String, dynamic> video) async {
+    final id = (video['id'] ?? '').toString();
+    if (id.isEmpty || !_liked.add(id)) return;
+    setState(() {});
+    await _increment(id, 'likes');
+  }
+
+  Future<void> _save(Map<String, dynamic> video) async {
+    final id = (video['id'] ?? '').toString();
+    if (id.isEmpty || _savedIds.contains(id)) {
+      if (id.isNotEmpty && _savedIds.contains(id)) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('دا ویډیو مخکې خوندي شوې ده.')));
+      }
+      return;
+    }
+    final next = [..._savedIds, id];
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setStringList('saved_short_videos', next);
+    await _increment(id, 'saves');
+    if (mounted) setState(() => _savedIds = next);
+  }
+
+  Future<void> _share(Map<String, dynamic> video) async {
+    final url = (video['postUrl'] ?? '').toString();
+    final caption = (video['caption'] ?? '').toString();
+    await Share.share([caption, url, '— ادبي خزانه'].where((e) => e.trim().isNotEmpty).join('\n'));
+    final id = (video['id'] ?? '').toString();
+    if (id.isNotEmpty) await _increment(id, 'shares');
+  }
+
+  int _count(dynamic value) => value is num ? value.toInt() : int.tryParse('$value') ?? 0;
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (widget.videos.isEmpty) {
+      return const Scaffold(backgroundColor: Colors.black,
+        body: Center(child: Text('تر اوسه ویډیو نشته.', style: TextStyle(color: Colors.white))));
+    }
+    return Scaffold(
+      backgroundColor: Colors.black,
+      body: Stack(children: [
+        PageView.builder(
+          controller: _controller,
+          scrollDirection: Axis.vertical,
+          itemCount: widget.videos.length,
+          itemBuilder: (context, index) {
+            final video = widget.videos[index];
+            final id = (video['id'] ?? '').toString();
+            return Stack(fit: StackFit.expand, children: [
+              _TelegramVideoEmbed(url: (video['embedUrl'] ?? '').toString()),
+              const DecoratedBox(decoration: BoxDecoration(
+                gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter,
+                  colors: [Color(0x88000000), Colors.transparent, Color(0xAA000000)],
+                  stops: [0, .38, 1]))),
+              Positioned(left: 16, right: 78, bottom: 28, child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text((video['channelTitle'] ?? 'ادبي خزانه').toString(),
+                    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 14)),
+                  const SizedBox(height: 7),
+                  Text((video['caption'] ?? '').toString(), maxLines: 4, overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(color: Colors.white, fontSize: 13, height: 1.45)),
+                ],
+              )),
+              Positioned(right: 12, bottom: 90, child: Column(children: [
+                _VideoAction(icon: _liked.contains(id) ? Icons.favorite : Icons.favorite_border,
+                  label: _count(video['likes']) + (_liked.contains(id) ? 1 : 0),
+                  color: _liked.contains(id) ? Colors.redAccent : Colors.white,
+                  onTap: () => _like(video)),
+                const SizedBox(height: 20),
+                _VideoAction(icon: Icons.share_rounded, label: _count(video['shares']),
+                  onTap: () => _share(video)),
+                const SizedBox(height: 20),
+                _VideoAction(icon: _savedIds.contains(id) ? Icons.bookmark : Icons.bookmark_border,
+                  label: _count(video['saves']), color: _savedIds.contains(id) ? Colors.amber : Colors.white,
+                  onTap: () => _save(video)),
+              ])),
+              Positioned(left: 12, top: MediaQuery.of(context).padding.top + 8,
+                child: IconButton(
+                  onPressed: () => Navigator.pop(context),
+                  icon: const Icon(Icons.arrow_back_rounded, color: Colors.white),
+                  style: IconButton.styleFrom(backgroundColor: Colors.black45))),
+            ]);
+          },
+        ),
+      ]),
+    );
+  }
+}
+
+class _VideoAction extends StatelessWidget {
+  const _VideoAction({required this.icon, required this.label, required this.onTap, this.color = Colors.white});
+  final IconData icon;
+  final int label;
+  final VoidCallback onTap;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) => InkWell(
+    onTap: onTap,
+    borderRadius: BorderRadius.circular(28),
+    child: SizedBox(width: 58, child: Column(children: [
+      Container(width: 45, height: 45,
+        decoration: BoxDecoration(color: Colors.black.withValues(alpha: .34), shape: BoxShape.circle),
+        child: Icon(icon, color: color, size: 27)),
+      const SizedBox(height: 4),
+      Text('$label', style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w800)),
+    ])),
+  );
+}
+
+class _TelegramVideoEmbed extends StatefulWidget {
+  const _TelegramVideoEmbed({required this.url});
+  final String url;
+
+  @override
+  State<_TelegramVideoEmbed> createState() => _TelegramVideoEmbedState();
+}
+
+class _TelegramVideoEmbedState extends State<_TelegramVideoEmbed> {
+  late final WebViewController _webController;
+  bool _loaded = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _webController = WebViewController()
+      ..setJavaScriptMode(JavaScriptMode.unrestricted)
+      ..setBackgroundColor(const Color(0xFF101010))
+      ..setNavigationDelegate(NavigationDelegate(
+        onPageFinished: (_) { if (mounted) setState(() => _loaded = true); },
+      ))
+      ..loadRequest(Uri.parse(widget.url));
+  }
+
+  @override
+  Widget build(BuildContext context) => Stack(children: [
+    Positioned.fill(child: WebViewWidget(controller: _webController)),
+    if (!_loaded) const Center(child: CircularProgressIndicator(color: Colors.white)),
+  ]);
 }
