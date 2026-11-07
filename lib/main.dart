@@ -2968,22 +2968,57 @@ class TelegramArchiveAdminPage extends StatefulWidget {
 class _TelegramArchiveAdminPageState extends State<TelegramArchiveAdminPage> {
   final channel = TextEditingController();
   final token = TextEditingController();
-  bool hideToken = true, extracting = false;
+  bool hideToken = true, extracting = false, bulkUploading = false;
   String status = '';
   String? channelId;
   String? channelUsername;
+  Map<String, String> categories = {};
+  final Set<String> selectedPosts = {};
+  final Map<String, String> postCategories = {};
+
+  @override
+  void initState() {
+    super.initState();
+    _loadCategories();
+  }
 
   @override
   void dispose() { channel.dispose(); token.dispose(); super.dispose(); }
 
+  Future<void> _loadCategories() async {
+    try {
+      final snap = await FirebaseDatabase.instance.ref('categories').get();
+      final value = snap.value;
+      if (value is Map) {
+        final loaded = <String, String>{};
+        for (final entry in value.entries) {
+          final item = entry.value;
+          final name = item is Map ? (item['name'] ?? '').toString() : item.toString();
+          if (name.trim().isNotEmpty) loaded[entry.key.toString()] = name;
+        }
+        if (mounted) setState(() => categories = loaded);
+      }
+    } catch (_) {}
+  }
+
   String _channelName(String value) {
     final v = value.trim();
     final uri = Uri.tryParse(v);
-    if (uri != null && uri.host.toLowerCase().contains('t.me')) {
+    if (uri != null && uri.host.contains('t.me')) {
       final parts = uri.pathSegments.where((e) => e.isNotEmpty).toList();
-      if (parts.isNotEmpty && parts.first != 's') return '@${parts.first.replaceAll('@', '')}';
+      if (parts.isNotEmpty) return '@${parts.first}';
     }
     return v.startsWith('@') ? v : '@$v';
+  }
+
+  String _cleanPostText(String value) {
+    return value
+        .replaceAll(RegExp(r'(https?:\\/\\/\\S+|www\\.\\S+|t\\.me\\/\\S+)', caseSensitive: false), '')
+        .split('\\n')
+        .map((line) => line.trim())
+        .where((line) => line.isNotEmpty)
+        .join('\\n')
+        .trim();
   }
 
   Future<Map<String, dynamic>> _api(String method, Map<String, dynamic> body) async {
@@ -3013,9 +3048,7 @@ class _TelegramArchiveAdminPageState extends State<TelegramArchiveAdminPage> {
       final chatData = Map<String, dynamic>.from(chat['result'] as Map);
       channelId = chatData['id'].toString();
       channelUsername = (chatData['username'] ?? '').toString();
-      final member = await _api('getChatMember', {
-        'chat_id': chatData['id'], 'user_id': bot['id']
-      });
+      final member = await _api('getChatMember', {'chat_id': chatData['id'], 'user_id': bot['id']});
       final memberData = Map<String, dynamic>.from(member['result'] as Map);
       final role = memberData['status']?.toString();
       if (role != 'administrator' && role != 'creator') {
@@ -3038,15 +3071,12 @@ class _TelegramArchiveAdminPageState extends State<TelegramArchiveAdminPage> {
         final chatPost = post['chat'] is Map ? Map<String, dynamic>.from(post['chat'] as Map) : <String, dynamic>{};
         if (chatPost['id'].toString() != channelId) continue;
         final messageId = post['message_id'];
-        final textValue = (post['text'] ?? post['caption'] ?? '').toString();
+        final textValue = _cleanPostText((post['text'] ?? post['caption'] ?? '').toString());
         final photos = post['photo'] is List ? post['photo'] as List : const [];
         String? photoFileId;
-        if (photos.isNotEmpty && photos.last is Map) {
-          photoFileId = (photos.last as Map)['file_id']?.toString();
-        }
+        if (photos.isNotEmpty && photos.last is Map) photoFileId = (photos.last as Map)['file_id']?.toString();
         final postUrl = channelUsername != null && channelUsername!.isNotEmpty
-            ? 'https://t.me/$channelUsername/$messageId'
-            : null;
+            ? 'https://t.me/$channelUsername/$messageId' : null;
         final id = messageId?.toString() ?? update['update_id'].toString();
         await FirebaseDatabase.instance.ref('telegram_posts/$channelId/$id').update({
           'messageId': messageId,
@@ -3077,6 +3107,57 @@ class _TelegramArchiveAdminPageState extends State<TelegramArchiveAdminPage> {
     } finally { if (mounted) setState(() => extracting = false); }
   }
 
+  String _selectionKey(Map<String, dynamic> post) => '${post['channelId']}/${post['key']}';
+
+  Future<void> _uploadSelected(List<Map<String, dynamic>> rows) async {
+    if (selectedPosts.isEmpty || bulkUploading) return;
+    final chosen = rows.where((p) => selectedPosts.contains(_selectionKey(p))).toList();
+    if (chosen.isEmpty) return;
+    final missing = chosen.where((p) => !(categories.containsKey(postCategories[_selectionKey(p)]) )).length;
+    if (missing > 0) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('د هر ټاکل شوي پوسټ لپاره کټګوري وټاکئ.')));
+      return;
+    }
+    setState(() { bulkUploading = true; status = 'ټاکل شوي پوسټونه اپلوډ کېږي...'; });
+    var uploaded = 0;
+    try {
+      for (final post in chosen) {
+        final cleanText = _cleanPostText((post['text'] ?? '').toString());
+        if (cleanText.isEmpty) continue;
+        final poemRef = FirebaseDatabase.instance.ref('poems').push();
+        await poemRef.set({
+          'text': cleanText,
+          'categoryId': postCategories[_selectionKey(post)],
+          'poetId': null,
+          'title': null,
+          'imageUrl': null,
+          'featured': false,
+          'isPublished': true,
+          'createdAt': ServerValue.timestamp,
+          'source': 'telegram',
+        });
+        await FirebaseDatabase.instance
+            .ref('telegram_posts/${post['channelId']}/${post['key']}')
+            .update({'uploaded': true, 'poemId': poemRef.key});
+        uploaded++;
+      }
+      if (mounted) {
+        setState(() {
+          status = '$uploaded پوسټونه په شعرونو کې خپاره شول.';
+          selectedPosts.removeWhere((key) => chosen.any((p) => _selectionKey(p) == key));
+        });
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(status)));
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => status = 'اپلوډ کې ستونزه: $e');
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(status)));
+      }
+    } finally {
+      if (mounted) setState(() => bulkUploading = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) => ListView(padding: const EdgeInsets.all(16), children: [
     Container(padding: const EdgeInsets.all(20), decoration: BoxDecoration(
@@ -3084,7 +3165,7 @@ class _TelegramArchiveAdminPageState extends State<TelegramArchiveAdminPage> {
       borderRadius: BorderRadius.circular(24)), child: const Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Icon(Icons.telegram, color: Colors.white, size: 38), SizedBox(height: 10),
         Text('د ټیلیګرام پوسټونو استخراج', style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.w900)),
-        Text('چینل او ټوکن ورکړئ؛ پوسټونه به مستقیم له Telegram Bot API څخه آرشیف ته راوړل شي.', style: TextStyle(color: Colors.white70, height: 1.7)),
+        Text('پوسټونه راوباسئ، هر پوسټ ته کټګوري وټاکئ، بیا ټاکل شوي ټول په یوه کلیک خپاره کړئ.', style: TextStyle(color: Colors.white70, height: 1.7)),
       ])),
     const SizedBox(height: 18),
     TextField(controller: channel, keyboardType: TextInputType.url, textDirection: TextDirection.ltr,
@@ -3101,8 +3182,13 @@ class _TelegramArchiveAdminPageState extends State<TelegramArchiveAdminPage> {
       label: Text(extracting ? 'پوسټونه راایستل کېږي...' : 'د پوسټونو استخراج پیل')),
     if (status.isNotEmpty) Padding(padding: const EdgeInsets.only(top: 12), child: Text(status, style: const TextStyle(height: 1.6))),
     const SizedBox(height: 20),
-    const Text('راایستل شوي پوسټونه', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900)),
-    const SizedBox(height: 10),
+    Row(children: [
+      const Expanded(child: Text('راایستل شوي پوسټونه', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900))),
+      Text('${selectedPosts.length} ټاکل شوي'),
+    ]),
+    const SizedBox(height: 8),
+    if (categories.isEmpty)
+      const Text('کټګورۍ نه دي موندل شوې؛ لومړی د اډمین مدیریت له لارې کټګورۍ ثبت کړئ.', style: TextStyle(color: Colors.red)),
     StreamBuilder<DatabaseEvent>(
       stream: FirebaseDatabase.instance.ref('telegram_posts').onValue,
       builder: (context, snap) {
@@ -3113,26 +3199,56 @@ class _TelegramArchiveAdminPageState extends State<TelegramArchiveAdminPage> {
           for (final channelEntry in root.entries) {
             final posts = channelEntry.value;
             if (posts is Map) for (final entry in posts.entries) {
-              if (entry.value is Map) rows.add(Map<String, dynamic>.from(entry.value as Map)..['key'] = entry.key.toString());
+              if (entry.value is Map) rows.add(Map<String, dynamic>.from(entry.value as Map)
+                ..['key'] = entry.key.toString()
+                ..['channelId'] = channelEntry.key.toString());
             }
           }
         }
         rows.sort((a,b) => ((b['date'] ?? 0) as num).compareTo((a['date'] ?? 0) as num));
-        if (rows.isEmpty) return const Text('تر اوسه پوسټونه نه دي استخراج شوي.');
-        return Column(children: rows.map((p) => Card(
-          child: Padding(padding: const EdgeInsets.all(12), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text((p['channelTitle'] ?? 'Telegram').toString(), style: const TextStyle(fontWeight: FontWeight.bold)),
-            const SizedBox(height: 6),
-            SelectableText((p['text'] ?? '').toString()),
-            if ((p['photoFileId'] ?? '').toString().isNotEmpty)
-              const Padding(padding: EdgeInsets.only(top: 6), child: Text('دا پوسټ انځور لري (Telegram file ID خوندي شوی).')),
-            if ((p['postUrl'] ?? '').toString().isNotEmpty)
-              SelectableText('د پوسټ لینک: ${p['postUrl']}'),
-            Align(alignment: Alignment.centerLeft, child: FilledButton.tonalIcon(
-              onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => PoemEditor(initialText: (p['text'] ?? '').toString()))),
-              icon: const Icon(Icons.edit_note), label: const Text('شعر ته انتقال')))
-          ])),
-        )).toList());
+        if (rows.isEmpty) return const Padding(padding: EdgeInsets.all(12), child: Text('تر اوسه پوسټونه نه دي استخراج شوي.'));
+        final pending = rows.where((p) => p['uploaded'] != true).toList();
+        return Column(children: [
+          if (selectedPosts.isNotEmpty)
+            SizedBox(width: double.infinity, child: FilledButton.icon(
+              onPressed: bulkUploading ? null : () => _uploadSelected(rows),
+              icon: bulkUploading ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)) : const Icon(Icons.cloud_upload_outlined),
+              label: Text(bulkUploading ? 'اپلوډ روان دی...' : 'ټاکل شوي پوسټونه په یوه کلیک اپلوډ کړئ (${selectedPosts.length})'))),
+          ...rows.map((p) {
+            final key = _selectionKey(p);
+            final uploaded = p['uploaded'] == true;
+            final categoryValue = postCategories[key];
+            final safeCategory = categories.containsKey(categoryValue) ? categoryValue : null;
+            return Card(
+              child: Padding(padding: const EdgeInsets.all(12), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Row(children: [
+                  Checkbox(value: uploaded ? false : selectedPosts.contains(key),
+                    onChanged: uploaded ? null : (v) => setState(() {
+                      if (v == true) selectedPosts.add(key); else selectedPosts.remove(key);
+                    })),
+                  Expanded(child: Text((p['channelTitle'] ?? 'Telegram').toString(), style: const TextStyle(fontWeight: FontWeight.bold))),
+                  if (uploaded) const Chip(label: Text('اپلوډ شوی'), avatar: Icon(Icons.check_circle, size: 16)),
+                ]),
+                const SizedBox(height: 4),
+                SelectableText(_cleanPostText((p['text'] ?? '').toString())),
+                if ((p['photoFileId'] ?? '').toString().isNotEmpty)
+                  const Padding(padding: EdgeInsets.only(top: 6), child: Text('دا پوسټ انځور لري (Telegram file ID خوندي شوی).')),
+                if (!uploaded && categories.isNotEmpty) ...[
+                  const SizedBox(height: 10),
+                  DropdownButtonFormField<String>(
+                    value: safeCategory,
+                    decoration: const InputDecoration(labelText: 'د دې پوسټ کټګوري وټاکئ', border: OutlineInputBorder(), isDense: true),
+                    items: categories.entries.map((e) => DropdownMenuItem(value: e.key, child: Text(e.value))).toList(),
+                    onChanged: (v) => setState(() {
+                      if (v == null) postCategories.remove(key); else postCategories[key] = v;
+                    }),
+                  ),
+                ],
+              ])),
+            );
+          }),
+          if (pending.isEmpty) const Padding(padding: EdgeInsets.all(12), child: Text('ټول پوسټونه اپلوډ شوي دي.')),
+        ]);
       },
     ),
   ]);
