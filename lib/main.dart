@@ -205,13 +205,19 @@ class AuthGate extends StatelessWidget {
       }
       final user = snapshot.data;
       if (user != null) return child;
-      return const AccountAccessPage();
+      return AccountAccessPage(
+        onSkip: () => Navigator.of(context).pushReplacement(
+          MaterialPageRoute(builder: (_) => child),
+        ),
+      );
     },
   );
 }
 
 class AccountAccessPage extends StatefulWidget {
-  const AccountAccessPage({super.key});
+  const AccountAccessPage({super.key, this.onSkip, this.onAuthenticated});
+  final VoidCallback? onSkip;
+  final VoidCallback? onAuthenticated;
   @override
   State<AccountAccessPage> createState() => _AccountAccessPageState();
 }
@@ -249,7 +255,10 @@ class _AccountAccessPageState extends State<AccountAccessPage> {
     setState(() { busy = true; error = null; });
     try {
       final result = await action();
-      if (result.user != null) await _saveName(result.user!);
+      if (result.user != null) {
+        await _saveName(result.user!);
+        widget.onAuthenticated?.call();
+      }
     } on FirebaseAuthException catch (e) {
       setState(() => error = e.message ?? 'حساب ته ننوتل بریالي نه شول.');
     } catch (e) {
@@ -317,7 +326,10 @@ class _AccountAccessPageState extends State<AccountAccessPage> {
           final result = current?.isAnonymous == true
               ? await current!.linkWithCredential(credential)
               : await FirebaseAuth.instance.signInWithCredential(credential);
-          if (result.user != null) await _saveName(result.user!);
+          if (result.user != null) {
+            await _saveName(result.user!);
+            widget.onAuthenticated?.call();
+          }
         } catch (e) { if (mounted) setState(() => error = '$e'); }
         finally { if (mounted) setState(() => busy = false); }
       },
@@ -357,6 +369,12 @@ class _AccountAccessPageState extends State<AccountAccessPage> {
           padding: const EdgeInsets.all(22),
           child: ConstrainedBox(constraints: const BoxConstraints(maxWidth: 430),
             child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+              if (widget.onSkip != null)
+                Align(alignment: Alignment.topRight, child: TextButton.icon(
+                  onPressed: busy ? null : widget.onSkip,
+                  icon: const Icon(Icons.skip_next_rounded),
+                  label: const Text('Skip / تېرېدل'),
+                )),
               Container(width: 76, height: 76, alignment: Alignment.center,
                 decoration: BoxDecoration(color: c.primary, borderRadius: BorderRadius.circular(24)),
                 child: const Icon(Icons.auto_stories_rounded, color: Colors.white, size: 40)),
@@ -900,9 +918,15 @@ class _PoetryShellState extends State<PoetryShell> {
   Future<Map<String, String>?> _ensureProfile() async {
     var user = FirebaseAuth.instance.currentUser;
     if (user == null || user.isAnonymous) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('د تبصرې لپاره لومړی د ایمیل، Google یا ټیلیفون له لارې حساب ته ننوځئ.')));
-      return null;
+      final authenticated = await Navigator.push<bool>(
+        context,
+        MaterialPageRoute(builder: (routeContext) => AccountAccessPage(
+          onAuthenticated: () => Navigator.pop(routeContext, true),
+        )),
+      );
+      if (authenticated != true || !mounted) return null;
+      user = FirebaseAuth.instance.currentUser;
+      if (user == null || user.isAnonymous) return null;
     }
     var name = _profileName;
     var photoUrl = user.photoURL ?? '';
@@ -1188,6 +1212,22 @@ class _PoetryShellState extends State<PoetryShell> {
   List<Poem> get favoritePoems =>
       poems.where((poem) => favorites.contains(poem.id)).toList();
 
+  Future<void> _selectPage(int index) async {
+    if (index == 3) {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null || user.isAnonymous) {
+        final authenticated = await Navigator.push<bool>(
+          context,
+          MaterialPageRoute(builder: (routeContext) => AccountAccessPage(
+            onAuthenticated: () => Navigator.pop(routeContext, true),
+          )),
+        );
+        if (authenticated != true || !mounted) return;
+      }
+    }
+    if (mounted) setState(() => selectedPage = index);
+  }
+
   @override
   Widget build(BuildContext context) {
     const titles = ['ادبي خزانه', 'خوښ شوي شعرونه', 'زموږ په اړه', 'تنظیمات'];
@@ -1306,7 +1346,7 @@ class _PoetryShellState extends State<PoetryShell> {
                 label: item.$3,
                 child: InkWell(
                   borderRadius: BorderRadius.circular(17),
-                  onTap: () => setState(() => selectedPage = index),
+                  onTap: () => _selectPage(index),
                   child: AnimatedContainer(
                     duration: const Duration(milliseconds: 280),
                     curve: Curves.easeOutCubic,
@@ -1645,7 +1685,7 @@ class _PoetryShellState extends State<PoetryShell> {
             borderRadius: BorderRadius.circular(17),
             onTap: () {
               Navigator.pop(context);
-              setState(() => selectedPage = index);
+              _selectPage(index);
             },
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 260),
@@ -2925,7 +2965,7 @@ class EmbeddedAdminGate extends StatelessWidget {
       if (auth.connectionState == ConnectionState.waiting) {
         return const Scaffold(body: Center(child: CircularProgressIndicator()));
       }
-      if (auth.data == null) return const EmbeddedAdminLoginPage();
+      if (auth.data == null || auth.data!.isAnonymous) return const EmbeddedAdminLoginPage();
       return FutureBuilder<DatabaseEvent>(
         future: FirebaseDatabase.instance.ref('admins/${auth.data!.uid}').once(),
         builder: (context, role) {
