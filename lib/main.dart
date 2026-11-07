@@ -3113,11 +3113,6 @@ class _TelegramArchiveAdminPageState extends State<TelegramArchiveAdminPage> {
     if (selectedPosts.isEmpty || bulkUploading) return;
     final chosen = rows.where((p) => selectedPosts.contains(_selectionKey(p))).toList();
     if (chosen.isEmpty) return;
-    final missing = chosen.where((p) => !(categories.containsKey(postCategories[_selectionKey(p)]) )).length;
-    if (missing > 0) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('د هر ټاکل شوي پوسټ لپاره کټګوري وټاکئ.')));
-      return;
-    }
     setState(() { bulkUploading = true; status = 'ټاکل شوي پوسټونه اپلوډ کېږي...'; });
     var uploaded = 0;
     try {
@@ -3127,7 +3122,6 @@ class _TelegramArchiveAdminPageState extends State<TelegramArchiveAdminPage> {
         final poemRef = FirebaseDatabase.instance.ref('poems').push();
         await poemRef.set({
           'text': cleanText,
-          'categoryId': postCategories[_selectionKey(post)],
           'poetId': null,
           'title': null,
           'imageUrl': null,
@@ -3143,7 +3137,7 @@ class _TelegramArchiveAdminPageState extends State<TelegramArchiveAdminPage> {
       }
       if (mounted) {
         setState(() {
-          status = '$uploaded پوسټونه په شعرونو کې خپاره شول.';
+          status = '$uploaded پوسټونه بې له کټګورۍ په شعرونو کې خپاره شول. کټګوري وروسته د شعرونو له مدیریت څخه ټاکلی شئ.';
           selectedPosts.removeWhere((key) => chosen.any((p) => _selectionKey(p) == key));
         });
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(status)));
@@ -3165,7 +3159,7 @@ class _TelegramArchiveAdminPageState extends State<TelegramArchiveAdminPage> {
       borderRadius: BorderRadius.circular(24)), child: const Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Icon(Icons.telegram, color: Colors.white, size: 38), SizedBox(height: 10),
         Text('د ټیلیګرام پوسټونو استخراج', style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.w900)),
-        Text('پوسټونه راوباسئ، هر پوسټ ته کټګوري وټاکئ، بیا ټاکل شوي ټول په یوه کلیک خپاره کړئ.', style: TextStyle(color: Colors.white70, height: 1.7)),
+        Text('پوسټونه راوباسئ او ټاکل شوي ټول بې له کټګورۍ په یوه کلیک خپاره کړئ؛ کټګوري وروسته د شعرونو له مدیریت څخه ټاکل کېږي.', style: TextStyle(color: Colors.white70, height: 1.7)),
       ])),
     const SizedBox(height: 18),
     TextField(controller: channel, keyboardType: TextInputType.url, textDirection: TextDirection.ltr,
@@ -3187,8 +3181,6 @@ class _TelegramArchiveAdminPageState extends State<TelegramArchiveAdminPage> {
       Text('${selectedPosts.length} ټاکل شوي'),
     ]),
     const SizedBox(height: 8),
-    if (categories.isEmpty)
-      const Text('کټګورۍ نه دي موندل شوې؛ لومړی د اډمین مدیریت له لارې کټګورۍ ثبت کړئ.', style: TextStyle(color: Colors.red)),
     StreamBuilder<DatabaseEvent>(
       stream: FirebaseDatabase.instance.ref('telegram_posts').onValue,
       builder: (context, snap) {
@@ -3217,8 +3209,6 @@ class _TelegramArchiveAdminPageState extends State<TelegramArchiveAdminPage> {
           ...rows.map((p) {
             final key = _selectionKey(p);
             final uploaded = p['uploaded'] == true;
-            final categoryValue = postCategories[key];
-            final safeCategory = categories.containsKey(categoryValue) ? categoryValue : null;
             return Card(
               child: Padding(padding: const EdgeInsets.all(12), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Row(children: [
@@ -3233,17 +3223,6 @@ class _TelegramArchiveAdminPageState extends State<TelegramArchiveAdminPage> {
                 SelectableText(_cleanPostText((p['text'] ?? '').toString())),
                 if ((p['photoFileId'] ?? '').toString().isNotEmpty)
                   const Padding(padding: EdgeInsets.only(top: 6), child: Text('دا پوسټ انځور لري (Telegram file ID خوندي شوی).')),
-                if (!uploaded && categories.isNotEmpty) ...[
-                  const SizedBox(height: 10),
-                  DropdownButtonFormField<String>(
-                    value: safeCategory,
-                    decoration: const InputDecoration(labelText: 'د دې پوسټ کټګوري وټاکئ', border: OutlineInputBorder(), isDense: true),
-                    items: categories.entries.map((e) => DropdownMenuItem(value: e.key, child: Text(e.value))).toList(),
-                    onChanged: (v) => setState(() {
-                      if (v == null) postCategories.remove(key); else postCategories[key] = v;
-                    }),
-                  ),
-                ],
               ])),
             );
           }),
@@ -3254,8 +3233,40 @@ class _TelegramArchiveAdminPageState extends State<TelegramArchiveAdminPage> {
   ]);
 }
 
-class PoemsAdminPage extends StatelessWidget {
+class PoemsAdminPage extends StatefulWidget {
   const PoemsAdminPage({super.key});
+  @override
+  State<PoemsAdminPage> createState() => _PoemsAdminPageState();
+}
+
+class _PoemsAdminPageState extends State<PoemsAdminPage> {
+  final Set<String> selectedPoems = {};
+  String? bulkCategory;
+  bool assigning = false;
+
+  Future<void> _assignCategory() async {
+    final category = bulkCategory;
+    if (selectedPoems.isEmpty || category == null || assigning) return;
+    setState(() => assigning = true);
+    var updated = 0;
+    try {
+      for (final id in selectedPoems.toList()) {
+        await FirebaseDatabase.instance.ref('poems/$id').update({'categoryId': category});
+        updated++;
+      }
+      if (mounted) {
+        setState(() => selectedPoems.clear());
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('$updated شعرونه په ټاکل شوې کټګورۍ کې شامل شول.')));
+      }
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('د کټګورۍ ټاکلو کې ستونزه: $e')));
+    } finally {
+      if (mounted) setState(() => assigning = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) => StreamBuilder<DatabaseEvent>(
     stream: FirebaseDatabase.instance.ref('poems').orderByChild('createdAt').onValue,
@@ -3265,43 +3276,111 @@ class PoemsAdminPage extends StatelessWidget {
       final raw = snap.data!.snapshot.value;
       if (raw is! Map) return const Center(child: Text('تر اوسه شعرونه نشته.'));
       final items = raw.entries.toList().reversed.toList();
-      return ListView.separated(padding: const EdgeInsets.all(14), itemCount: items.length,
-        separatorBuilder: (_, __) => const SizedBox(height: 9),
-        itemBuilder: (context, i) {
-          final id = items[i].key.toString();
-          final data = Map<String, dynamic>.from(items[i].value as Map);
-          return Card(child: ListTile(
-            leading: const CircleAvatar(child: Icon(Icons.auto_stories_rounded)),
-            title: Text((data['title'] ?? 'بې‌عنوانه').toString(),
-              maxLines: 1, overflow: TextOverflow.ellipsis),
-            subtitle: Text((data['text'] ?? '').toString(), maxLines: 2,
-              overflow: TextOverflow.ellipsis),
-            trailing: Wrap(spacing: 0, children: [
-              IconButton(
-                tooltip: 'سمون',
-                icon: const Icon(Icons.edit_outlined),
-                onPressed: () => Navigator.push(context, MaterialPageRoute(
-                  builder: (_) => PoemEditor(poemId: id, initialData: data))),
-              ),
-              IconButton(
-                tooltip: 'ړنګول',
-                icon: const Icon(Icons.delete_outline, color: Colors.red),
-                onPressed: () async {
-                  final ok = await showDialog<bool>(context: context, builder: (ctx) =>
-                    Directionality(textDirection: TextDirection.rtl, child: AlertDialog(
-                      title: const Text('شعر ړنګول؟'),
-                      content: const Text('دا شعر به له ډیټابېس څخه لرې شي.'),
-                      actions: [
-                        TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('نه')),
-                        FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('هو، ړنګ یې کړه')),
-                      ],
-                    )));
-                  if (ok == true) await FirebaseDatabase.instance.ref('poems/$id').remove();
+      final ids = items.map((e) => e.key.toString()).toSet();
+      selectedPoems.removeWhere((id) => !ids.contains(id));
+      return Column(children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(14, 12, 14, 4),
+          child: Row(children: [
+            Expanded(child: Text('${items.length} شعرونه | ${selectedPoems.length} ټاکل شوي',
+              style: const TextStyle(fontWeight: FontWeight.w800))),
+            TextButton(
+              onPressed: () => setState(() {
+                if (selectedPoems.length == items.length) {
+                  selectedPoems.clear();
+                } else {
+                  selectedPoems.addAll(ids);
+                }
+              }),
+              child: Text(selectedPoems.length == items.length ? 'ټول لغوه' : 'ټول وټاکه')),
+          ]),
+        ),
+        if (selectedPoems.isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(14, 4, 14, 10),
+            child: Row(children: [
+              Expanded(child: StreamBuilder<DatabaseEvent>(
+                stream: FirebaseDatabase.instance.ref('categories').onValue,
+                builder: (context, categorySnap) {
+                  final value = categorySnap.data?.snapshot.value;
+                  final cats = <String, String>{};
+                  if (value is Map) {
+                    for (final e in value.entries) {
+                      final v = e.value;
+                      final name = v is Map ? (v['name'] ?? '').toString() : v.toString();
+                      if (name.trim().isNotEmpty) cats[e.key.toString()] = name;
+                    }
+                  }
+                  if (cats.isEmpty) return const Text('لومړی کټګورۍ ثبت کړئ.');
+                  if (!cats.containsKey(bulkCategory)) bulkCategory = null;
+                  return DropdownButtonFormField<String>(
+                    value: bulkCategory,
+                    decoration: const InputDecoration(
+                      labelText: 'ټاکل شویو شعرونو ته کټګوري',
+                      border: OutlineInputBorder(), isDense: true),
+                    items: cats.entries.map((e) =>
+                      DropdownMenuItem(value: e.key, child: Text(e.value))).toList(),
+                    onChanged: assigning ? null : (v) => setState(() => bulkCategory = v),
+                  );
                 },
+              )),
+              const SizedBox(width: 8),
+              FilledButton(
+                onPressed: assigning || bulkCategory == null ? null : _assignCategory,
+                child: assigning
+                  ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
+                  : const Text('ټول شامل کړه'),
               ),
             ]),
-          ));
-        });
+          ),
+        Expanded(child: ListView.separated(
+          padding: const EdgeInsets.fromLTRB(14, 4, 14, 14),
+          itemCount: items.length,
+          separatorBuilder: (_, __) => const SizedBox(height: 9),
+          itemBuilder: (context, i) {
+            final id = items[i].key.toString();
+            final data = Map<String, dynamic>.from(items[i].value as Map);
+            return Card(child: ListTile(
+              leading: Checkbox(
+                value: selectedPoems.contains(id),
+                onChanged: (v) => setState(() {
+                  if (v == true) selectedPoems.add(id); else selectedPoems.remove(id);
+                })),
+              title: Text((data['title'] ?? 'بې‌عنوانه').toString(),
+                maxLines: 1, overflow: TextOverflow.ellipsis),
+              subtitle: Text((data['text'] ?? '').toString(), maxLines: 2,
+                overflow: TextOverflow.ellipsis),
+              trailing: Wrap(spacing: 0, children: [
+                IconButton(
+                  tooltip: 'سمون',
+                  icon: const Icon(Icons.edit_outlined),
+                  onPressed: () => Navigator.push(context, MaterialPageRoute(
+                    builder: (_) => PoemEditor(poemId: id, initialData: data))),
+                ),
+                IconButton(
+                  tooltip: 'ړنګول',
+                  icon: const Icon(Icons.delete_outline, color: Colors.red),
+                  onPressed: () async {
+                    final ok = await showDialog<bool>(context: context, builder: (ctx) =>
+                      Directionality(textDirection: TextDirection.rtl, child: AlertDialog(
+                        title: const Text('شعر ړنګول؟'),
+                        content: const Text('دا شعر به له ډیټابېس څخه لرې شي.'),
+                        actions: [
+                          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('نه')),
+                          FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('هو، ړنګ یې کړه')),
+                        ],
+                      )));
+                    if (ok == true) {
+                      await FirebaseDatabase.instance.ref('poems/$id').remove();
+                      if (mounted) setState(() => selectedPoems.remove(id));
+                    }
+                  },
+                ),
+              ]),
+            ));
+          },
+        )),
+      ]);
     },
   );
 }
