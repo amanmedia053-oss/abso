@@ -12,6 +12,7 @@ import 'package:share_plus/share_plus.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:webview_flutter/webview_flutter.dart';
+import 'package:webview_flutter_android/webview_flutter_android.dart';
 
 const String cloudinaryCloudName = 'a3p2c6bi';
 const String cloudinaryUploadPreset = 'adabi_gallery';
@@ -1906,7 +1907,6 @@ class _PoetryShellState extends State<PoetryShell> {
       key: const PageStorageKey('home'),
       physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
       slivers: [
-        SliverToBoxAdapter(child: _shortVideosHomeSection()),
         if (featuredPoems.isNotEmpty)
           SliverToBoxAdapter(child: Column(children: [
             SizedBox(height: 174, child: PageView.builder(
@@ -2105,6 +2105,7 @@ class _PoetryShellState extends State<PoetryShell> {
               return _horizontalPoetCard(entry.key, _poetNames[entry.key] ?? '', entry.value);
             }))),
         ],
+        SliverToBoxAdapter(child: _shortVideosHomeSection()),
       ],
     ));
   }
@@ -5332,8 +5333,17 @@ class _TelegramVideoEmbedState extends State<_TelegramVideoEmbed> {
       ..setBackgroundColor(const Color(0xFF101010))
       ..setNavigationDelegate(NavigationDelegate(
         onPageFinished: (_) { if (mounted) setState(() => _loaded = true); },
-      ))
-      ..loadRequest(Uri.parse(widget.url));
+        onWebResourceError: (error) {
+          if (mounted && error.isForMainFrame == true) {
+            setState(() => _loaded = true);
+          }
+        },
+      ));
+    final platformController = _webController.platform;
+    if (platformController is AndroidWebViewController) {
+      platformController.setMediaPlaybackRequiresUserGesture(false);
+    }
+    _webController.loadRequest(Uri.parse(widget.url));
   }
 
   @override
@@ -5346,8 +5356,11 @@ class _TelegramVideoEmbedState extends State<_TelegramVideoEmbed> {
   }
 
   @override
-  Widget build(BuildContext context) => Stack(children: [
-    Positioned.fill(child: WebViewWidget(controller: _webController)),
+  Widget build(BuildContext context) => ClipRect(child: Stack(children: [
+    Positioned.fill(child: WebViewWidget(
+      controller: _webController,
+      gestureRecognizers: const <Factory<OneSequenceGestureRecognizer>>{},
+    )),
     if (!_loaded) const Center(child: CircularProgressIndicator(color: Colors.white)),
-  ]);
+  ]));
 }
