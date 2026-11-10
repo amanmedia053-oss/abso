@@ -5937,15 +5937,73 @@ class _TelegramVideoEmbed extends StatefulWidget {
 class _TelegramVideoEmbedState extends State<_TelegramVideoEmbed> {
   late final WebViewController _webController;
   bool _loaded = false;
+  Timer? _playerRetryTimer;
+
+  // Telegram embed pages contain a full post. Keep its video player visible,
+  // hide post details, and attempt muted autoplay in Android WebView.
+  Future<void> _prepareTelegramPlayer() async {
+    const script = r"""
+      (function () {
+        const styleId = 'adabi-video-only-style';
+        if (!document.getElementById(styleId)) {
+          const style = document.createElement('style');
+          style.id = styleId;
+          style.textContent = 'html,body{margin:0!important;padding:0!important;background:#000!important;overflow:hidden!important}' +
+            '.tgme_widget_message_header,.tgme_widget_message_footer,.tgme_widget_message_text,.tgme_widget_message_reactions,.tgme_widget_message_meta,.tgme_widget_message_author,.tgme_widget_message_date,.tgme_widget_message_link,.tgme_widget_message_photo,.tgme_widget_message_video_duration{display:none!important;visibility:hidden!important;height:0!important}' +
+            '.tgme_widget_message,.tgme_widget_message_wrap,.tgme_widget_message_bubble,.tgme_widget_message_video,.tgme_widget_message_video_player,.tgme_widget_message_video_wrap{margin:0!important;padding:0!important;border:0!important;border-radius:0!important;max-width:100%!important;width:100%!important;background:#000!important;box-shadow:none!important}' +
+            '.tgme_widget_message_bubble{min-height:100vh!important}.tgme_widget_message_video,.tgme_widget_message_video video,video{width:100%!important;height:100%!important;max-height:100vh!important;object-fit:contain!important;background:#000!important}';
+          document.head.appendChild(style);
+        }
+        const videos = Array.from(document.querySelectorAll('video'));
+        videos.forEach(function(v) {
+          v.setAttribute('playsinline', '');
+          v.setAttribute('controls', '');
+          v.muted = true;
+          v.autoplay = true;
+          const p = v.play();
+          if (p && p.catch) p.catch(function(){});
+        });
+        if (!videos.length) {
+          const play = document.querySelector('.tgme_widget_message_video_player,.tgme_widget_message_video_thumb,.video_play');
+          if (play && !play.dataset.adabiPlayRequested) {
+            play.dataset.adabiPlayRequested = '1';
+            play.click();
+          }
+        }
+        return videos.length;
+      })();
+    """;
+    try {
+      await _webController.runJavaScript(script);
+    } catch (_) {}
+  }
+
+  void _startPlayerRetries() {
+    _playerRetryTimer?.cancel();
+    var attempts = 0;
+    _playerRetryTimer = Timer.periodic(const Duration(milliseconds: 700), (timer) {
+      if (!mounted || !widget.active || attempts++ >= 18) {
+        timer.cancel();
+        return;
+      }
+      _prepareTelegramPlayer();
+    });
+  }
 
   @override
   void initState() {
     super.initState();
     _webController = WebViewController()
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
-      ..setBackgroundColor(const Color(0xFF101010))
+      ..setBackgroundColor(const Color(0xFF000000))
       ..setNavigationDelegate(NavigationDelegate(
-        onPageFinished: (_) { if (mounted) setState(() => _loaded = true); },
+        onPageFinished: (_) {
+          if (mounted) setState(() => _loaded = true);
+          if (widget.active) {
+            _prepareTelegramPlayer();
+            _startPlayerRetries();
+          }
+        },
         onWebResourceError: (error) {
           if (mounted && error.isForMainFrame == true) {
             setState(() => _loaded = true);
@@ -5962,10 +6020,25 @@ class _TelegramVideoEmbedState extends State<_TelegramVideoEmbed> {
   @override
   void didUpdateWidget(covariant _TelegramVideoEmbed oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.active != widget.active && !widget.active) {
-      _webController.runJavaScript("document.querySelectorAll('video').forEach((v) => v.pause());");
+    if (oldWidget.active != widget.active) {
+      if (!widget.active) {
+        _playerRetryTimer?.cancel();
+        _webController.runJavaScript("document.querySelectorAll('video').forEach((v) => v.pause());");
+      } else {
+        _prepareTelegramPlayer();
+        _startPlayerRetries();
+      }
     }
-    if (oldWidget.url != widget.url) _webController.loadRequest(Uri.parse(widget.url));
+    if (oldWidget.url != widget.url) {
+      setState(() => _loaded = false);
+      _webController.loadRequest(Uri.parse(widget.url));
+    }
+  }
+
+  @override
+  void dispose() {
+    _playerRetryTimer?.cancel();
+    super.dispose();
   }
 
   @override
