@@ -62,15 +62,32 @@ String parseFormatting(String text) {
     source = source.replaceAll('\uE000' + i.toString() + '\uE001', protected[i]);
   }
   final lines = <String>[];
-  for (final line in source.split('\n')) {
+  final rawLines = source.split('\n');
+  var lineIndex = 0;
+  while (lineIndex < rawLines.length) {
+    final line = rawLines[lineIndex];
     if (line.startsWith('&gt; ')) {
       lines.add('<blockquote>' + line.substring(5) + '</blockquote>');
+      lineIndex++;
     } else if (RegExp(r'^-\s+').hasMatch(line)) {
-      lines.add('<ul><li>' + line.replaceFirst(RegExp(r'^-\s+'), '') + '</li></ul>');
+      final items = <String>[];
+      while (lineIndex < rawLines.length &&
+          RegExp(r'^-\s+').hasMatch(rawLines[lineIndex])) {
+        items.add('<li>' + rawLines[lineIndex].replaceFirst(RegExp(r'^-\s+'), '') + '</li>');
+        lineIndex++;
+      }
+      lines.add('<ul>' + items.join() + '</ul>');
     } else if (RegExp(r'^\d+\.\s+').hasMatch(line)) {
-      lines.add('<ol><li>' + line.replaceFirst(RegExp(r'^\d+\.\s+'), '') + '</li></ol>');
+      final items = <String>[];
+      while (lineIndex < rawLines.length &&
+          RegExp(r'^\d+\.\s+').hasMatch(rawLines[lineIndex])) {
+        items.add('<li>' + rawLines[lineIndex].replaceFirst(RegExp(r'^\d+\.\s+'), '') + '</li>');
+        lineIndex++;
+      }
+      lines.add('<ol>' + items.join() + '</ol>');
     } else {
       lines.add(line);
+      lineIndex++;
     }
   }
   return lines.join('<br>');
