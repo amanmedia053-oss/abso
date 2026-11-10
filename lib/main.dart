@@ -1028,6 +1028,12 @@ class _PoetryShellState extends State<PoetryShell> {
   bool _isDrawerVisible = false;
   String? _fontSelectionPreview;
   int? _accentSelectionPreview;
+  String? _languageSelectionPreview;
+
+  void _selectLanguage(String language) {
+    setState(() => _languageSelectionPreview = language);
+    _applyWithoutClosing(() => widget.onLanguageChanged(language));
+  }
 
   void _selectFont(String fontName) {
     setState(() => _fontSelectionPreview = fontName);
@@ -1068,8 +1074,7 @@ class _PoetryShellState extends State<PoetryShell> {
     });
   }
 
-  void _changeLanguageInPlace(String value) =>
-      _applyWithoutClosing(() => widget.onLanguageChanged(value));
+  void _changeLanguageInPlace(String value) => _selectLanguage(value);
 
   void _toggleThemeInPlace() =>
       _applyWithoutClosing(widget.onTheme);
@@ -1087,6 +1092,9 @@ class _PoetryShellState extends State<PoetryShell> {
     }
     if (_fontSelectionPreview == widget.fontName) {
       _fontSelectionPreview = null;
+    }
+    if (_languageSelectionPreview == widget.language) {
+      _languageSelectionPreview = null;
     }
     if (_accentSelectionPreview == widget.accentColor.toARGB32()) {
       _accentSelectionPreview = null;
@@ -3067,8 +3075,53 @@ class _PoetryShellState extends State<PoetryShell> {
 
   Widget _languageOption(String code, String title, String subtitle) {
     final colors = Theme.of(context).colorScheme;
-    final selected = widget.language == code;
-    return ListTile(onTap: () => _changeLanguageInPlace(code), leading: CircleAvatar(backgroundColor: selected ? colors.primaryContainer : colors.surfaceContainerHighest, child: Icon(Icons.language_rounded, color: selected ? colors.primary : colors.onSurfaceVariant)), title: Text(title, style: const TextStyle(fontWeight: FontWeight.w900)), subtitle: Text(subtitle), trailing: selected ? Icon(Icons.check_circle_rounded, color: colors.primary) : null);
+    final selected = (_languageSelectionPreview ?? widget.language) == code;
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 220),
+      decoration: BoxDecoration(
+        color: selected ? colors.primary.withValues(alpha: .09) : Colors.transparent,
+        borderRadius: BorderRadius.circular(15),
+        border: Border.all(
+          color: selected ? colors.primary : Colors.transparent,
+          width: 1.4,
+        ),
+      ),
+      margin: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+      child: ListTile(
+        onTap: () => _changeLanguageInPlace(code),
+        leading: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          width: 46,
+          height: 46,
+          decoration: BoxDecoration(
+            color: selected ? colors.primary : colors.surfaceContainerHighest,
+            shape: BoxShape.circle,
+          ),
+          child: Icon(Icons.language_rounded,
+            color: selected ? colors.onPrimary : colors.onSurfaceVariant),
+        ),
+        title: Text(title, style: TextStyle(
+          fontWeight: FontWeight.w900,
+          color: selected ? colors.primary : colors.onSurface,
+        )),
+        subtitle: Text(subtitle),
+        trailing: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          width: 25,
+          height: 25,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: selected ? colors.primary : Colors.transparent,
+            border: Border.all(
+              color: selected ? colors.primary : colors.outline,
+            ),
+          ),
+          child: selected
+            ? Icon(Icons.check_rounded, size: 17, color: colors.onPrimary)
+            : null,
+        ),
+      ),
+    );
   }
 
   void _confirmClearCache() {
