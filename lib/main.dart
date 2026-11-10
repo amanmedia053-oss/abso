@@ -5499,7 +5499,7 @@ class _PoemDetailScreenState extends State<PoemDetailScreen> {
     return Scaffold(
       appBar: AppBar(title: const Text('د شعر بشپړ متن'),
         actions: [IconButton(tooltip: 'راپور ورکول', onPressed: _report, icon: const Icon(Icons.flag_outlined))]),
-      body: ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 28), children: [
+      body: ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 0), children: [
         Container(clipBehavior: Clip.antiAlias,
           decoration: BoxDecoration(borderRadius: BorderRadius.circular(28),
             boxShadow: [BoxShadow(color: c.primary.withValues(alpha: .18), blurRadius: 22, offset: const Offset(0, 9))]),
@@ -5625,7 +5625,7 @@ class _PoemDetailScreenState extends State<PoemDetailScreen> {
               padding: const EdgeInsets.symmetric(vertical: 20),
               child: Center(child: Text('تر اوسه تبصره نشته.',
                 style: TextStyle(color: c.onSurfaceVariant, fontSize: 12))));
-            return Column(children: entries.map((entry) {
+            return Column(mainAxisSize: MainAxisSize.min, children: entries.map((entry) {
               final data = Map<String, dynamic>.from(entry.value as Map);
               final name = (data['displayName'] ?? 'لوستونکی').toString();
               final commentId = entry.key.toString();
