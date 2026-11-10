@@ -60,6 +60,10 @@ class _AbsoAppState extends State<AbsoApp> {
   double appTextScale = 1.0;
   bool notificationsEnabled = true;
   Timer? _textScaleSaveTimer;
+  // Keep the shell state (selected tab/page and open drawer) alive when
+  // app-wide settings rebuild MaterialApp for theme, font, or language.
+  final GlobalKey<_PoetryShellState> _poetryShellKey =
+      GlobalKey<_PoetryShellState>();
 
   @override
   void initState() {
@@ -233,6 +237,7 @@ class _AbsoAppState extends State<AbsoApp> {
     home: LaunchGate(
       appBuilder: () => AuthGate(
         child: PoetryShell(
+          key: _poetryShellKey,
           isDark: mode == ThemeMode.dark,
           fontName: selectedFont,
           accentColor: Color(selectedAccentValue),
