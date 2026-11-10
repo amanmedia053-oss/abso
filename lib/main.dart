@@ -87,7 +87,7 @@ class _AbsoAppState extends State<AbsoApp> {
   }
 
   Future<void> _setTextScale(double value) async {
-    setState(() => appTextScale = value.clamp(.85, 1.30));
+    setState(() => appTextScale = value.clamp(.85, 1.30).toDouble());
     final prefs = await SharedPreferences.getInstance();
     await prefs.setDouble('app_text_scale', appTextScale);
   }
@@ -1458,6 +1458,9 @@ class _PoetryShellState extends State<PoetryShell> {
     if (mounted) setState(() => selectedPage = index);
   }
 
+  String _tr(String ps, String fa, String en) =>
+      widget.language == 'en' ? en : widget.language == 'fa' ? fa : ps;
+
   @override
   Widget build(BuildContext context) {
     final titles = widget.language == 'en' ? ['Literary Treasury','Favorites','About','Settings'] : widget.language == 'fa' ? ['گنجینه ادبی','پسندیده‌ها','درباره ما','تنظیمات'] : ['ادبي خزانه','خوښ شوي شعرونه','زموږ په اړه','تنظیمات'];
@@ -1479,7 +1482,7 @@ class _PoetryShellState extends State<PoetryShell> {
           title: Text(titles[selectedPage]),
           actions: [
             IconButton(
-              tooltip: 'د شپې او ورځې بڼه',
+              tooltip: _tr('د شپې او ورځې بڼه', 'حالت شب و روز', 'Light and dark mode'),
               onPressed: widget.onTheme,
               icon: Icon(widget.isDark
                 ? Icons.light_mode_rounded : Icons.dark_mode_rounded),
@@ -1521,14 +1524,14 @@ class _PoetryShellState extends State<PoetryShell> {
         const SizedBox(width: 9),
         Expanded(child: Text(
           poems.isEmpty
-              ? 'انټرنېټ نشته؛ لیکنې نه لوډ کېږي. اړیکه وګورئ.'
-              : 'انټرنېټ نشته؛ خوندي شوې لیکنې درته ښودل کېږي.',
+              ? _tr('انټرنېټ نشته؛ لیکنې نه لوډ کېږي. اړیکه وګورئ.', 'اینترنت وصل نیست؛ نوشته‌ها بارگیری نمی‌شوند. اتصال را بررسی کنید.', 'No internet connection. Check your connection.')
+              : _tr('انټرنېټ نشته؛ خوندي شوې لیکنې درته ښودل کېږي.', 'اینترنت وصل نیست؛ نوشته‌های ذخیره‌شده نمایش داده می‌شوند.', 'Offline: showing saved content.'),
           style: TextStyle(color: colors.onErrorContainer,
             fontSize: 11, fontWeight: FontWeight.w700),
         )),
         TextButton(
           onPressed: _listenAgain,
-          child: Text('بیا هڅه', style: TextStyle(
+          child: Text(_tr('بیا هڅه', 'تلاش دوباره', 'Retry'), style: TextStyle(
             color: colors.onErrorContainer, fontSize: 11,
             fontWeight: FontWeight.w900)),
         ),
@@ -1833,7 +1836,6 @@ class _PoetryShellState extends State<PoetryShell> {
                           fontSize: 10, color: colors.onSurfaceVariant)),
                   value: widget.isDark,
                   onChanged: (_) {
-                    Navigator.pop(context);
                     widget.onTheme();
                   },
                 ),
@@ -2216,12 +2218,12 @@ class _PoetryShellState extends State<PoetryShell> {
             Row(children: [
               const Icon(Icons.video_collection_rounded, color: Color(0xFF16A6A0), size: 22),
               const SizedBox(width: 8),
-              const Expanded(child: Text('لنډې ویډیوګانې',
+              Expanded(child: Text(_tr('لنډې ویډیوګانې', 'ویدیوهای کوتاه', 'Short videos'),
                 style: TextStyle(fontSize: 17, fontWeight: FontWeight.w900))),
               TextButton(
                 onPressed: () => Navigator.push(context, MaterialPageRoute(
                   builder: (_) => ShortVideoFeedPage(videos: videos))),
-                child: const Text('ټولې وګورئ'),
+                child: Text(_tr('ټولې وګورئ', 'مشاهده همه', 'View all')),
               ),
             ]),
             SizedBox(
@@ -2356,7 +2358,7 @@ class _PoetryShellState extends State<PoetryShell> {
                 child: Row(children: [
                   Icon(Icons.search_rounded, color: colors.primary, size: 23),
                   const SizedBox(width: 12),
-                  Expanded(child: Text('د شعر، شاعر او کټګورۍ لټون...',
+                  Expanded(child: Text(_tr('د شعر، شاعر او کټګورۍ لټون...', 'جستجوی شعر، شاعر و دسته‌بندی...', 'Search poems, poets and categories...'),
                     style: TextStyle(color: colors.onSurfaceVariant, fontSize: 13))),
                   Icon(Icons.tune_rounded, color: colors.primary, size: 20),
                 ]),
@@ -2366,7 +2368,7 @@ class _PoetryShellState extends State<PoetryShell> {
         SliverToBoxAdapter(child: _TypingCoupletBox(poems: poems, onPoemTap: _openPoem)),
         SliverPadding(padding: const EdgeInsets.fromLTRB(16, 8, 16, 9),
           sliver: SliverToBoxAdapter(child: _sectionHeader(Icons.auto_stories_rounded,
-            'د شعرونو ټولګه', '${visible.length} شعرونه'))),
+            _tr('د شعرونو ټولګه', 'مجموعه شعرها', 'Poem collection'), '${visible.length} ' + _tr('شعرونه', 'شعر', 'poems')))),
         if (visible.isEmpty)
           const SliverToBoxAdapter(child: Padding(padding: EdgeInsets.all(20),
             child: Center(child: Text('په دې لټون کې څه پیدا نه شول.'))))
@@ -2381,8 +2383,8 @@ class _PoetryShellState extends State<PoetryShell> {
           sliver: SliverToBoxAdapter(
             child: _sectionHeader(
               Icons.category_rounded,
-              'د شعرونو موضوعي کټګورۍ',
-              '${_offlineCategories.length} کټګورۍ',
+              _tr('د شعرونو موضوعي کټګورۍ', 'دسته‌بندی موضوعی شعرها', 'Poetry categories'),
+              '${_offlineCategories.length} ' + _tr('کټګورۍ', 'دسته', 'categories'),
             ),
           ),
         ),
@@ -2782,9 +2784,9 @@ class _PoetryShellState extends State<PoetryShell> {
                 ? Icon(Icons.person_rounded, color: colors.primary, size: 29) : null),
             const SizedBox(width: 13),
             Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              const Text('زما پروفایل', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 14)),
+              Text(_tr('زما پروفایل', 'پروفایل من', 'My profile'), style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 14)),
               const SizedBox(height: 4),
-              Text(_profileName.isEmpty ? 'د تبصرو لپاره خپل نوم ثبت کړئ' : _profileName,
+              Text(_profileName.isEmpty ? _tr('د تبصرو لپاره خپل نوم ثبت کړئ', 'برای نظر دادن نام خود را ثبت کنید', 'Set your name to comment') : _profileName,
                 style: TextStyle(fontSize: 11, color: colors.onSurfaceVariant)),
             ])),
             Icon(Icons.edit_rounded, color: colors.primary),
@@ -2805,11 +2807,11 @@ class _PoetryShellState extends State<PoetryShell> {
             border: Border.all(color: colors.outlineVariant.withValues(alpha: .55))),
           child: Row(children: [
             Expanded(child: _appearanceChoice(
-              icon: Icons.light_mode_rounded, title: 'روښانه',
+              icon: Icons.light_mode_rounded, title: _tr('روښانه', 'روشن', 'Light'),
               selected: !dark, onTap: () { if (dark) widget.onTheme(); })),
             const SizedBox(width: 7),
             Expanded(child: _appearanceChoice(
-              icon: Icons.dark_mode_rounded, title: 'تیاره',
+              icon: Icons.dark_mode_rounded, title: _tr('تیاره', 'تیره', 'Dark'),
               selected: dark, onTap: () { if (!dark) widget.onTheme(); })),
           ]),
         ),
@@ -2894,10 +2896,33 @@ class _PoetryShellState extends State<PoetryShell> {
             borderRadius: BorderRadius.circular(22),
             border: Border.all(color: colors.outlineVariant.withValues(alpha: .55))),
           child: Column(children: [
-            ListTile(
-              leading: _settingsIcon(Icons.text_fields_rounded, colors.primary),
-              title: Text(widget.language == 'en' ? 'Text size' : widget.language == 'fa' ? 'اندازه نوشته' : 'د لیکنو اندازه', style: const TextStyle(fontWeight: FontWeight.w800)),
-              subtitle: Slider(value: widget.textScale, min: .85, max: 1.30, divisions: 9, label: '${(widget.textScale * 100).round()}%', onChanged: widget.onTextScaleChanged)),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 10),
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Row(children: [
+                  _settingsIcon(Icons.text_fields_rounded, colors.primary),
+                  const SizedBox(width: 11),
+                  Expanded(child: Text(_tr('د لیکنو اندازه', 'اندازه نوشته', 'Text size'),
+                    style: const TextStyle(fontWeight: FontWeight.w800))),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                    decoration: BoxDecoration(color: colors.primaryContainer, borderRadius: BorderRadius.circular(20)),
+                    child: Text('${(widget.textScale * 100).round()}%',
+                      style: TextStyle(color: colors.primary, fontWeight: FontWeight.w900, fontSize: 11)),
+                  ),
+                ]),
+                Slider(
+                  value: widget.textScale.clamp(.85, 1.30).toDouble(),
+                  min: .85, max: 1.30, divisions: 9,
+                  label: '${(widget.textScale * 100).round()}%',
+                  onChanged: widget.onTextScaleChanged,
+                ),
+                Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+                  Text(_tr('کوچنی', 'کوچک', 'Small'), style: TextStyle(fontSize: 10, color: colors.onSurfaceVariant)),
+                  Text(_tr('لوی', 'بزرگ', 'Large'), style: TextStyle(fontSize: 10, color: colors.onSurfaceVariant)),
+                ]),
+              ]),
+            ),
             Divider(height: 1, indent: 16, endIndent: 16, color: colors.outlineVariant.withValues(alpha: .5)),
             SwitchListTile(secondary: _settingsIcon(Icons.notifications_active_rounded, colors.primary), title: Text(widget.language == 'en' ? 'Notifications' : widget.language == 'fa' ? 'اعلان‌ها' : 'خبرتیاوې', style: const TextStyle(fontWeight: FontWeight.w800)), subtitle: Text(widget.language == 'en' ? 'Notification preference' : widget.language == 'fa' ? 'تنظیم اعلان‌ها' : 'د خبرتیاوو تنظیم'), value: widget.notificationsEnabled, onChanged: widget.onNotificationsChanged),
             Divider(height: 1, indent: 16, endIndent: 16, color: colors.outlineVariant.withValues(alpha: .5)),
@@ -2911,9 +2936,9 @@ class _PoetryShellState extends State<PoetryShell> {
             Divider(height: 1, indent: 16, endIndent: 16, color: colors.outlineVariant.withValues(alpha: .5)),
             ListTile(
               leading: _settingsIcon(Icons.restart_alt_rounded, colors.primary),
-              title: const Text('اصلي تنظیمات بېرته فعالول',
-                style: TextStyle(fontWeight: FontWeight.w800)),
-              subtitle: const Text('ټول رنګونه او فونټ لومړني حالت ته ستنوي.'),
+              title: Text(_tr('اصلي تنظیمات بېرته فعالول', 'بازگرداندن تنظیمات پیش‌فرض', 'Reset settings to default'),
+                style: const TextStyle(fontWeight: FontWeight.w800)),
+              subtitle: Text(_tr('ټول رنګونه او فونټ لومړني حالت ته ستنوي.', 'همه رنگ‌ها و قلم‌ها را به حالت نخست برمی‌گرداند.', 'Restores colors and fonts to their defaults.')),
               trailing: const Icon(Icons.chevron_left_rounded),
               onTap: () => _showResetConfirmation(),
             ),
@@ -2921,14 +2946,14 @@ class _PoetryShellState extends State<PoetryShell> {
               color: colors.outlineVariant.withValues(alpha: .5)),
             ListTile(
               leading: _settingsIcon(Icons.auto_stories_rounded, colors.secondary),
-              title: const Text('ادبي خزانه', style: TextStyle(fontWeight: FontWeight.w800)),
-              subtitle: const Text('د پښتو شعر او ادب نړۍ'),
+              title: Text(_tr('ادبي خزانه', 'گنجینه ادبی', 'Literary Treasury'), style: const TextStyle(fontWeight: FontWeight.w800)),
+              subtitle: Text(_tr('د پښتو شعر او ادب نړۍ', 'جهان شعر و ادب پشتو', 'The world of Pashto poetry and literature')),
               trailing: const Text('۱.۰.۰', style: TextStyle(fontWeight: FontWeight.w800)),
             ),
           ]),
         ),
         const SizedBox(height: 20),
-        Center(child: Text('په مینه، د پښتو ادب لپاره',
+        Center(child: Text(_tr('په مینه، د پښتو ادب لپاره', 'با مهر، برای ادبیات پشتو', 'With love, for Pashto literature'),
           style: TextStyle(color: colors.primary, fontSize: 12, fontWeight: FontWeight.w800))),
       ],
     );
