@@ -26,13 +26,13 @@ String parseFormatting(String text) {
   var source = esc(text.replaceAll('\r\n', '\n').replaceAll('\r', '\n'));
   final protected = <String>[];
   String protect(String html) {
-    final token = '\uE000\${protected.length}\uE001';
+    final token = '\uE000${protected.length}\uE001';
     protected.add(html);
     return token;
   }
 
   source = source.replaceAllMapped(RegExp(r'\x60([^\x60\n]+)\x60'), (m) =>
-      protect('<code>\${m[1]}</code>'));
+      protect('<code>${m[1]}</code>'));
   source = source.replaceAllMapped(
     RegExp(r'(https?://[^\s<>]+|www\.[^\s<>]+)', caseSensitive: false),
     (m) {
@@ -44,7 +44,7 @@ String parseFormatting(String text) {
       }
       if (url.isEmpty) return m[0]!;
       final href = url.toLowerCase().startsWith('www.') ? 'https://$url' : url;
-      return protect('<a href="\${esc(href)}">\${url}</a>') + suffix;
+      return protect('<a href="${esc(href)}">${url}</a>') + suffix;
     },
   );
 
@@ -58,7 +58,7 @@ String parseFormatting(String text) {
     while (previous != source) {
       previous = source;
       source = source.replaceAllMapped(entry.key, (m) =>
-          entry.value.replaceFirst(r'\$1', m[1]!));
+          entry.value.replaceFirst(r'$1', m[1]!));
     }
   }
 
@@ -69,11 +69,11 @@ String parseFormatting(String text) {
   final lines = <String>[];
   for (final line in source.split('\n')) {
     if (line.startsWith('&gt; ')) {
-      lines.add('<blockquote>\${line.substring(5)}</blockquote>');
+      lines.add('<blockquote>${line.substring(5)}</blockquote>');
     } else if (RegExp(r'^-\s+').hasMatch(line)) {
-      lines.add('<ul><li>\${line.replaceFirst(RegExp(r'^-\s+'), '')}</li></ul>');
+      lines.add('<ul><li>${line.replaceFirst(RegExp(r'^-\s+'), '')}</li></ul>');
     } else if (RegExp(r'^\d+\.\s+').hasMatch(line)) {
-      lines.add('<ol><li>\${line.replaceFirst(RegExp(r'^\d+\.\s+'), '')}</li></ol>');
+      lines.add('<ol><li>${line.replaceFirst(RegExp(r'^\d+\.\s+'), '')}</li></ol>');
     } else {
       lines.add(line);
     }
