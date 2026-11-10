@@ -1645,11 +1645,10 @@ class _PoetryShellState extends State<PoetryShell> {
   Widget _buildDrawer() {
     final colors = Theme.of(context).colorScheme;
     return Drawer(
-      width: 320,
-      elevation: 18,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.horizontal(left: Radius.circular(30)),
-      ),
+      width: 332,
+      elevation: 24,
+      backgroundColor: colors.surface,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
       child: SafeArea(
         child: Column(
           children: [
@@ -1657,19 +1656,21 @@ class _PoetryShellState extends State<PoetryShell> {
               padding: const EdgeInsets.fromLTRB(14, 12, 14, 18),
               child: Container(
                 width: double.infinity,
-                padding: const EdgeInsets.fromLTRB(18, 22, 18, 20),
+                padding: const EdgeInsets.fromLTRB(19, 24, 19, 22),
                 decoration: BoxDecoration(
                   gradient: const LinearGradient(
                     begin: Alignment.topRight,
                     end: Alignment.bottomLeft,
                     colors: [Color(0xFF153F37), Color(0xFF245B50), Color(0xFFB77928)],
                   ),
-                  borderRadius: BorderRadius.circular(27),
+                  borderRadius: BorderRadius.circular(29),
+                  border: Border.all(color: Colors.white.withValues(alpha: .20)),
                   boxShadow: [
                     BoxShadow(
-                      color: const Color(0xFF7652CE).withValues(alpha: .28),
-                      blurRadius: 22,
-                      offset: const Offset(0, 10),
+                      color: const Color(0xFF153F37).withValues(alpha: .30),
+                      blurRadius: 28,
+                      spreadRadius: 1,
+                      offset: const Offset(0, 12),
                     ),
                   ],
                 ),
@@ -1969,26 +1970,154 @@ class _PoetryShellState extends State<PoetryShell> {
     _exitDialogOpen = true;
     final shouldExit = await showDialog<bool>(
       context: context,
-      barrierDismissible: false,
-      builder: (dialogContext) => AlertDialog(
-        icon: const Icon(Icons.exit_to_app_rounded, size: 30),
-        title: const Text('له اپلیکیشن څخه وتل؟',
-          textAlign: TextAlign.center),
-        content: const Text('ایا ډاډه یاست چې غواړئ له ادبي خزانه څخه ووځئ؟',
-          textAlign: TextAlign.center),
-        actionsAlignment: MainAxisAlignment.spaceEvenly,
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext, false),
-            child: const Text('نه، پاتې کېږم'),
+      barrierDismissible: true,
+      barrierColor: Colors.black.withValues(alpha: .62),
+      builder: (dialogContext) {
+        final colors = Theme.of(dialogContext).colorScheme;
+        return Dialog(
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          insetPadding: const EdgeInsets.symmetric(horizontal: 28),
+          child: Container(
+            decoration: BoxDecoration(
+              color: colors.surface,
+              borderRadius: BorderRadius.circular(30),
+              border: Border.all(
+                color: colors.outlineVariant.withValues(alpha: .55),
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: .24),
+                  blurRadius: 35,
+                  offset: const Offset(0, 18),
+                ),
+              ],
+            ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(29),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.fromLTRB(22, 25, 22, 23),
+                    decoration: const BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topRight,
+                        end: Alignment.bottomLeft,
+                        colors: [
+                          Color(0xFF153F37),
+                          Color(0xFF246052),
+                          Color(0xFFB77928),
+                        ],
+                      ),
+                    ),
+                    child: Column(
+                      children: [
+                        Container(
+                          width: 76,
+                          height: 76,
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: .16),
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                              color: Colors.white.withValues(alpha: .35),
+                              width: 1.4,
+                            ),
+                          ),
+                          child: const Icon(
+                            Icons.logout_rounded,
+                            color: Colors.white,
+                            size: 35,
+                          ),
+                        ),
+                        const SizedBox(height: 15),
+                        const Text(
+                          'له اپلیکیشن څخه وتل؟',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 19,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                        const SizedBox(height: 7),
+                        Text(
+                          'ایا غواړئ له ادبي خزانه څخه ووځئ؟',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            color: Colors.white.withValues(alpha: .88),
+                            fontSize: 12,
+                            height: 1.6,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(18, 19, 18, 18),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: OutlinedButton(
+                            style: OutlinedButton.styleFrom(
+                              minimumSize: const Size(0, 49),
+                              foregroundColor: colors.onSurface,
+                              side: BorderSide(
+                                color: colors.outlineVariant,
+                              ),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(16),
+                              ),
+                            ),
+                            onPressed: () =>
+                                Navigator.pop(dialogContext, false),
+                            child: const Text(
+                              'نه، پاتې کېږم',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 11),
+                        Expanded(
+                          child: FilledButton.icon(
+                            style: FilledButton.styleFrom(
+                              backgroundColor: colors.error,
+                              foregroundColor: colors.onError,
+                              minimumSize: const Size(0, 49),
+                              elevation: 2,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(16),
+                              ),
+                            ),
+                            onPressed: () =>
+                                Navigator.pop(dialogContext, true),
+                            icon: const Icon(
+                              Icons.logout_rounded,
+                              size: 17,
+                            ),
+                            label: const Text(
+                              'هو، ووځم',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w900,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ),
-          FilledButton.icon(
-            onPressed: () => Navigator.pop(dialogContext, true),
-            icon: const Icon(Icons.exit_to_app_rounded, size: 18),
-            label: const Text('هو، ووځم'),
-          ),
-        ],
-      ),
+        );
+      },
     );
     _exitDialogOpen = false;
     if (shouldExit == true && mounted) {
