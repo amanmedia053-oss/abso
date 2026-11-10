@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:flutter/gestures.dart';
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:lottie/lottie.dart';
@@ -14,6 +15,179 @@ import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 import 'package:webview_flutter_android/webview_flutter_android.dart';
+import 'package:url_launcher/url_launcher.dart';
+
+/// Safe WhatsApp-like formatting parser. HTML escaping always happens first.
+String parseFormatting(String text) {
+  String esc(String s) => s.replaceAll('&', '&amp;').replaceAll('<', '&lt;')
+      .replaceAll('>', '&gt;').replaceAll('"', '&quot;').replaceAll("'", '&#39;');
+  var source = esc(text.replaceAll('\r\n', '\n').replaceAll('\r', '\n'));
+  final protected = <String>[];
+  String protect(String html) {
+    final token = '\uE000' + protected.length.toString() + '\uE001';
+    protected.add(html);
+    return token;
+  }
+  source = source.replaceAllMapped(RegExp(r'\x60([^\x60\n]+)\x60'),
+      (m) => protect('<code>' + m[1]! + '</code>'));
+  source = source.replaceAllMapped(
+    RegExp(r'(https?://[^\s<>]+|www\.[^\s<>]+)', caseSensitive: false),
+    (m) {
+      var url = m[0]!;
+      var suffix = '';
+      while (url.isNotEmpty && RegExp(r'[.,!?;:،؛؟)\]}»]$').hasMatch(url)) {
+        suffix = url.substring(url.length - 1) + suffix;
+        url = url.substring(0, url.length - 1);
+      }
+      if (url.isEmpty) return m[0]!;
+      final href = url.toLowerCase().startsWith('www.') ? 'https://' + url : url;
+      return protect('<a href="' + esc(href) + '">' + url + '</a>') + suffix;
+    },
+  );
+  final rules = <RegExp>[
+    RegExp(r'(?<!_)_([^_\n]+)_(?!_)'),
+    RegExp(r'(?<!~)~([^~\n]+)~(?!~)'),
+    RegExp(r'(?<!\*)\*([^*\n]+)\*(?!\*)'),
+  ];
+  const opens = ['<em>', '<del>', '<strong>'];
+  const closes = ['</em>', '</del>', '</strong>'];
+  for (var i = 0; i < rules.length; i++) {
+    var previous = '';
+    while (previous != source) {
+      previous = source;
+      source = source.replaceAllMapped(rules[i], (m) => opens[i] + m[1]! + closes[i]);
+    }
+  }
+  for (var i = 0; i < protected.length; i++) {
+    source = source.replaceAll('\uE000' + i.toString() + '\uE001', protected[i]);
+  }
+  final lines = <String>[];
+  for (final line in source.split('\n')) {
+    if (line.startsWith('&gt; ')) {
+      lines.add('<blockquote>' + line.substring(5) + '</blockquote>');
+    } else if (RegExp(r'^-\s+').hasMatch(line)) {
+      lines.add('<ul><li>' + line.replaceFirst(RegExp(r'^-\s+'), '') + '</li></ul>');
+    } else if (RegExp(r'^\d+\.\s+').hasMatch(line)) {
+      lines.add('<ol><li>' + line.replaceFirst(RegExp(r'^\d+\.\s+'), '') + '</li></ol>');
+    } else {
+      lines.add(line);
+    }
+  }
+  return lines.join('<br>');
+}
+
+String _decodeFormattingEntities(String value) => value
+    .replaceAll('&nbsp;', ' ').replaceAll('&#39;', "'")
+    .replaceAll('&quot;', '"').replaceAll('&gt;', '>')
+    .replaceAll('&lt;', '<').replaceAll('&amp;', '&');
+
+class FormattedText extends StatefulWidget {
+  const FormattedText(this.text, {super.key, this.style,
+    this.textAlign = TextAlign.start, this.maxLines,
+    this.overflow = TextOverflow.clip, this.linkColor});
+  final String text;
+  final TextStyle? style;
+  final TextAlign textAlign;
+  final int? maxLines;
+  final TextOverflow overflow;
+  final Color? linkColor;
+  @override
+  State<FormattedText> createState() => _FormattedTextState();
+}
+
+class _FormattedTextState extends State<FormattedText> {
+  final List<TapGestureRecognizer> _recognizers = [];
+  @override
+  void dispose() {
+    for (final recognizer in _recognizers) { recognizer.dispose(); }
+    super.dispose();
+  }
+  TextSpan _makeSpan(String html, TextStyle base) {
+    final children = <InlineSpan>[];
+    final styles = <TextStyle>[];
+    final hrefs = <String?>[];
+    var style = base;
+    String? href;
+    var ordered = false;
+    var number = 0;
+    final tags = RegExp(r'(<[^>]+>)');
+    var cursor = 0;
+    void addText(String raw) {
+      if (raw.isEmpty) return;
+      TapGestureRecognizer? recognizer;
+      if (href != null) {
+        final link = href!;
+        recognizer = TapGestureRecognizer()..onTap = () {
+          final uri = Uri.tryParse(link);
+          if (uri != null && (uri.scheme == 'http' || uri.scheme == 'https')) {
+            launchUrl(uri, mode: LaunchMode.externalApplication);
+          }
+        };
+        _recognizers.add(recognizer);
+      }
+      children.add(TextSpan(text: _decodeFormattingEntities(raw),
+        style: style, recognizer: recognizer));
+    }
+    for (final match in tags.allMatches(html)) {
+      addText(html.substring(cursor, match.start));
+      final tag = match.group(0)!;
+      final closing = tag.startsWith('</');
+      final name = RegExp(r'^</?([a-zA-Z0-9]+)')
+          .firstMatch(tag)?.group(1)?.toLowerCase() ?? '';
+      if (name == 'br') {
+        children.add(const TextSpan(text: '\n'));
+      } else if (closing) {
+        if (name == 'li' || name == 'blockquote') children.add(const TextSpan(text: '\n'));
+        if (name == 'ol') ordered = false;
+        if (styles.isNotEmpty) style = styles.removeLast();
+        if (hrefs.isNotEmpty) href = hrefs.removeLast();
+      } else if (name == 'ul') {
+        ordered = false;
+      } else if (name == 'ol') {
+        ordered = true;
+        number = 0;
+      } else if (name == 'li') {
+        children.add(TextSpan(text: ordered ? (++number).toString() + '. ' : '• ',
+          style: style.copyWith(fontWeight: FontWeight.w900)));
+        styles.add(style);
+        hrefs.add(href);
+      } else {
+        styles.add(style);
+        hrefs.add(href);
+        switch (name) {
+          case 'strong': style = style.copyWith(fontWeight: FontWeight.w900); break;
+          case 'em': style = style.copyWith(fontStyle: FontStyle.italic); break;
+          case 'del': style = style.copyWith(decoration: TextDecoration.lineThrough); break;
+          case 'code':
+            style = style.copyWith(fontFamily: 'monospace',
+              backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest);
+            break;
+          case 'blockquote':
+            style = style.copyWith(fontStyle: FontStyle.italic,
+              color: widget.linkColor ?? Theme.of(context).colorScheme.primary);
+            break;
+          case 'a':
+            href = RegExp(r'href="([^"]+)"').firstMatch(tag)?.group(1)?.replaceAll('&amp;', '&');
+            style = style.copyWith(color: widget.linkColor ?? Theme.of(context).colorScheme.primary,
+              decoration: TextDecoration.underline);
+            break;
+        }
+      }
+      cursor = match.end;
+    }
+    addText(html.substring(cursor));
+    return TextSpan(children: children, style: base);
+  }
+  @override
+  Widget build(BuildContext context) {
+    for (final recognizer in _recognizers) { recognizer.dispose(); }
+    _recognizers.clear();
+    final base = widget.style ?? DefaultTextStyle.of(context).style;
+    return Directionality(textDirection: TextDirection.rtl,
+      child: Text.rich(_makeSpan(parseFormatting(widget.text), base),
+        textAlign: widget.textAlign, maxLines: widget.maxLines, overflow: widget.overflow));
+  }
+}
 
 const String cloudinaryCloudName = 'a3p2c6bi';
 const String cloudinaryUploadPreset = 'adabi_gallery';
