@@ -499,10 +499,6 @@ class _AccountAccessPageState extends State<AccountAccessPage> {
                   onPressed: busy ? null : _continueAsGuest,
                   icon: const Icon(Icons.person_outline_rounded),
                   label: const Text('د مېلمه په توګه دوام')),
-                const SizedBox(height: 8),
-                Text('مېلمه حساب د محدودو ځانګړنو لپاره دی؛ د شعرونو د تبصرو او شخصي حساب لپاره ایمیل وکاروئ.',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(color: c.onSurfaceVariant, fontSize: 11)),
               ],
               if (busy) const Padding(padding: EdgeInsets.all(12),
                 child: Center(child: CircularProgressIndicator())),
@@ -647,6 +643,9 @@ class _OnboardingScreenState extends State<OnboardingScreen>
     with TickerProviderStateMixin {
   final PageController pageController = PageController();
   int page = 0;
+  late final AnimationController _artController = AnimationController(
+    vsync: this, duration: const Duration(milliseconds: 1800),
+  )..repeat(reverse: true);
 
   static const List<_IntroSlide> slides = [
     _IntroSlide(
@@ -710,6 +709,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
   @override
   void dispose() {
     pageController.dispose();
+    _artController.dispose();
     super.dispose();
   }
 
@@ -730,16 +730,9 @@ class _OnboardingScreenState extends State<OnboardingScreen>
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Scaffold(
-        backgroundColor: const Color(0xFF101915),
-        body: AnimatedContainer(
-          duration: const Duration(milliseconds: 650),
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topRight,
-              end: Alignment.bottomLeft,
-              colors: slide.colors,
-            ),
-          ),
+        backgroundColor: Colors.white,
+        body: ColoredBox(
+          color: Colors.white,
           child: SafeArea(
             child: Padding(
               padding: const EdgeInsets.fromLTRB(22, 12, 22, 22),
@@ -751,18 +744,18 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 8),
                         decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.13),
+                          color: const Color(0xFFF4F5F3),
                           borderRadius: BorderRadius.circular(30),
-                          border: Border.all(color: Colors.white24),
+                          border: Border.all(color: const Color(0xFFE8EBE8)),
                         ),
                         child: Text(
                           '${slide.number}  /  07',
-                          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700),
+                          style: const TextStyle(color: Color(0xFF34423B), fontWeight: FontWeight.w700),
                         ),
                       ),
                       TextButton(
                         onPressed: widget.onDone,
-                        child: const Text('تېرېدل', style: TextStyle(color: Colors.white70, fontSize: 14)),
+                        child: const Text('تېرېدل', style: TextStyle(color: Color(0xFF66736C), fontSize: 14)),
                       ),
                     ],
                   ),
@@ -791,52 +784,67 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                                 width: double.infinity,
                                 height: 330,
                                 decoration: BoxDecoration(
-                                  color: Colors.white.withValues(alpha: 0.10),
+                                  color: const Color(0xFFFAFBFA),
                                   borderRadius: BorderRadius.circular(34),
-                                  border: Border.all(color: Colors.white.withValues(alpha: 0.20)),
+                                  border: Border.all(color: const Color(0xFFEEF0EE)),
                                   boxShadow: [
                                     BoxShadow(
-                                      color: Colors.black.withValues(alpha: 0.12),
-                                      blurRadius: 30,
-                                      offset: const Offset(0, 18),
+                                      color: const Color(0xFF24352B).withValues(alpha: 0.07),
+                                      blurRadius: 28,
+                                      offset: const Offset(0, 14),
                                     ),
                                   ],
                                 ),
                                 child: Stack(
                                   alignment: Alignment.center,
                                   children: [
-                                    Positioned(
-                                      top: 20,
-                                      right: 22,
-                                      child: _onboardingOrb(72, Colors.white.withValues(alpha: 0.08)),
-                                    ),
-                                    Positioned(
-                                      bottom: 22,
-                                      left: 18,
-                                      child: _onboardingOrb(48, Colors.white.withValues(alpha: 0.09)),
-                                    ),
-                                    Lottie.asset(
-                                      'assets/lottie/reading_book.json',
-                                      width: 260,
-                                      height: 260,
-                                      repeat: true,
-                                      fit: BoxFit.contain,
+                                    AnimatedBuilder(
+                                      animation: _artController,
+                                      builder: (context, child) {
+                                        final vertical = (_artController.value - 0.5) * 18;
+                                        final angle = (_artController.value - 0.5) * 0.10;
+                                        return Transform.translate(
+                                          offset: Offset(0, vertical),
+                                          child: Transform.rotate(angle: angle, child: child),
+                                        );
+                                      },
+                                      child: AnimatedSwitcher(
+                                        duration: const Duration(milliseconds: 420),
+                                        switchInCurve: Curves.easeOutBack,
+                                        switchOutCurve: Curves.easeIn,
+                                        transitionBuilder: (child, animation) =>
+                                            FadeTransition(
+                                              opacity: animation,
+                                              child: ScaleTransition(scale: animation, child: child),
+                                            ),
+                                        child: Container(
+                                          key: ValueKey<int>(index),
+                                          width: 190,
+                                          height: 190,
+                                          decoration: BoxDecoration(
+                                            color: const Color(0xFFF1F4F1),
+                                            shape: BoxShape.circle,
+                                            border: Border.all(color: const Color(0xFFE2E9E3), width: 1.5),
+                                          ),
+                                          child: Icon(item.icon, size: 100, color: const Color(0xFF285B45)),
+                                        ),
+                                      ),
                                     ),
                                     Positioned(
                                       bottom: 26,
                                       child: Container(
                                         padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 9),
                                         decoration: BoxDecoration(
-                                          color: Colors.white.withValues(alpha: 0.15),
+                                          color: const Color(0xFFEFF3EF),
                                           borderRadius: BorderRadius.circular(24),
-                                          border: Border.all(color: Colors.white30),
+                                          border: Border.all(color: const Color(0xFFDDE6DE)),
                                         ),
                                         child: Row(
                                           mainAxisSize: MainAxisSize.min,
                                           children: [
-                                            Icon(item.icon, color: Colors.white, size: 19),
+                                            Icon(item.icon, color: const Color(0xFF285B45), size: 19),
                                             const SizedBox(width: 8),
-                                            Text(item.tag, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700)),
+                                            Text(item.tag, style: const TextStyle(color: Color(0xFF285B45), fontWeight: FontWeight.w700)),
                                           ],
                                         ),
                                       ),
@@ -849,7 +857,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                                 item.title,
                                 textAlign: TextAlign.center,
                                 style: const TextStyle(
-                                  color: Colors.white,
+                                  color: const Color(0xFF202A24),
                                   fontSize: 27,
                                   height: 1.4,
                                   fontWeight: FontWeight.w900,
@@ -863,7 +871,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                                   item.description,
                                   textAlign: TextAlign.center,
                                   style: TextStyle(
-                                    color: Colors.white.withValues(alpha: 0.82),
+                                    color: const Color(0xFF68736C),
                                     fontSize: 15,
                                     height: 2,
                                     fontFamily: 'Vazirmatn',
@@ -886,7 +894,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                         width: active ? 27 : 7,
                         height: 7,
                         decoration: BoxDecoration(
-                          color: active ? Colors.white : Colors.white.withValues(alpha: 0.35),
+                          color: active ? const Color(0xFF285B45) : const Color(0xFFD9DFDA),
                           borderRadius: BorderRadius.circular(12),
                         ),
                       );
@@ -899,8 +907,8 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                     child: FilledButton(
                       onPressed: next,
                       style: FilledButton.styleFrom(
-                        backgroundColor: Colors.white,
-                        foregroundColor: const Color(0xFF18382E),
+                        backgroundColor: const Color(0xFF285B45),
+                        foregroundColor: Colors.white,
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
                         elevation: 0,
                       ),
