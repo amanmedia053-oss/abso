@@ -1539,12 +1539,8 @@ class _PoetryShellState extends State<PoetryShell> {
   Widget _luxuryBottomNavigation() {
     final colors = Theme.of(context).colorScheme;
     final dark = Theme.of(context).brightness == Brightness.dark;
-    const items = <(IconData, IconData, String)>[
-      (Icons.home_outlined, Icons.home_rounded, 'کور'),
-      (Icons.favorite_border_rounded, Icons.favorite_rounded, 'خوښ شوي'),
-      (Icons.info_outline_rounded, Icons.info_rounded, 'زموږ په اړه'),
-      (Icons.settings_outlined, Icons.settings_rounded, 'تنظیمات'),
-    ];
+    final labels = widget.language == 'en' ? ['Home','Favorites','About','Settings'] : widget.language == 'fa' ? ['خانه','پسندیده‌ها','درباره ما','تنظیمات'] : ['کور','خوښ شوي','زموږ په اړه','تنظیمات'];
+    const items = <(IconData, IconData)>[(Icons.home_outlined,Icons.home_rounded),(Icons.favorite_border_rounded,Icons.favorite_rounded),(Icons.info_outline_rounded,Icons.info_rounded),(Icons.settings_outlined,Icons.settings_rounded)];
     return SafeArea(
       top: false,
       child: Container(
@@ -1573,7 +1569,7 @@ class _PoetryShellState extends State<PoetryShell> {
               child: Semantics(
                 button: true,
                 selected: selected,
-                label: item.$3,
+                label: labels[index],
                 child: InkWell(
                   borderRadius: BorderRadius.circular(17),
                   onTap: () => _selectPage(index),
@@ -1628,7 +1624,7 @@ class _PoetryShellState extends State<PoetryShell> {
                                 : colors.onSurfaceVariant,
                           ),
                           child: Text(
-                            item.$3,
+                            labels[index],
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             textAlign: TextAlign.center,
@@ -2666,8 +2662,12 @@ class _PoetryShellState extends State<PoetryShell> {
           ])),
         )),
         const SizedBox(height: 14),
+        _settingsHeading(Icons.translate_rounded, widget.language == 'en' ? 'App language' : widget.language == 'fa' ? 'زبان برنامه' : 'د اپلیکیشن ژبه'),
+        const SizedBox(height: 9),
+        Container(decoration: BoxDecoration(color: colors.surface, borderRadius: BorderRadius.circular(20), border: Border.all(color: colors.outlineVariant.withValues(alpha: .55))),
+          child: Column(children: [_languageOption('ps', 'پښتو', 'اصلي ژبه'), Divider(height: 1, indent: 16, endIndent: 16, color: colors.outlineVariant), _languageOption('fa', 'دری', 'زبان دری'), Divider(height: 1, indent: 16, endIndent: 16, color: colors.outlineVariant), _languageOption('en', 'English', 'English interface')])),
         const SizedBox(height: 20),
-        _settingsHeading(Icons.nightlight_round, 'د ښودنې بڼه'),
+        _settingsHeading(Icons.nightlight_round, widget.language == 'en' ? 'Appearance' : widget.language == 'fa' ? 'نمایش' : 'د ښودنې بڼه'),
         const SizedBox(height: 10),
         Container(
           padding: const EdgeInsets.all(7),
@@ -2685,7 +2685,7 @@ class _PoetryShellState extends State<PoetryShell> {
           ]),
         ),
         const SizedBox(height: 23),
-        _settingsHeading(Icons.font_download_rounded, 'د لیکدود فونټونه'),
+        _settingsHeading(Icons.font_download_rounded, widget.language == 'en' ? 'Font style' : widget.language == 'fa' ? 'قلم نوشتار' : 'د لیکدود فونټونه'),
         const SizedBox(height: 9),
         ...fonts.map((font) {
           final selected = widget.fontName == font['name'];
@@ -2723,7 +2723,7 @@ class _PoetryShellState extends State<PoetryShell> {
           );
         }),
         const SizedBox(height: 14),
-        _settingsHeading(Icons.color_lens_rounded, 'د اپلیکیشن رنګونه'),
+        _settingsHeading(Icons.color_lens_rounded, widget.language == 'en' ? 'App colors' : widget.language == 'fa' ? 'رنگ‌های برنامه' : 'د اپلیکیشن رنګونه'),
         const SizedBox(height: 10),
         Container(
           padding: const EdgeInsets.all(16),
@@ -2758,13 +2758,28 @@ class _PoetryShellState extends State<PoetryShell> {
           ),
         ),
         const SizedBox(height: 23),
-        _settingsHeading(Icons.settings_suggest_rounded, 'نور انتخابونه'),
+        _settingsHeading(Icons.settings_suggest_rounded, widget.language == 'en' ? 'More options' : widget.language == 'fa' ? 'گزینه‌های بیشتر' : 'نور انتخابونه'),
         const SizedBox(height: 10),
         Container(
           decoration: BoxDecoration(color: colors.surface,
             borderRadius: BorderRadius.circular(22),
             border: Border.all(color: colors.outlineVariant.withValues(alpha: .55))),
           child: Column(children: [
+            ListTile(
+              leading: _settingsIcon(Icons.text_fields_rounded, colors.primary),
+              title: Text(widget.language == 'en' ? 'Text size' : widget.language == 'fa' ? 'اندازه نوشته' : 'د لیکنو اندازه', style: const TextStyle(fontWeight: FontWeight.w800)),
+              subtitle: Slider(value: widget.textScale, min: .85, max: 1.30, divisions: 9, label: '${(widget.textScale * 100).round()}%', onChanged: widget.onTextScaleChanged)),
+            Divider(height: 1, indent: 16, endIndent: 16, color: colors.outlineVariant.withValues(alpha: .5)),
+            SwitchListTile(secondary: _settingsIcon(Icons.notifications_active_rounded, colors.primary), title: Text(widget.language == 'en' ? 'Notifications' : widget.language == 'fa' ? 'اعلان‌ها' : 'خبرتیاوې', style: const TextStyle(fontWeight: FontWeight.w800)), subtitle: Text(widget.language == 'en' ? 'Notification preference' : widget.language == 'fa' ? 'تنظیم اعلان‌ها' : 'د خبرتیاوو تنظیم'), value: widget.notificationsEnabled, onChanged: widget.onNotificationsChanged),
+            Divider(height: 1, indent: 16, endIndent: 16, color: colors.outlineVariant.withValues(alpha: .5)),
+            ListTile(leading: _settingsIcon(Icons.cleaning_services_rounded, colors.primary), title: Text(widget.language == 'en' ? 'Clear cached data' : widget.language == 'fa' ? 'پاک‌کردن حافظه موقت' : 'د لنډمهاله حافظې پاکول', style: const TextStyle(fontWeight: FontWeight.w800)), subtitle: Text(widget.language == 'en' ? 'Remove locally cached poems and lists' : widget.language == 'fa' ? 'پاک‌کردن نسخه‌های موقت شعرها و فهرست‌ها' : 'په موبایل کې د شعرونو او لېستونو لنډمهاله کاپي پاکوي'), onTap: _confirmClearCache),
+            Divider(height: 1, indent: 16, endIndent: 16, color: colors.outlineVariant.withValues(alpha: .5)),
+            ListTile(leading: _settingsIcon(Icons.privacy_tip_rounded, colors.primary), title: Text(widget.language == 'en' ? 'Privacy and security' : widget.language == 'fa' ? 'حریم خصوصی و امنیت' : 'محرمیت او امنیت', style: const TextStyle(fontWeight: FontWeight.w800)), onTap: _showPrivacyInfo),
+            Divider(height: 1, indent: 16, endIndent: 16, color: colors.outlineVariant.withValues(alpha: .5)),
+            ListTile(leading: _settingsIcon(Icons.support_agent_rounded, colors.primary), title: Text(widget.language == 'en' ? 'Contact administrator' : widget.language == 'fa' ? 'تماس با مدیر' : 'له مدیر سره اړیکه', style: const TextStyle(fontWeight: FontWeight.w800)), subtitle: Text(widget.language == 'en' ? 'Contact details are not configured' : widget.language == 'fa' ? 'اطلاعات تماس ثبت نشده' : 'د اړیکې معلومات لا نه دي ثبت شوي'), onTap: _showContactInfo),
+            Divider(height: 1, indent: 16, endIndent: 16, color: colors.outlineVariant.withValues(alpha: .5)),
+            ListTile(leading: _settingsIcon(Icons.info_outline_rounded, colors.primary), title: Text(widget.language == 'en' ? 'App information' : widget.language == 'fa' ? 'معلومات برنامه' : 'د اپلیکیشن معلومات', style: const TextStyle(fontWeight: FontWeight.w800)), subtitle: const Text('Adabi Khazana • 1.0.0')),
+            Divider(height: 1, indent: 16, endIndent: 16, color: colors.outlineVariant.withValues(alpha: .5)),
             ListTile(
               leading: _settingsIcon(Icons.restart_alt_rounded, colors.primary),
               title: const Text('اصلي تنظیمات بېرته فعالول',
@@ -2788,6 +2803,27 @@ class _PoetryShellState extends State<PoetryShell> {
           style: TextStyle(color: colors.primary, fontSize: 12, fontWeight: FontWeight.w800))),
       ],
     );
+  }
+
+  Widget _languageOption(String code, String title, String subtitle) {
+    final colors = Theme.of(context).colorScheme;
+    final selected = widget.language == code;
+    return ListTile(onTap: () => widget.onLanguageChanged(code), leading: CircleAvatar(backgroundColor: selected ? colors.primaryContainer : colors.surfaceContainerHighest, child: Icon(Icons.language_rounded, color: selected ? colors.primary : colors.onSurfaceVariant)), title: Text(title, style: const TextStyle(fontWeight: FontWeight.w900)), subtitle: Text(subtitle), trailing: selected ? Icon(Icons.check_circle_rounded, color: colors.primary) : null);
+  }
+
+  void _confirmClearCache() {
+    final en = widget.language == 'en'; final fa = widget.language == 'fa';
+    showDialog<void>(context: context, builder: (ctx) => AlertDialog(title: Text(en ? 'Clear cached data?' : fa ? 'حافظه موقت پاک شود؟' : 'لنډمهاله معلومات پاک شي؟'), content: Text(en ? 'Only locally cached copies are removed. Online content is not deleted.' : fa ? 'فقط نسخه‌های موقت از موبایل پاک می‌شود؛ محتوای آنلاین حذف نمی‌شود.' : 'یوازې لنډمهاله کاپي له موبایل پاکېږي؛ آنلاین محتوا نه حذف کېږي.'), actions: [TextButton(onPressed: () => Navigator.pop(ctx), child: Text(en ? 'Cancel' : fa ? 'لغو' : 'نه')), FilledButton(onPressed: () async { Navigator.pop(ctx); await widget.onClearCache(); if (!mounted) return; _listenAgain(); ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(en ? 'Cached data cleared' : fa ? 'حافظه موقت پاک شد' : 'لنډمهاله معلومات پاک شول'))); }, child: Text(en ? 'Clear' : fa ? 'پاک شود' : 'پاکول'))]));
+  }
+
+  void _showPrivacyInfo() {
+    final en = widget.language == 'en'; final fa = widget.language == 'fa';
+    showDialog<void>(context: context, builder: (ctx) => AlertDialog(title: Text(en ? 'Privacy and security' : fa ? 'حریم خصوصی و امنیت' : 'محرمیت او امنیت'), content: Text(en ? 'Account details are used for sign-in and features that require an account. Never share your password. Browsing without signing in is supported.' : fa ? 'اطلاعات حساب برای ورود و قابلیت‌های نیازمند حساب استفاده می‌شود. رمز عبور خود را شریک نسازید. مرور برنامه بدون ورود ممکن است.' : 'د حساب معلومات د ننوتلو او هغو برخو لپاره کارېږي چې حساب ته اړتیا لري. خپل پټنوم له چا سره مه شریکوئ. اپلیکیشن بې له حسابه هم کتلای شئ.'), actions: [TextButton(onPressed: () => Navigator.pop(ctx), child: Text(en ? 'Close' : fa ? 'بستن' : 'بندول'))]));
+  }
+
+  void _showContactInfo() {
+    final en = widget.language == 'en'; final fa = widget.language == 'fa';
+    showDialog<void>(context: context, builder: (ctx) => AlertDialog(title: Text(en ? 'Contact administrator' : fa ? 'تماس با مدیر' : 'له مدیر سره اړیکه'), content: Text(en ? 'Contact details have not been configured by the administrator yet.' : fa ? 'مدیر هنوز اطلاعات تماس را ثبت نکرده است.' : 'مدیر تر اوسه د اړیکې معلومات نه دي ثبت کړي.'), actions: [TextButton(onPressed: () => Navigator.pop(ctx), child: Text(en ? 'Close' : fa ? 'بستن' : 'بندول'))]));
   }
 
   Widget _appearanceChoice({required IconData icon, required String title,
