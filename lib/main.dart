@@ -154,15 +154,7 @@ class _FormattedTextState extends State<FormattedText> {
       if (name == 'br') {
         children.add(const TextSpan(text: '\n'));
       } else if (closing) {
-        if (name == 'blockquote') {
-          children.add(TextSpan(text: ' ❞',
-            style: base.copyWith(fontSize: (base.fontSize ?? 14) * 1.45,
-              fontWeight: FontWeight.w900,
-              color: widget.linkColor ?? Theme.of(context).colorScheme.primary)));
-          children.add(const TextSpan(text: '\n'));
-        } else if (name == 'li') {
-          children.add(const TextSpan(text: '\n'));
-        }
+        if (name == 'li' || name == 'blockquote') children.add(const TextSpan(text: '\n'));
         if (name == 'ol') ordered = false;
         if (styles.isNotEmpty) style = styles.removeLast();
         if (hrefs.isNotEmpty) href = hrefs.removeLast();
@@ -189,13 +181,7 @@ class _FormattedTextState extends State<FormattedText> {
             break;
           case 'blockquote':
             style = style.copyWith(fontStyle: FontStyle.italic,
-              fontWeight: FontWeight.w700,
-              color: widget.linkColor ?? Theme.of(context).colorScheme.primary,
-              backgroundColor: Theme.of(context).colorScheme.primary.withValues(alpha: .09));
-            children.add(TextSpan(text: '❝ ',
-              style: base.copyWith(fontSize: (base.fontSize ?? 14) * 1.65,
-                fontWeight: FontWeight.w900,
-                color: widget.linkColor ?? Theme.of(context).colorScheme.primary)));
+              color: widget.linkColor ?? Theme.of(context).colorScheme.primary);
             break;
           case 'a':
             href = RegExp(r'href="([^"]+)"').firstMatch(tag)?.group(1)?.replaceAll('&amp;', '&');
@@ -4901,8 +4887,15 @@ class _PoetrySearchPageState extends State<PoetrySearchPage> {
                     title: Text(poem.title.isEmpty ? 'بې عنوانه شعر' : poem.title,
                       maxLines: 1, overflow: TextOverflow.ellipsis,
                       style: const TextStyle(fontWeight: FontWeight.w800)),
-                    subtitle: Text([poem.poet, poem.category].where((v) => v.isNotEmpty).join(' • '),
-                      maxLines: 1, overflow: TextOverflow.ellipsis),
+                    subtitle: Column(crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min, children: [
+                        if (poem.poet.isNotEmpty || poem.category.isNotEmpty)
+                          Text([poem.poet, poem.category].where((v) => v.isNotEmpty).join(' • '),
+                            maxLines: 1, overflow: TextOverflow.ellipsis),
+                        const SizedBox(height: 4),
+                        FormattedText(poem.text, maxLines: 2, overflow: TextOverflow.ellipsis,
+                          style: TextStyle(fontSize: 11, height: 1.55, color: c.onSurfaceVariant)),
+                      ]),
                     trailing: Icon(Icons.chevron_left_rounded, color: c.onSurfaceVariant),
                   ),
                 );
@@ -5152,6 +5145,9 @@ class _CollectionPoemsPageState extends State<CollectionPoemsPage> {
             overflow: TextOverflow.ellipsis, style: TextStyle(color: c.onSurface, fontWeight: FontWeight.w900)),
           if (poem.poet.isNotEmpty) Text(poem.poet,
             style: TextStyle(color: c.onSurfaceVariant, fontSize: 11)),
+          const SizedBox(height: 5),
+          FormattedText(poem.text, maxLines: 2, overflow: TextOverflow.ellipsis,
+            style: TextStyle(color: c.onSurfaceVariant, fontSize: 11, height: 1.55)),
         ])),
         Icon(Icons.chevron_left_rounded, color: c.onSurfaceVariant),
       ]))));
