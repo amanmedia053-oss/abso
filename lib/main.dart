@@ -5869,8 +5869,8 @@ class _PoemEditorState extends State<PoemEditor> {
     final value = text.value;
     final selection = value.selection.isValid ? value.selection :
       TextSelection.collapsed(offset: value.text.length);
-    final start = selection.start.clamp(0, value.text.length);
-    final end = selection.end.clamp(start, value.text.length);
+    final start = selection.start.clamp(0, value.text.length).toInt();
+    final end = selection.end.clamp(start, value.text.length).toInt();
     final selected = value.text.substring(start, end);
     String replacement;
     int cursor;
@@ -5889,7 +5889,7 @@ class _PoemEditorState extends State<PoemEditor> {
     }
     final next = value.text.replaceRange(start, end, replacement);
     text.value = TextEditingValue(text: next,
-      selection: TextSelection.collapsed(offset: cursor.clamp(0, next.length)));
+      selection: TextSelection.collapsed(offset: cursor.clamp(0, next.length).toInt()));
     setState(() {});
   }
 
