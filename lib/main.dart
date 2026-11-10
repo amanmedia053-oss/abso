@@ -2631,8 +2631,8 @@ class _PoetryShellState extends State<PoetryShell> {
                             Text(poem.title, maxLines: 1, overflow: TextOverflow.ellipsis,
                               style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w900)),
                             const SizedBox(height: 4),
-                            Text(poem.text.replaceAll('\\n', ' ').trim(), maxLines: 3, overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(color: Colors.white, fontSize: 11, height: 1.45, fontWeight: FontWeight.w600)),
+                            FormattedText(poem.text, maxLines: 3, overflow: TextOverflow.ellipsis,
+                               style: const TextStyle(color: Colors.white, fontSize: 11, height: 1.45, fontWeight: FontWeight.w600)),
                           ],
                         )),
                       ]))));
@@ -2982,11 +2982,8 @@ class _PoetryShellState extends State<PoetryShell> {
                 style: const TextStyle(color: Colors.white, fontSize: 20,
                   fontWeight: FontWeight.w900)),
               const SizedBox(height: 13),
-              ...poem.lines.take(2).map((line) => Padding(
-                padding: const EdgeInsets.only(bottom: 6),
-                child: Text(line, style: const TextStyle(color: Colors.white,
-                  fontSize: 13, height: 1.9, fontWeight: FontWeight.w600)),
-              )),
+              FormattedText(poem.text, maxLines: 2, overflow: TextOverflow.ellipsis,
+                style: const TextStyle(color: Colors.white, fontSize: 13, height: 1.9, fontWeight: FontWeight.w600)),
               const SizedBox(height: 9),
               Row(
                 children: [
@@ -3696,10 +3693,8 @@ class _PoetryShellState extends State<PoetryShell> {
               Container(width: double.infinity, padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 13),
                 decoration: BoxDecoration(color: colors.surfaceContainerHighest.withValues(alpha: .45), borderRadius: BorderRadius.circular(17)),
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  for (final line in poem.lines.take(3))
-                    Padding(padding: const EdgeInsets.only(bottom: 5),
-                      child: Text(line, maxLines: 1, overflow: TextOverflow.ellipsis,
-                        style: TextStyle(fontSize: 13, height: 1.8, color: colors.onSurface, fontWeight: FontWeight.w500))),
+                  FormattedText(poem.text, maxLines: 3, overflow: TextOverflow.ellipsis,
+                     style: TextStyle(fontSize: 13, height: 1.8, color: colors.onSurface, fontWeight: FontWeight.w500)),
                   if (poem.lines.length > 3) Text('... بشپړ شعر ولولئ', style: TextStyle(fontSize: 10, color: colors.primary, fontWeight: FontWeight.w800)),
                 ])),
               const SizedBox(height: 13),
@@ -5522,7 +5517,7 @@ class _PoemDetailScreenState extends State<PoemDetailScreen> {
             borderRadius: BorderRadius.circular(25),
             border: Border.all(color: c.outlineVariant.withValues(alpha: .65)),
             boxShadow: [BoxShadow(color: c.primary.withValues(alpha: .07), blurRadius: 18, offset: const Offset(0, 5))]),
-          child: SelectableText(poem.text, textAlign: TextAlign.center,
+          child: FormattedText(poem.text, textAlign: TextAlign.center,
             style: const TextStyle(fontSize: 18, height: 2.25, fontWeight: FontWeight.w600))),
         const SizedBox(height: 16),
         Row(children: [
@@ -5853,6 +5848,60 @@ class _PoemEditorState extends State<PoemEditor> {
     existingImageUrl = data['imageUrl']?.toString();
     featured = data['featured'] == true;
   }
+  void _formatSelection(String marker, {String? closing, bool prefixLines = false}) {
+    final value = text.value;
+    final selection = value.selection.isValid ? value.selection :
+      TextSelection.collapsed(offset: value.text.length);
+    final start = selection.start.clamp(0, value.text.length);
+    final end = selection.end.clamp(start, value.text.length);
+    final selected = value.text.substring(start, end);
+    String replacement;
+    int cursor;
+    if (prefixLines) {
+      replacement = selected.isEmpty ? marker :
+        selected.split('\n').map((line) => marker + line).join('\n');
+      cursor = start + replacement.length;
+    } else if (selected.isEmpty) {
+      final close = closing ?? marker;
+      replacement = marker + close;
+      cursor = start + marker.length;
+    } else {
+      final close = closing ?? marker;
+      replacement = marker + selected + close;
+      cursor = start + replacement.length;
+    }
+    final next = value.text.replaceRange(start, end, replacement);
+    text.value = TextEditingValue(text: next,
+      selection: TextSelection.collapsed(offset: cursor.clamp(0, next.length)));
+    setState(() {});
+  }
+
+  Widget _formatToolbar() {
+    final colors = Theme.of(context).colorScheme;
+    Widget tool(String label, IconData icon, VoidCallback action) => Tooltip(
+      message: label,
+      child: InkWell(borderRadius: BorderRadius.circular(11), onTap: action,
+        child: Container(width: 43, height: 40,
+          decoration: BoxDecoration(color: colors.primaryContainer.withValues(alpha: .55),
+            borderRadius: BorderRadius.circular(11),
+            border: Border.all(color: colors.outlineVariant.withValues(alpha: .5))),
+          child: Icon(icon, size: 20, color: colors.primary))),
+    );
+    return Container(padding: const EdgeInsets.all(9),
+      decoration: BoxDecoration(color: colors.surfaceContainerHighest.withValues(alpha: .45),
+        borderRadius: BorderRadius.circular(15)),
+      child: Wrap(spacing: 7, runSpacing: 7, children: [
+        tool('بولډ', Icons.format_bold_rounded, () => _formatSelection('*')),
+        tool('ايټاليک', Icons.format_italic_rounded, () => _formatSelection('_')),
+        tool('کرښه پرېکول', Icons.strikethrough_s_rounded, () => _formatSelection('~')),
+        tool('کوډ', Icons.code_rounded, () => _formatSelection(String.fromCharCode(96))),
+        tool('اقتباس', Icons.format_quote_rounded, () => _formatSelection('> ', prefixLines: true)),
+        tool('بولټ لست', Icons.format_list_bulleted_rounded, () => _formatSelection('- ', prefixLines: true)),
+        tool('شمېرل شوی لست', Icons.format_list_numbered_rounded, () => _formatSelection('1. ', prefixLines: true)),
+      ]),
+    );
+  }
+
   Future<void> save() async {
     if (text.text.trim().isEmpty || categoryId == null) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -5915,9 +5964,32 @@ class _PoemEditorState extends State<PoemEditor> {
           TextField(controller: title, decoration: const InputDecoration(
             labelText: 'د شعر عنوان (اختیاري)', border: OutlineInputBorder())),
           const SizedBox(height: 12),
+          _formatToolbar(),
+          const SizedBox(height: 9),
           TextField(controller: text, minLines: 5, maxLines: 12,
+            textDirection: TextDirection.rtl,
+            onChanged: (_) => setState(() {}),
             decoration: const InputDecoration(labelText: 'د شعر متن *',
+              helperText: 'د متن برخه وټاکئ، بیا د فارمېټ تڼۍ وکاروئ.',
               alignLabelWithHint: true, border: OutlineInputBorder())),
+          const SizedBox(height: 10),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: .45),
+              borderRadius: BorderRadius.circular(15),
+              border: Border.all(color: Theme.of(context).colorScheme.outlineVariant.withValues(alpha: .5))),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Row(children: [
+                Icon(Icons.visibility_rounded, size: 17, color: Theme.of(context).colorScheme.primary),
+                const SizedBox(width: 7),
+                const Text('ژوندۍ مخکتنه', style: TextStyle(fontWeight: FontWeight.w900)),
+              ]),
+              const SizedBox(height: 10),
+              FormattedText(text.text, style: const TextStyle(fontSize: 14, height: 1.9)),
+            ]),
+          ),
           const SizedBox(height: 12),
           DropdownButtonFormField<String>(
             value: categoryId, decoration: const InputDecoration(labelText: 'کټګوري *',
