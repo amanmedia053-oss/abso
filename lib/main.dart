@@ -59,7 +59,13 @@ class _AbsoAppState extends State<AbsoApp> {
   String appLanguage = 'ps';
   double appTextScale = 1.0;
   bool notificationsEnabled = true;
+  int _selectedShellPage = 0;
   Timer? _textScaleSaveTimer;
+
+  void _setSelectedShellPage(int page) {
+    if (_selectedShellPage == page) return;
+    setState(() => _selectedShellPage = page);
+  }
   // Keep the shell state (selected tab/page and open drawer) alive when
   // app-wide settings rebuild MaterialApp for theme, font, or language.
   final GlobalKey<_PoetryShellState> _poetryShellKey =
@@ -238,6 +244,8 @@ class _AbsoAppState extends State<AbsoApp> {
       appBuilder: () => AuthGate(
         child: PoetryShell(
           key: _poetryShellKey,
+          selectedPage: _selectedShellPage,
+          onSelectedPageChanged: _setSelectedShellPage,
           isDark: mode == ThemeMode.dark,
           fontName: selectedFont,
           accentColor: Color(selectedAccentValue),
@@ -978,6 +986,8 @@ class LocalPoetryCategory {
 class PoetryShell extends StatefulWidget {
   const PoetryShell({
     super.key,
+    required this.selectedPage,
+    required this.onSelectedPageChanged,
     required this.isDark,
     required this.fontName,
     required this.accentColor,
@@ -993,6 +1003,8 @@ class PoetryShell extends StatefulWidget {
     required this.onNotificationsChanged,
     required this.onClearCache,
   });
+  final int selectedPage;
+  final ValueChanged<int> onSelectedPageChanged;
   final bool isDark;
   final String fontName;
   final Color accentColor;
@@ -1020,6 +1032,8 @@ class _PoetryShellState extends State<PoetryShell> {
     final keepDrawerOpen = _isDrawerVisible ||
         (_shellScaffoldKey.currentState?.isDrawerOpen ?? false);
     final keepPage = selectedPage;
+    // Synchronize the selected page before the root appearance update.
+    widget.onSelectedPageChanged(keepPage);
 
     // Apply the selected preference immediately.
     action();
@@ -1048,8 +1062,18 @@ class _PoetryShellState extends State<PoetryShell> {
   void _toggleThemeInPlace() =>
       _applyWithoutClosing(widget.onTheme);
 
-  int selectedPage = 0;
+  late int selectedPage = widget.selectedPage;
   int _featuredIndex = 0;
+
+  @override
+  void didUpdateWidget(covariant PoetryShell oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Keep the selected tab authoritative in the app root, so a rebuild
+    // caused by theme, language, or font changes cannot reset to Home.
+    if (selectedPage != widget.selectedPage) {
+      selectedPage = widget.selectedPage;
+    }
+  }
   final PageController _featuredController = PageController();
   Timer? _featuredTimer;
   final Set<String> favorites = {};
@@ -1513,7 +1537,10 @@ class _PoetryShellState extends State<PoetryShell> {
         if (authenticated != true || !mounted) return;
       }
     }
-    if (mounted) setState(() => selectedPage = index);
+    if (mounted) {
+      setState(() => selectedPage = index);
+      widget.onSelectedPageChanged(index);
+    }
   }
 
   String _tr(String ps, String fa, String en) =>
@@ -1530,6 +1557,7 @@ class _PoetryShellState extends State<PoetryShell> {
           if (didPop) return;
           if (selectedPage != 0) {
             setState(() => selectedPage = 0);
+            widget.onSelectedPageChanged(0);
           } else {
             _confirmExit();
           }
