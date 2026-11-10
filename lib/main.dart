@@ -56,6 +56,9 @@ class _AbsoAppState extends State<AbsoApp> {
   ThemeMode mode = ThemeMode.light;
   String selectedFont = 'Vazirmatn';
   int selectedAccentValue = 0xFF245B50;
+  String appLanguage = 'ps';
+  double appTextScale = 1.0;
+  bool notificationsEnabled = true;
 
   @override
   void initState() {
@@ -71,7 +74,35 @@ class _AbsoAppState extends State<AbsoApp> {
           ? ThemeMode.dark : ThemeMode.light;
       selectedFont = prefs.getString('app_font') ?? 'Vazirmatn';
       selectedAccentValue = prefs.getInt('app_accent') ?? 0xFF245B50;
+      appLanguage = prefs.getString('app_language') ?? 'ps';
+      appTextScale = prefs.getDouble('app_text_scale') ?? 1.0;
+      notificationsEnabled = prefs.getBool('notifications_enabled') ?? true;
     });
+  }
+
+  Future<void> _setLanguage(String value) async {
+    setState(() => appLanguage = value);
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('app_language', value);
+  }
+
+  Future<void> _setTextScale(double value) async {
+    setState(() => appTextScale = value.clamp(.85, 1.30));
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setDouble('app_text_scale', appTextScale);
+  }
+
+  Future<void> _setNotifications(bool value) async {
+    setState(() => notificationsEnabled = value);
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('notifications_enabled', value);
+  }
+
+  Future<void> _clearAppCache() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove('cache_poems');
+    await prefs.remove('cache_categories');
+    await prefs.remove('cache_poets');
   }
 
   Future<void> _setFont(String value) async {
@@ -104,6 +135,13 @@ class _AbsoAppState extends State<AbsoApp> {
     await prefs.setString('app_font', selectedFont);
     await prefs.setInt('app_accent', selectedAccentValue);
     await prefs.setBool('dark_mode', false);
+    appLanguage = 'ps';
+    appTextScale = 1.0;
+    notificationsEnabled = true;
+    await prefs.setString('app_language', appLanguage);
+    await prefs.setDouble('app_text_scale', appTextScale);
+    await prefs.setBool('notifications_enabled', notificationsEnabled);
+    if (mounted) setState(() {});
   }
 
   ThemeData makeTheme(Brightness brightness) {
@@ -171,6 +209,9 @@ class _AbsoAppState extends State<AbsoApp> {
       systemNavigationBarDividerColor: systemBarColor,
     ));
     return MaterialApp(
+    builder: (context, child) => MediaQuery(
+      data: MediaQuery.of(context).copyWith(textScaler: TextScaler.linear(appTextScale)),
+      child: child ?? const SizedBox.shrink()),
     debugShowCheckedModeBanner: false,
     title: 'ادبي خزانه | د شعرونو نړۍ',
     theme: makeTheme(Brightness.light),
@@ -186,6 +227,13 @@ class _AbsoAppState extends State<AbsoApp> {
           onFontChanged: _setFont,
           onAccentChanged: _setAccent,
           onResetAppearance: _resetAppearance,
+          language: appLanguage,
+          onLanguageChanged: _setLanguage,
+          textScale: appTextScale,
+          onTextScaleChanged: _setTextScale,
+          notificationsEnabled: notificationsEnabled,
+          onNotificationsChanged: _setNotifications,
+          onClearCache: _clearAppCache,
         ),
       ),
     ),
@@ -915,6 +963,13 @@ class PoetryShell extends StatefulWidget {
     required this.onFontChanged,
     required this.onAccentChanged,
     required this.onResetAppearance,
+    required this.language,
+    required this.onLanguageChanged,
+    required this.textScale,
+    required this.onTextScaleChanged,
+    required this.notificationsEnabled,
+    required this.onNotificationsChanged,
+    required this.onClearCache,
   });
   final bool isDark;
   final String fontName;
@@ -923,6 +978,13 @@ class PoetryShell extends StatefulWidget {
   final ValueChanged<String> onFontChanged;
   final ValueChanged<Color> onAccentChanged;
   final VoidCallback onResetAppearance;
+  final String language;
+  final ValueChanged<String> onLanguageChanged;
+  final double textScale;
+  final ValueChanged<double> onTextScaleChanged;
+  final bool notificationsEnabled;
+  final ValueChanged<bool> onNotificationsChanged;
+  final Future<void> Function() onClearCache;
   @override
   State<PoetryShell> createState() => _PoetryShellState();
 }
@@ -1398,9 +1460,9 @@ class _PoetryShellState extends State<PoetryShell> {
 
   @override
   Widget build(BuildContext context) {
-    const titles = ['ادبي خزانه', 'خوښ شوي شعرونه', 'زموږ په اړه', 'تنظیمات'];
+    final titles = widget.language == 'en' ? ['Literary Treasury','Favorites','About','Settings'] : widget.language == 'fa' ? ['گنجینه ادبی','پسندیده‌ها','درباره ما','تنظیمات'] : ['ادبي خزانه','خوښ شوي شعرونه','زموږ په اړه','تنظیمات'];
     return Directionality(
-      textDirection: TextDirection.rtl,
+      textDirection: widget.language == 'en' ? TextDirection.ltr : TextDirection.rtl,
       child: PopScope<Object?>(
         canPop: false,
         onPopInvokedWithResult: (didPop, result) {
