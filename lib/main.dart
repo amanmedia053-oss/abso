@@ -1011,6 +1011,27 @@ class PoetryShell extends StatefulWidget {
 }
 
 class _PoetryShellState extends State<PoetryShell> {
+  final GlobalKey<ScaffoldState> _shellScaffoldKey = GlobalKey<ScaffoldState>();
+
+  void _applyWithoutClosing(VoidCallback action) {
+    final keepDrawerOpen = _shellScaffoldKey.currentState?.isDrawerOpen ?? false;
+    final keepPage = selectedPage;
+    action();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      if (selectedPage != keepPage) setState(() => selectedPage = keepPage);
+      if (keepDrawerOpen && !(_shellScaffoldKey.currentState?.isDrawerOpen ?? false)) {
+        _shellScaffoldKey.currentState?.openDrawer();
+      }
+    });
+  }
+
+  void _changeLanguageInPlace(String value) =>
+      _applyWithoutClosing(() => widget.onLanguageChanged(value));
+
+  void _toggleThemeInPlace() =>
+      _applyWithoutClosing(widget.onTheme);
+
   int selectedPage = 0;
   int _featuredIndex = 0;
   final PageController _featuredController = PageController();
@@ -1498,13 +1519,14 @@ class _PoetryShellState extends State<PoetryShell> {
           }
         },
         child: Scaffold(
+        key: _shellScaffoldKey,
         drawer: _buildDrawer(),
         appBar: AppBar(
           title: Text(titles[selectedPage]),
           actions: [
             IconButton(
               tooltip: _tr('د شپې او ورځې بڼه', 'حالت شب و روز', 'Light and dark mode'),
-              onPressed: widget.onTheme,
+              onPressed: _toggleThemeInPlace,
               icon: Icon(widget.isDark
                 ? Icons.light_mode_rounded : Icons.dark_mode_rounded),
             ),
@@ -2829,11 +2851,11 @@ class _PoetryShellState extends State<PoetryShell> {
           child: Row(children: [
             Expanded(child: _appearanceChoice(
               icon: Icons.light_mode_rounded, title: _tr('روښانه', 'روشن', 'Light'),
-              selected: !dark, onTap: () { if (dark) widget.onTheme(); })),
+              selected: !dark, onTap: () { if (dark) _toggleThemeInPlace(); })),
             const SizedBox(width: 7),
             Expanded(child: _appearanceChoice(
               icon: Icons.dark_mode_rounded, title: _tr('تیاره', 'تیره', 'Dark'),
-              selected: dark, onTap: () { if (!dark) widget.onTheme(); })),
+              selected: dark, onTap: () { if (!dark) _toggleThemeInPlace(); })),
           ]),
         ),
         const SizedBox(height: 23),
@@ -2983,7 +3005,7 @@ class _PoetryShellState extends State<PoetryShell> {
   Widget _languageOption(String code, String title, String subtitle) {
     final colors = Theme.of(context).colorScheme;
     final selected = widget.language == code;
-    return ListTile(onTap: () => widget.onLanguageChanged(code), leading: CircleAvatar(backgroundColor: selected ? colors.primaryContainer : colors.surfaceContainerHighest, child: Icon(Icons.language_rounded, color: selected ? colors.primary : colors.onSurfaceVariant)), title: Text(title, style: const TextStyle(fontWeight: FontWeight.w900)), subtitle: Text(subtitle), trailing: selected ? Icon(Icons.check_circle_rounded, color: colors.primary) : null);
+    return ListTile(onTap: () => _changeLanguageInPlace(code), leading: CircleAvatar(backgroundColor: selected ? colors.primaryContainer : colors.surfaceContainerHighest, child: Icon(Icons.language_rounded, color: selected ? colors.primary : colors.onSurfaceVariant)), title: Text(title, style: const TextStyle(fontWeight: FontWeight.w900)), subtitle: Text(subtitle), trailing: selected ? Icon(Icons.check_circle_rounded, color: colors.primary) : null);
   }
 
   void _confirmClearCache() {
