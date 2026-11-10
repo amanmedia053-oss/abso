@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:lottie/lottie.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_database/firebase_database.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -581,17 +582,68 @@ class OnboardingScreen extends StatefulWidget {
   State<OnboardingScreen> createState() => _OnboardingScreenState();
 }
 
-class _OnboardingScreenState extends State<OnboardingScreen> {
+class _OnboardingScreenState extends State<OnboardingScreen>
+    with TickerProviderStateMixin {
   final PageController pageController = PageController();
   int page = 0;
 
-  final slides = const [
-    _IntroSlide(Icons.auto_stories_rounded, 'د شعرونو ښکلی جهان',
-      'د پښتو خوږ شعرونه ولولئ او د ادب له رنګینې نړۍ خوند واخلئ.'),
-    _IntroSlide(Icons.favorite_rounded, 'خپل خوښ شعرونه وساتئ',
-      'د زړه نښه کېکاږئ، څو خوښ شعرونه مو په ځانګړې برخه کې خوندي وي.'),
-    _IntroSlide(Icons.search_rounded, 'هر شعر په اسانه ومومئ',
-      'شعرونه ولولئ، ولټوئ او خپلې خوښې شعرونه وساتئ.'),
+  static const List<_IntroSlide> slides = [
+    _IntroSlide(
+      Icons.auto_stories_rounded,
+      'د پښتو ادب نوې نړۍ',
+      'د پښتو شعرونو او ادبي اثارو یوه رنګینه خزانه؛ هره ورځ نوې ادبي شېبې تجربه کړئ.',
+      [Color(0xFF123B32), Color(0xFF246B58)],
+      '01',
+      'ادب',
+    ),
+    _IntroSlide(
+      Icons.edit_note_rounded,
+      'د شاعرانو پېژندنه',
+      'د خپلې خوښې شاعر ومومئ، د هغه ژوندلیک او غوره شعرونه په یوه ځای کې ولولئ.',
+      [Color(0xFF34245F), Color(0xFF7652A8)],
+      '02',
+      'شاعران',
+    ),
+    _IntroSlide(
+      Icons.menu_book_rounded,
+      'ښکلی او اسانه لوست',
+      'د لوستلو ارام چاپېریال، روښانه لیکدود او د شعرونو منظمې برخې.',
+      [Color(0xFF173A68), Color(0xFF397DB2)],
+      '03',
+      'لوست',
+    ),
+    _IntroSlide(
+      Icons.favorite_rounded,
+      'خپل شعرونه خوندي کړئ',
+      'خوښ شعرونه په نښه کړئ او هر وخت بېرته خپلې ځانګړې ټولګې ته ور وګرځئ.',
+      [Color(0xFF6A2447), Color(0xFFB64E72)],
+      '04',
+      'خوښې',
+    ),
+    _IntroSlide(
+      Icons.smart_display_rounded,
+      'لنډې ویډیوګانې',
+      'د ادب او شاعرۍ لنډې ویډیوګانې وګورئ او له ملګرو سره یې شریکې کړئ.',
+      [Color(0xFF713B19), Color(0xFFC17A32)],
+      '05',
+      'ویډیو',
+    ),
+    _IntroSlide(
+      Icons.cloud_off_rounded,
+      'افلاين ادبي کټګورۍ',
+      'د افلاين کټګوریو له لارې خپل شعرونه منظم کړئ او په اسانه یې ومومئ.',
+      [Color(0xFF214C4C), Color(0xFF398B83)],
+      '06',
+      'افلاين',
+    ),
+    _IntroSlide(
+      Icons.forum_rounded,
+      'له ادب‌مینه‌والو سره',
+      'خپل نظرونه او تبصرې شریکې کړئ، شعرونه ولټوئ او د ادب ملګرتیا پیاوړې کړئ.',
+      [Color(0xFF3B315F), Color(0xFF7567A8)],
+      '07',
+      'ټولنه',
+    ),
   ];
 
   @override
@@ -605,117 +657,229 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       widget.onDone();
     } else {
       pageController.nextPage(
-        duration: const Duration(milliseconds: 550),
-        curve: Curves.easeInOutCubic);
+        duration: const Duration(milliseconds: 520),
+        curve: Curves.easeInOutCubic,
+      );
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
+    final slide = slides[page];
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Scaffold(
-        body: SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(22, 12, 22, 18),
-            child: Column(
-              children: [
-                Align(
-                  alignment: Alignment.centerLeft,
-                  child: TextButton(
-                    onPressed: widget.onDone,
-                    child: const Text('تېرېدل')),
-                ),
-                Expanded(
-                  child: PageView.builder(
-                    controller: pageController,
-                    itemCount: slides.length,
-                    onPageChanged: (value) => setState(() => page = value),
-                    itemBuilder: (context, index) {
-                      final slide = slides[index];
-                      return AnimatedBuilder(
-                        animation: pageController,
-                        builder: (context, child) {
-                          double value = 1;
-                          if (pageController.hasClients && pageController.position.haveDimensions) {
-                            value = (1 - (pageController.page! - index).abs() * 0.16)
-                                .clamp(0.84, 1.0);
-                          }
-                          return Transform.scale(scale: value, child: child);
-                        },
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Container(
-                              width: 220, height: 220,
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                color: colors.primaryContainer),
-                              child: Center(
-                                child: Icon(slide.icon, size: 104,
-                                  color: colors.onPrimaryContainer)),
-                            ),
-                            const SizedBox(height: 42),
-                            Text(slide.title,
-                              textAlign: TextAlign.center,
-                              style: Theme.of(context).textTheme.headlineSmall
-                                ?.copyWith(fontWeight: FontWeight.bold)),
-                            const SizedBox(height: 13),
-                            Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 12),
-                              child: Text(slide.description,
+        backgroundColor: const Color(0xFF101915),
+        body: AnimatedContainer(
+          duration: const Duration(milliseconds: 650),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topRight,
+              end: Alignment.bottomLeft,
+              colors: slide.colors,
+            ),
+          ),
+          child: SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(22, 12, 22, 22),
+              child: Column(
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.13),
+                          borderRadius: BorderRadius.circular(30),
+                          border: Border.all(color: Colors.white24),
+                        ),
+                        child: Text(
+                          '${slide.number}  /  07',
+                          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700),
+                        ),
+                      ),
+                      TextButton(
+                        onPressed: widget.onDone,
+                        child: const Text('تېرېدل', style: TextStyle(color: Colors.white70, fontSize: 14)),
+                      ),
+                    ],
+                  ),
+                  Expanded(
+                    child: PageView.builder(
+                      controller: pageController,
+                      itemCount: slides.length,
+                      onPageChanged: (value) => setState(() => page = value),
+                      itemBuilder: (context, index) {
+                        final item = slides[index];
+                        return AnimatedBuilder(
+                          animation: pageController,
+                          builder: (context, child) {
+                            var scale = 1.0;
+                            if (pageController.hasClients &&
+                                pageController.position.haveDimensions) {
+                              scale = (1 - (pageController.page! - index).abs() * 0.08)
+                                  .clamp(0.90, 1.0);
+                            }
+                            return Transform.scale(scale: scale, child: child);
+                          },
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Container(
+                                width: double.infinity,
+                                height: 330,
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withValues(alpha: 0.10),
+                                  borderRadius: BorderRadius.circular(34),
+                                  border: Border.all(color: Colors.white.withValues(alpha: 0.20)),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.black.withValues(alpha: 0.12),
+                                      blurRadius: 30,
+                                      offset: const Offset(0, 18),
+                                    ),
+                                  ],
+                                ),
+                                child: Stack(
+                                  alignment: Alignment.center,
+                                  children: [
+                                    Positioned(
+                                      top: 20,
+                                      right: 22,
+                                      child: _onboardingOrb(72, Colors.white.withValues(alpha: 0.08)),
+                                    ),
+                                    Positioned(
+                                      bottom: 22,
+                                      left: 18,
+                                      child: _onboardingOrb(48, Colors.white.withValues(alpha: 0.09)),
+                                    ),
+                                    Lottie.asset(
+                                      'assets/lottie/reading_book.json',
+                                      width: 260,
+                                      height: 260,
+                                      repeat: true,
+                                      fit: BoxFit.contain,
+                                    ),
+                                    Positioned(
+                                      bottom: 26,
+                                      child: Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 9),
+                                        decoration: BoxDecoration(
+                                          color: Colors.white.withValues(alpha: 0.15),
+                                          borderRadius: BorderRadius.circular(24),
+                                          border: Border.all(color: Colors.white30),
+                                        ),
+                                        child: Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            Icon(item.icon, color: Colors.white, size: 19),
+                                            const SizedBox(width: 8),
+                                            Text(item.tag, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700)),
+                                          ],
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(height: 38),
+                              Text(
+                                item.title,
                                 textAlign: TextAlign.center,
-                                style: TextStyle(
-                                  fontSize: 14, height: 1.9,
-                                  color: colors.onSurfaceVariant)),
-                            ),
-                          ],
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 27,
+                                  height: 1.4,
+                                  fontWeight: FontWeight.w900,
+                                  fontFamily: 'Vazirmatn',
+                                ),
+                              ),
+                              const SizedBox(height: 14),
+                              Padding(
+                                padding: const EdgeInsets.symmetric(horizontal: 8),
+                                child: Text(
+                                  item.description,
+                                  textAlign: TextAlign.center,
+                                  style: const TextStyle(
+                                    color: Colors.white.withValues(alpha: 0.82),
+                                    fontSize: 15,
+                                    height: 2,
+                                    fontFamily: 'Vazirmatn',
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: List.generate(slides.length, (index) {
+                      final active = page == index;
+                      return AnimatedContainer(
+                        duration: const Duration(milliseconds: 280),
+                        margin: const EdgeInsets.symmetric(horizontal: 3),
+                        width: active ? 27 : 7,
+                        height: 7,
+                        decoration: BoxDecoration(
+                          color: active ? Colors.white : Colors.white.withValues(alpha: 0.35),
+                          borderRadius: BorderRadius.circular(12),
                         ),
                       );
-                    },
+                    }),
                   ),
-                ),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: List.generate(slides.length, (index) =>
-                    AnimatedContainer(
-                      duration: const Duration(milliseconds: 300),
-                      margin: const EdgeInsets.symmetric(horizontal: 4),
-                      width: page == index ? 25 : 8,
-                      height: 8,
-                      decoration: BoxDecoration(
-                        color: page == index ? colors.primary
-                          : colors.primary.withValues(alpha: 0.22),
-                        borderRadius: BorderRadius.circular(10)),
-                    )),
-                ),
-                const SizedBox(height: 24),
-                SizedBox(
-                  width: double.infinity,
-                  height: 50,
-                  child: FilledButton(
-                    onPressed: next,
-                    child: Text(page == slides.length - 1
-                      ? 'پیل وکړئ' : 'بل ګام',
-                      style: const TextStyle(fontSize: 14,
-                        fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 22),
+                  SizedBox(
+                    width: double.infinity,
+                    height: 56,
+                    child: FilledButton(
+                      onPressed: next,
+                      style: FilledButton.styleFrom(
+                        backgroundColor: Colors.white,
+                        foregroundColor: const Color(0xFF18382E),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+                        elevation: 0,
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text(
+                            page == slides.length - 1 ? 'ادبي خزانه ته ننوځئ' : 'راتلونکی',
+                            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w900),
+                          ),
+                          const SizedBox(width: 9),
+                          Icon(page == slides.length - 1 ? Icons.arrow_forward_rounded : Icons.chevron_left_rounded),
+                        ],
+                      ),
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ),
       ),
     );
   }
+
+  Widget _onboardingOrb(double size, Color color) => Container(
+    width: size,
+    height: size,
+    decoration: BoxDecoration(shape: BoxShape.circle, color: color),
+  );
 }
 
 class _IntroSlide {
-  const _IntroSlide(this.icon, this.title, this.description);
+  const _IntroSlide(this.icon, this.title, this.description, this.colors, this.number, this.tag);
   final IconData icon;
   final String title;
   final String description;
+  final List<Color> colors;
+  final String number;
+  final String tag;
 }
 
 class Poem {
