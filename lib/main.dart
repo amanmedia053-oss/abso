@@ -1026,6 +1026,18 @@ class PoetryShell extends StatefulWidget {
 class _PoetryShellState extends State<PoetryShell> {
   final GlobalKey<ScaffoldState> _shellScaffoldKey = GlobalKey<ScaffoldState>();
   bool _isDrawerVisible = false;
+  String? _fontSelectionPreview;
+  int? _accentSelectionPreview;
+
+  void _selectFont(String fontName) {
+    setState(() => _fontSelectionPreview = fontName);
+    _applyWithoutClosing(() => widget.onFontChanged(fontName));
+  }
+
+  void _selectAccent(Color color) {
+    setState(() => _accentSelectionPreview = color.toARGB32());
+    _applyWithoutClosing(() => widget.onAccentChanged(color));
+  }
 
   void _applyWithoutClosing(VoidCallback action) {
     // Capture the drawer and selected page before app-wide settings rebuild.
@@ -1072,6 +1084,12 @@ class _PoetryShellState extends State<PoetryShell> {
     // caused by theme, language, or font changes cannot reset to Home.
     if (selectedPage != widget.selectedPage) {
       selectedPage = widget.selectedPage;
+    }
+    if (_fontSelectionPreview == widget.fontName) {
+      _fontSelectionPreview = null;
+    }
+    if (_accentSelectionPreview == widget.accentColor.toARGB32()) {
+      _accentSelectionPreview = null;
     }
   }
   final PageController _featuredController = PageController();
@@ -2907,7 +2925,7 @@ class _PoetryShellState extends State<PoetryShell> {
         _settingsHeading(Icons.font_download_rounded, widget.language == 'en' ? 'Font style' : widget.language == 'fa' ? 'قلم نوشتار' : 'د لیکدود فونټونه'),
         const SizedBox(height: 9),
         ...fonts.map((font) {
-          final selected = widget.fontName == font['name'];
+          final selected = (_fontSelectionPreview ?? widget.fontName) == font['name'];
           return AnimatedContainer(
             duration: const Duration(milliseconds: 240),
             margin: const EdgeInsets.only(bottom: 9),
@@ -2922,7 +2940,7 @@ class _PoetryShellState extends State<PoetryShell> {
                 blurRadius: 14, offset: const Offset(0, 5))] : [],
             ),
             child: ListTile(
-              onTap: () => _applyWithoutClosing(() => widget.onFontChanged(font['name']!)),
+              onTap: () => _selectFont(font['name']!),
               contentPadding: const EdgeInsets.symmetric(horizontal: 15, vertical: 4),
               leading: Container(width: 45, height: 45,
                 decoration: BoxDecoration(color: selected ? colors.primary :
@@ -2953,10 +2971,10 @@ class _PoetryShellState extends State<PoetryShell> {
             alignment: WrapAlignment.spaceAround, spacing: 12, runSpacing: 17,
             children: palettes.map((palette) {
               final color = palette['color'] as Color;
-              final selected = widget.accentColor.toARGB32() == color.toARGB32();
+              final selected = (_accentSelectionPreview ?? widget.accentColor.toARGB32()) == color.toARGB32();
               return InkWell(
                 borderRadius: BorderRadius.circular(16),
-                onTap: () => _applyWithoutClosing(() => widget.onAccentChanged(color)),
+                onTap: () => _selectAccent(color),
                 child: SizedBox(width: 82, child: Column(children: [
                   AnimatedContainer(duration: const Duration(milliseconds: 220),
                     width: selected ? 49 : 43, height: selected ? 49 : 43,
