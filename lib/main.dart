@@ -1880,7 +1880,7 @@ class _PoetryShellState extends State<PoetryShell> {
                           fontSize: 10, color: colors.onSurfaceVariant)),
                   value: widget.isDark,
                   onChanged: (_) {
-                    widget.onTheme();
+                    _toggleThemeInPlace();
                   },
                 ),
               ),
@@ -2878,7 +2878,7 @@ class _PoetryShellState extends State<PoetryShell> {
                 blurRadius: 14, offset: const Offset(0, 5))] : [],
             ),
             child: ListTile(
-              onTap: () => widget.onFontChanged(font['name']!),
+              onTap: () => _applyWithoutClosing(() => widget.onFontChanged(font['name']!)),
               contentPadding: const EdgeInsets.symmetric(horizontal: 15, vertical: 4),
               leading: Container(width: 45, height: 45,
                 decoration: BoxDecoration(color: selected ? colors.primary :
@@ -2912,7 +2912,7 @@ class _PoetryShellState extends State<PoetryShell> {
               final selected = widget.accentColor.toARGB32() == color.toARGB32();
               return InkWell(
                 borderRadius: BorderRadius.circular(16),
-                onTap: () => widget.onAccentChanged(color),
+                onTap: () => _applyWithoutClosing(() => widget.onAccentChanged(color)),
                 child: SizedBox(width: 82, child: Column(children: [
                   AnimatedContainer(duration: const Duration(milliseconds: 220),
                     width: selected ? 49 : 43, height: selected ? 49 : 43,
@@ -2959,7 +2959,7 @@ class _PoetryShellState extends State<PoetryShell> {
                   value: widget.textScale.clamp(.85, 1.30).toDouble(),
                   min: .85, max: 1.30, divisions: 9,
                   label: '${(widget.textScale * 100).round()}%',
-                  onChanged: widget.onTextScaleChanged,
+                  onChanged: (value) => _applyWithoutClosing(() => widget.onTextScaleChanged(value)),
                 ),
                 Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
                   Text(_tr('کوچنی', 'کوچک', 'Small'), style: TextStyle(fontSize: 10, color: colors.onSurfaceVariant)),
@@ -2968,7 +2968,7 @@ class _PoetryShellState extends State<PoetryShell> {
               ]),
             ),
             Divider(height: 1, indent: 16, endIndent: 16, color: colors.outlineVariant.withValues(alpha: .5)),
-            SwitchListTile(secondary: _settingsIcon(Icons.notifications_active_rounded, colors.primary), title: Text(widget.language == 'en' ? 'Notifications' : widget.language == 'fa' ? 'اعلان‌ها' : 'خبرتیاوې', style: const TextStyle(fontWeight: FontWeight.w800)), subtitle: Text(widget.language == 'en' ? 'Notification preference' : widget.language == 'fa' ? 'تنظیم اعلان‌ها' : 'د خبرتیاوو تنظیم'), value: widget.notificationsEnabled, onChanged: widget.onNotificationsChanged),
+            SwitchListTile(secondary: _settingsIcon(Icons.notifications_active_rounded, colors.primary), title: Text(widget.language == 'en' ? 'Notifications' : widget.language == 'fa' ? 'اعلان‌ها' : 'خبرتیاوې', style: const TextStyle(fontWeight: FontWeight.w800)), subtitle: Text(widget.language == 'en' ? 'Notification preference' : widget.language == 'fa' ? 'تنظیم اعلان‌ها' : 'د خبرتیاوو تنظیم'), value: widget.notificationsEnabled, onChanged: (value) => _applyWithoutClosing(() => widget.onNotificationsChanged(value))),
             Divider(height: 1, indent: 16, endIndent: 16, color: colors.outlineVariant.withValues(alpha: .5)),
             ListTile(leading: _settingsIcon(Icons.cleaning_services_rounded, colors.primary), title: Text(widget.language == 'en' ? 'Clear cached data' : widget.language == 'fa' ? 'پاک‌کردن حافظه موقت' : 'د لنډمهاله حافظې پاکول', style: const TextStyle(fontWeight: FontWeight.w800)), subtitle: Text(widget.language == 'en' ? 'Remove locally cached poems and lists' : widget.language == 'fa' ? 'پاک‌کردن نسخه‌های موقت شعرها و فهرست‌ها' : 'په موبایل کې د شعرونو او لېستونو لنډمهاله کاپي پاکوي'), onTap: _confirmClearCache),
             Divider(height: 1, indent: 16, endIndent: 16, color: colors.outlineVariant.withValues(alpha: .5)),
@@ -3061,7 +3061,7 @@ class _PoetryShellState extends State<PoetryShell> {
           child: const Text('نه، پرېږده')),
         FilledButton(onPressed: () {
           Navigator.pop(dialogContext);
-          widget.onResetAppearance();
+          _applyWithoutClosing(widget.onResetAppearance);
         }, child: const Text('هو، بېرته یې کړه')),
       ],
     ));
