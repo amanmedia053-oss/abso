@@ -439,10 +439,6 @@ class _AccountAccessPageState extends State<AccountAccessPage> {
                   icon: const Icon(Icons.skip_next_rounded),
                   label: const Text('Skip / تېرېدل'),
                 )),
-              Container(width: 76, height: 76, alignment: Alignment.center,
-                decoration: BoxDecoration(color: c.primary, borderRadius: BorderRadius.circular(24)),
-                child: const Icon(Icons.auto_stories_rounded, color: Colors.white, size: 40)),
-              const SizedBox(height: 18),
               Center(child: Column(children: [
                 CircleAvatar(
                   radius: 43,
