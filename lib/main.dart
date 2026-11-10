@@ -1013,9 +1013,13 @@ class PoetryShell extends StatefulWidget {
 
 class _PoetryShellState extends State<PoetryShell> {
   final GlobalKey<ScaffoldState> _shellScaffoldKey = GlobalKey<ScaffoldState>();
+  bool _isDrawerVisible = false;
 
   void _applyWithoutClosing(VoidCallback action) {
-    final keepDrawerOpen = _shellScaffoldKey.currentState?.isDrawerOpen ?? false;
+    // ScaffoldState.isDrawerOpen can briefly report false while the drawer
+    // route is animating/rebuilding. Track the actual drawer visibility too.
+    final keepDrawerOpen = _isDrawerVisible ||
+        (_shellScaffoldKey.currentState?.isDrawerOpen ?? false);
     final keepPage = selectedPage;
     action();
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -1521,6 +1525,7 @@ class _PoetryShellState extends State<PoetryShell> {
         },
         child: Scaffold(
         key: _shellScaffoldKey,
+        onDrawerChanged: (isOpened) => _isDrawerVisible = isOpened,
         drawer: _buildDrawer(),
         appBar: AppBar(
           title: Text(titles[selectedPage]),
