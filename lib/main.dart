@@ -1016,17 +1016,28 @@ class _PoetryShellState extends State<PoetryShell> {
   bool _isDrawerVisible = false;
 
   void _applyWithoutClosing(VoidCallback action) {
-    // ScaffoldState.isDrawerOpen can briefly report false while the drawer
-    // route is animating/rebuilding. Track the actual drawer visibility too.
+    // Capture the drawer and selected page before app-wide settings rebuild.
     final keepDrawerOpen = _isDrawerVisible ||
         (_shellScaffoldKey.currentState?.isDrawerOpen ?? false);
     final keepPage = selectedPage;
+
+    // Apply the selected preference immediately.
     action();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
+
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
       if (!mounted) return;
-      if (selectedPage != keepPage) setState(() => selectedPage = keepPage);
-      if (keepDrawerOpen && !(_shellScaffoldKey.currentState?.isDrawerOpen ?? false)) {
-        _shellScaffoldKey.currentState?.openDrawer();
+      if (selectedPage != keepPage) {
+        setState(() => selectedPage = keepPage);
+      }
+
+      // Let Scaffold finish its drawer-route transition before reopening.
+      if (keepDrawerOpen) {
+        await Future<void>.delayed(const Duration(milliseconds: 400));
+        if (!mounted) return;
+        final scaffold = _shellScaffoldKey.currentState;
+        if (scaffold != null && !scaffold.isDrawerOpen) {
+          scaffold.openDrawer();
+        }
       }
     });
   }
