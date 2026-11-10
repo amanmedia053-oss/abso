@@ -5133,6 +5133,14 @@ class _PoemDetailScreenState extends State<PoemDetailScreen> {
                 if (poem.poet.isNotEmpty) ...[const SizedBox(height: 8), Text(poem.poet, style: const TextStyle(color: Colors.white70, fontSize: 13))],
                 const SizedBox(height: 14), Container(height: 1, color: Colors.white38),
                 const SizedBox(height: 11), Text(poem.category, style: const TextStyle(color: Color(0xFFFFD98A), fontSize: 12)),
+                const SizedBox(height: 18),
+                Row(children: [
+                  Expanded(child: _heroMetric(Icons.visibility_rounded, poem.views + 1, 'کتنې')),
+                  const SizedBox(width: 9),
+                  Expanded(child: _heroMetric(Icons.favorite_rounded, poem.likes + (liked ? 1 : 0), 'خوښونې')),
+                  const SizedBox(width: 9),
+                  Expanded(child: _heroMetric(Icons.bookmark_rounded, poem.saves + (saved ? 1 : 0), 'خوندي')),
+                ]),
               ])),
           ])),
         const SizedBox(height: 16),
@@ -5146,47 +5154,63 @@ class _PoemDetailScreenState extends State<PoemDetailScreen> {
           child: SelectableText(poem.text, textAlign: TextAlign.center,
             style: const TextStyle(fontSize: 18, height: 2.25, fontWeight: FontWeight.w600))),
         const SizedBox(height: 16),
-        Wrap(alignment: WrapAlignment.spaceEvenly, spacing: 9, runSpacing: 9, children: [
-          _stat(Icons.visibility_outlined, poem.views + 1), _stat(Icons.favorite_border_rounded, poem.likes),
-          _stat(Icons.share_outlined, poem.shares), _stat(Icons.bookmark_border_rounded, poem.saves)]),
-        const SizedBox(height: 15),
         Row(children: [
-          Expanded(child: FilledButton.tonalIcon(onPressed: () async {
-            await widget.onLike(); if (mounted) setState(() => liked = true);
-          }, icon: Icon(liked ? Icons.favorite_rounded : Icons.favorite_border_rounded),
-            label: Text(liked ? 'خوښ شوی' : 'خوښول'))),
-          const SizedBox(width: 8),
-          Expanded(child: FilledButton.tonalIcon(onPressed: () async {
-            await widget.onSave(); if (mounted) setState(() => saved = !saved);
-          }, icon: Icon(saved ? Icons.bookmark_added_rounded : Icons.bookmark_add_outlined),
-            label: Text(saved ? 'خوندي شو' : 'خوندي کول'))),
-          const SizedBox(width: 8),
-          IconButton.filledTonal(onPressed: widget.onShare, icon: const Icon(Icons.share_rounded)),
+          Expanded(child: _actionPill(
+            icon: liked ? Icons.favorite_rounded : Icons.favorite_border_rounded,
+            label: liked ? 'خوښ شوی' : 'خوښول', active: liked,
+            color: const Color(0xFFE64D70),
+            onTap: () async { await widget.onLike(); if (mounted) setState(() => liked = true); },
+          )),
+          const SizedBox(width: 9),
+          Expanded(child: _actionPill(
+            icon: saved ? Icons.bookmark_added_rounded : Icons.bookmark_add_outlined,
+            label: saved ? 'خوندي شو' : 'خوندي کول', active: saved,
+            color: const Color(0xFFB77928),
+            onTap: () async { await widget.onSave(); if (mounted) setState(() => saved = !saved); },
+          )),
+          const SizedBox(width: 9),
+          Material(color: c.primaryContainer, borderRadius: BorderRadius.circular(17),
+            child: InkWell(borderRadius: BorderRadius.circular(17), onTap: widget.onShare,
+              child: SizedBox(width: 54, height: 54, child: Icon(Icons.ios_share_rounded, color: c.primary)))),
         ]),
-        const SizedBox(height: 25),
-        Row(children: [
-          Icon(Icons.forum_rounded, color: c.primary), const SizedBox(width: 9),
-          const Expanded(child: Text('د لوستونکو نظرونه', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w900))),
-          StreamBuilder<DatabaseEvent>(stream: FirebaseDatabase.instance.ref('comments/${poem.id}').onValue,
-            builder: (context, snap) { final v = snap.data?.snapshot.value;
-              final count = v is Map ? v.values.where((item) => item is Map).length : 0;
-              return Text('${count} تبصرې',
-              style: TextStyle(color: c.onSurfaceVariant, fontSize: 11)); }),
-        ]),
-        const SizedBox(height: 11),
-        Container(padding: const EdgeInsets.all(11), decoration: BoxDecoration(color: c.surface,
-          borderRadius: BorderRadius.circular(20), border: Border.all(color: c.outlineVariant.withValues(alpha: .5))),
-          child: Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
-            Expanded(child: TextField(controller: commentController, minLines: 1, maxLines: 4, maxLength: 500,
-              decoration: InputDecoration(hintText: 'خپل نظر ولیکئ...', counterText: '', filled: true,
-                fillColor: c.surfaceContainerHighest.withValues(alpha: .55),
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(15), borderSide: BorderSide.none),
-                contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12)))),
-            const SizedBox(width: 8),
-            IconButton.filled(onPressed: sending ? null : _sendComment,
-              icon: sending ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
-                : const Icon(Icons.send_rounded)),
-          ])),
+        const SizedBox(height: 26),
+        Container(
+          padding: const EdgeInsets.fromLTRB(15, 16, 15, 14),
+          decoration: BoxDecoration(color: c.surface, borderRadius: BorderRadius.circular(23),
+            border: Border.all(color: c.outlineVariant.withValues(alpha: .55)),
+            boxShadow: [BoxShadow(color: c.primary.withValues(alpha: .05), blurRadius: 18, offset: const Offset(0, 6))]),
+          child: Column(children: [
+            Row(children: [
+              Container(width: 42, height: 42,
+                decoration: BoxDecoration(gradient: LinearGradient(colors: [c.primary, c.tertiary]), borderRadius: BorderRadius.circular(14)),
+                child: const Icon(Icons.forum_rounded, color: Colors.white, size: 21)),
+              const SizedBox(width: 11),
+              const Expanded(child: Text('د لوستونکو نظرونه', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900))),
+              StreamBuilder<DatabaseEvent>(stream: FirebaseDatabase.instance.ref('comments/${poem.id}').onValue,
+                builder: (context, snap) {
+                  final v = snap.data?.snapshot.value;
+                  final count = v is Map ? v.values.where((item) => item is Map).length : 0;
+                  return Container(padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 7),
+                    decoration: BoxDecoration(color: c.primaryContainer, borderRadius: BorderRadius.circular(30)),
+                    child: Text('${count} تبصرې', style: TextStyle(color: c.primary, fontSize: 10, fontWeight: FontWeight.w900)));
+                }),
+            ]),
+            const SizedBox(height: 14),
+            Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
+              Expanded(child: TextField(controller: commentController, minLines: 1, maxLines: 4, maxLength: 500,
+                decoration: InputDecoration(hintText: 'خپل نظر ولیکئ...', counterText: '', filled: true,
+                  fillColor: c.surfaceContainerHighest.withValues(alpha: .55), prefixIcon: Icon(Icons.edit_note_rounded, color: c.primary),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(17), borderSide: BorderSide.none),
+                  enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(17), borderSide: BorderSide(color: c.outlineVariant.withValues(alpha: .4))),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14)))),
+              const SizedBox(width: 9),
+              Container(decoration: BoxDecoration(gradient: LinearGradient(colors: [c.primary, c.tertiary]),
+                borderRadius: BorderRadius.circular(16), boxShadow: [BoxShadow(color: c.primary.withValues(alpha: .22), blurRadius: 12, offset: const Offset(0, 5))]),
+                child: IconButton(onPressed: sending ? null : _sendComment, color: Colors.white,
+                  icon: sending ? const SizedBox(width: 19, height: 19, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)) : const Icon(Icons.send_rounded))),
+            ]),
+          ]),
+        ),
         const SizedBox(height: 10),
         StreamBuilder<DatabaseEvent>(stream: FirebaseDatabase.instance.ref('comments/${poem.id}').onValue,
           builder: (context, snap) {
@@ -5217,9 +5241,12 @@ class _PoemDetailScreenState extends State<PoemDetailScreen> {
               final likedByMe = user != null && likes[user.uid] == true;
               final reply = data['adminReply'] is Map
                   ? Map<String, dynamic>.from(data['adminReply'] as Map) : null;
-              return Container(width: double.infinity, margin: const EdgeInsets.only(bottom: 9),
-                padding: const EdgeInsets.all(13), decoration: BoxDecoration(color: c.surface,
-                  borderRadius: BorderRadius.circular(18), border: Border.all(color: c.outlineVariant.withValues(alpha: .4))),
+              return Container(width: double.infinity, margin: const EdgeInsets.only(bottom: 11),
+                padding: const EdgeInsets.all(15), decoration: BoxDecoration(
+                  gradient: LinearGradient(begin: Alignment.topRight, end: Alignment.bottomLeft, colors: [c.surface, c.surfaceContainerLow]),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: c.outlineVariant.withValues(alpha: .48)),
+                  boxShadow: [BoxShadow(color: c.shadow.withValues(alpha: .035), blurRadius: 12, offset: const Offset(0, 4))]),
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                   Row(children: [
                     CircleAvatar(radius: 18, backgroundColor: c.primaryContainer,
@@ -5325,14 +5352,43 @@ class _PoemDetailScreenState extends State<PoemDetailScreen> {
     );
   }
 
-  Widget _stat(IconData icon, int count) {
+  Widget _heroMetric(IconData icon, int count, String label) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+      decoration: BoxDecoration(color: Colors.white.withValues(alpha: .14),
+        borderRadius: BorderRadius.circular(15), border: Border.all(color: Colors.white.withValues(alpha: .22))),
+      child: Column(children: [
+        Icon(icon, color: const Color(0xFFFFD98A), size: 17),
+        const SizedBox(height: 4),
+        Text('$count', style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w900)),
+        const SizedBox(height: 2),
+        Text(label, style: const TextStyle(color: Colors.white70, fontSize: 9, fontWeight: FontWeight.w700)),
+      ]),
+    );
+  }
+
+  Widget _actionPill({required IconData icon, required String label, required bool active,
+    required Color color, required VoidCallback onTap}) {
     final c = Theme.of(context).colorScheme;
-    return Container(padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
-      decoration: BoxDecoration(color: c.surfaceContainerHighest, borderRadius: BorderRadius.circular(14)),
-      child: Row(mainAxisSize: MainAxisSize.min, children: [
-        Icon(icon, size: 16, color: c.primary), const SizedBox(width: 6),
-        Text('$count', style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w800)),
-      ]));
+    return Material(
+      color: active ? color.withValues(alpha: .12) : c.surfaceContainerLow,
+      borderRadius: BorderRadius.circular(17),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(17), onTap: onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 220), height: 54,
+          padding: const EdgeInsets.symmetric(horizontal: 10),
+          decoration: BoxDecoration(borderRadius: BorderRadius.circular(17),
+            border: Border.all(color: active ? color.withValues(alpha: .45) : c.outlineVariant.withValues(alpha: .5))),
+          child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+            Icon(icon, color: active ? color : c.onSurfaceVariant, size: 20),
+            const SizedBox(width: 7),
+            Flexible(child: Text(label, overflow: TextOverflow.ellipsis,
+              style: TextStyle(fontSize: 11, fontWeight: FontWeight.w900, color: active ? color : c.onSurface))),
+          ]),
+        ),
+      ),
+    );
   }
 }
 
