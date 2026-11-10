@@ -268,22 +268,35 @@ class _AbsoAppState extends State<AbsoApp> {
 }
 
 
-class AuthGate extends StatelessWidget {
+class AuthGate extends StatefulWidget {
   const AuthGate({super.key, required this.child});
   final Widget child;
+
+  @override
+  State<AuthGate> createState() => _AuthGateState();
+}
+
+class _AuthGateState extends State<AuthGate> {
+  // Keep one auth stream for the lifetime of this gate. Creating a new
+  // authStateChanges() stream on every parent rebuild makes StreamBuilder
+  // unsubscribe/re-subscribe, briefly showing its loading state and
+  // disposing the entire app shell (including the current page and scroll).
+  late final Stream<User?> _authChanges =
+      FirebaseAuth.instance.authStateChanges();
+
   @override
   Widget build(BuildContext context) => StreamBuilder<User?>(
-    stream: FirebaseAuth.instance.authStateChanges(),
+    stream: _authChanges,
     builder: (context, snapshot) {
       if (snapshot.connectionState == ConnectionState.waiting) {
         return const Scaffold(body: Center(child: CircularProgressIndicator()));
       }
       final user = snapshot.data;
-      if (user != null) return child;
+      if (user != null) return widget.child;
       return AccountAccessPage(
         allowGuest: true,
         onSkip: () => Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (_) => child),
+          MaterialPageRoute(builder: (_) => widget.child),
         ),
       );
     },
