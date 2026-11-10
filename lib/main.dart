@@ -18,37 +18,193 @@ import 'package:webview_flutter/webview_flutter.dart';
 import 'package:webview_flutter_android/webview_flutter_android.dart';
 
 
-/// Converts WhatsApp-style formatting into a small, safe HTML subset.
-/// Input is escaped before any formatting rules are applied.
+/// Converts WhatsApp-style formatting into a safe HTML subset.
 String parseFormatting(String text) {
-  String escapeHtml(String value) => value
-      .replaceAll('&', '&amp;')
-      .replaceAll('<', '&lt;')
-      .replaceAll('>', '&gt;')
-      .replaceAll('"', '&quot;')
-      .replaceAll("'", '&#39;');
+  String esc(String s) => s.replaceAll('&', '&amp;').replaceAll('<', '&lt;')
+      .replaceAll('>', '&gt;').replaceAll('"', '&quot;').replaceAll("'", '&#39;');
 
-  var source = escapeHtml(text.replaceAll('\\r\\n', '\\n').replaceAll('\\r', '\\n'));
+  var source = esc(text.replaceAll('\r\n', '\n').replaceAll('\r', '\n'));
   final protected = <String>[];
-
   String protect(String html) {
-    final token = '\\uE000${protected.length}\\uE001';
+    final token = '\uE000\${protected.length}\uE001';
     protected.add(html);
     return token;
   }
 
-  // Protect inline code first: its contents are literal and never formatted.
-  source = source.replaceAllMapped(RegExp(r'`([^`\\n]+)`'), (m) =>
-      protect('<code>${m[1]}</code>'));
-
-  // Protect URLs before inline markup so underscores/asterisks in query strings
-  // are not interpreted as formatting. Only http(s) and www links are emitted.
+  source = source.replaceAllMapped(RegExp(r'\x60([^\x60\n]+)\x60'), (m) =>
+      protect('<code>\${m[1]}</code>'));
   source = source.replaceAllMapped(
-    RegExp(r'(https?://[^\\s<>]+|www\\.[^\\s<>]+)', caseSensitive: false),
+    RegExp(r'(https?://[^\s<>]+|www\.[^\s<>]+)', caseSensitive: false),
     (m) {
       var url = m[0]!;
       var suffix = '';
-      while (url.isNotEmpty && RegExp(r'[.,!?;:،؛؟)\\]}»]
+      while (url.isNotEmpty && RegExp(r'[.,!?;:،؛؟)\]}»]$').hasMatch(url)) {
+        suffix = url.substring(url.length - 1) + suffix;
+        url = url.substring(0, url.length - 1);
+      }
+      if (url.isEmpty) return m[0]!;
+      final href = url.toLowerCase().startsWith('www.') ? 'https://$url' : url;
+      return protect('<a href="\${esc(href)}">\${url}</a>') + suffix;
+    },
+  );
+
+  final rules = <RegExp, String>{
+    RegExp(r'(?<!_)_([^_\n]+)_(?!_)'): '<em>\$1</em>',
+    RegExp(r'(?<!~)~([^~\n]+)~(?!~)'): '<del>\$1</del>',
+    RegExp(r'(?<!\*)\*([^*\n]+)\*(?!\*)'): '<strong>\$1</strong>',
+  };
+  for (final entry in rules.entries) {
+    var previous = '';
+    while (previous != source) {
+      previous = source;
+      source = source.replaceAllMapped(entry.key, (m) =>
+          entry.value.replaceFirst(r'\$1', m[1]!));
+    }
+  }
+
+  for (var i = 0; i < protected.length; i++) {
+    source = source.replaceAll('\uE000\$i\uE001', protected[i]);
+  }
+
+  final lines = <String>[];
+  for (final line in source.split('\n')) {
+    if (line.startsWith('&gt; ')) {
+      lines.add('<blockquote>\${line.substring(5)}</blockquote>');
+    } else if (RegExp(r'^-\s+').hasMatch(line)) {
+      lines.add('<ul><li>\${line.replaceFirst(RegExp(r'^-\s+'), '')}</li></ul>');
+    } else if (RegExp(r'^\d+\.\s+').hasMatch(line)) {
+      lines.add('<ol><li>\${line.replaceFirst(RegExp(r'^\d+\.\s+'), '')}</li></ol>');
+    } else {
+      lines.add(line);
+    }
+  }
+  return lines.join('<br>');
+}
+
+String _decodeFormattingEntities(String value) => value
+    .replaceAll('&nbsp;', ' ').replaceAll('&#39;', "'")
+    .replaceAll('&quot;', '"').replaceAll('&gt;', '>')
+    .replaceAll('&lt;', '<').replaceAll('&amp;', '&');
+
+class FormattedText extends StatefulWidget {
+  const FormattedText(this.text, {super.key, this.style,
+    this.textAlign = TextAlign.start, this.maxLines,
+    this.overflow = TextOverflow.clip, this.linkColor});
+  final String text;
+  final TextStyle? style;
+  final TextAlign textAlign;
+  final int? maxLines;
+  final TextOverflow overflow;
+  final Color? linkColor;
+
+  @override
+  State<FormattedText> createState() => _FormattedTextState();
+}
+
+class _FormattedTextState extends State<FormattedText> {
+  final List<TapGestureRecognizer> _recognizers = [];
+
+  @override
+  void dispose() {
+    for (final recognizer in _recognizers) { recognizer.dispose(); }
+    super.dispose();
+  }
+
+  TextSpan _makeSpan(String html, TextStyle base) {
+    final children = <InlineSpan>[];
+    final stack = <({String tag, TextStyle style, String? href})>[];
+    var style = base;
+    String? href;
+    final tokenPattern = RegExp(r'(<[^>]+>)');
+    var cursor = 0;
+
+    void addText(String raw) {
+      if (raw.isEmpty) return;
+      TapGestureRecognizer? recognizer;
+      if (href != null) {
+        final link = href!;
+        recognizer = TapGestureRecognizer()..onTap = () {
+          final uri = Uri.tryParse(link);
+          if (uri != null && (uri.scheme == 'http' || uri.scheme == 'https')) {
+            launchUrl(uri, mode: LaunchMode.externalApplication);
+          }
+        };
+        _recognizers.add(recognizer);
+      }
+      children.add(TextSpan(text: _decodeFormattingEntities(raw),
+        style: style, recognizer: recognizer));
+    }
+
+    for (final match in tokenPattern.allMatches(html)) {
+      addText(html.substring(cursor, match.start));
+      final tagText = match.group(0)!;
+      final closing = tagText.startsWith('</');
+      final name = RegExp(r'^</?([a-zA-Z0-9]+)')
+          .firstMatch(tagText)?.group(1)?.toLowerCase() ?? '';
+      if (name == 'br') {
+        children.add(const TextSpan(text: '\n'));
+      } else if (closing) {
+        if (name == 'li' || name == 'blockquote') {
+          children.add(const TextSpan(text: '\n'));
+        }
+        if (stack.isNotEmpty) {
+          final previous = stack.removeLast();
+          style = previous.style;
+          href = previous.href;
+        }
+      } else if (name == 'li') {
+        children.add(TextSpan(text: '• ',
+          style: style.copyWith(fontWeight: FontWeight.w900)));
+        stack.add((tag: name, style: style, href: href));
+      } else if (name == 'ul' || name == 'ol') {
+        // List containers are structural; list items get RTL bullets.
+      } else {
+        stack.add((tag: name, style: style, href: href));
+        switch (name) {
+          case 'strong':
+            style = style.copyWith(fontWeight: FontWeight.w900);
+            break;
+          case 'em':
+            style = style.copyWith(fontStyle: FontStyle.italic);
+            break;
+          case 'del':
+            style = style.copyWith(decoration: TextDecoration.lineThrough);
+            break;
+          case 'code':
+            style = style.copyWith(fontFamily: 'monospace',
+              backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest);
+            break;
+          case 'blockquote':
+            style = style.copyWith(fontStyle: FontStyle.italic,
+              color: widget.linkColor ?? Theme.of(context).colorScheme.primary);
+            break;
+          case 'a':
+            href = RegExp(r'href="([^"]+)"').firstMatch(tagText)
+                ?.group(1)?.replaceAll('&amp;', '&');
+            style = style.copyWith(color: widget.linkColor ??
+              Theme.of(context).colorScheme.primary,
+              decoration: TextDecoration.underline);
+            break;
+        }
+      }
+      cursor = match.end;
+    }
+    addText(html.substring(cursor));
+    return TextSpan(children: children, style: base);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    for (final recognizer in _recognizers) { recognizer.dispose(); }
+    _recognizers.clear();
+    final base = widget.style ?? DefaultTextStyle.of(context).style;
+    return Directionality(textDirection: TextDirection.rtl,
+      child: Text.rich(_makeSpan(parseFormatting(widget.text), base),
+        textAlign: widget.textAlign, maxLines: widget.maxLines,
+        overflow: widget.overflow));
+  }
+}
+
 const String cloudinaryUploadPreset = 'adabi_gallery';
 
 Future<String> uploadImageToCloudinary(XFile file) async {
