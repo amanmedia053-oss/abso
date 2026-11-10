@@ -59,6 +59,7 @@ class _AbsoAppState extends State<AbsoApp> {
   String appLanguage = 'ps';
   double appTextScale = 1.0;
   bool notificationsEnabled = true;
+  Timer? _textScaleSaveTimer;
 
   @override
   void initState() {
@@ -86,10 +87,16 @@ class _AbsoAppState extends State<AbsoApp> {
     await prefs.setString('app_language', value);
   }
 
-  Future<void> _setTextScale(double value) async {
-    setState(() => appTextScale = value.clamp(.85, 1.30).toDouble());
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setDouble('app_text_scale', appTextScale);
+  void _setTextScale(double value) {
+    final next = value.clamp(.85, 1.30).toDouble();
+    setState(() => appTextScale = next);
+    // Persist only the latest slider value. Rapid asynchronous writes while
+    // dragging could finish out of order and restore an older percentage.
+    _textScaleSaveTimer?.cancel();
+    _textScaleSaveTimer = Timer(const Duration(milliseconds: 350), () async {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setDouble('app_text_scale', next);
+    });
   }
 
   Future<void> _setNotifications(bool value) async {
@@ -192,6 +199,12 @@ class _AbsoAppState extends State<AbsoApp> {
         labelStyle: TextStyle(fontFamily: selectedFont, fontSize: 12)),
       dividerTheme: DividerThemeData(color: scheme.outlineVariant.withValues(alpha: .5)),
     );
+  }
+
+  @override
+  void dispose() {
+    _textScaleSaveTimer?.cancel();
+    super.dispose();
   }
 
   @override
@@ -2755,20 +2768,20 @@ class _PoetryShellState extends State<PoetryShell> {
   Widget _settingsPage() {
     final colors = Theme.of(context).colorScheme;
     final dark = widget.isDark;
-    const fonts = <Map<String, String>>[
-      {'name': 'Vazirmatn', 'label': 'وزیرمتن', 'note': 'روښانه او منظم'},
-      {'name': 'Noto Naskh Arabic', 'label': 'نوتو نسخ', 'note': 'د کتابونو کلاسیک سبک'},
-      {'name': 'Amiri', 'label': 'اميري', 'note': 'ادبي او دودیز خط'},
-      {'name': 'Cairo', 'label': 'کایرو', 'note': 'عصري او ساده'},
-      {'name': 'Tajawal', 'label': 'تجوال', 'note': 'نرم او ښکلی'},
+    final fonts = <Map<String, String>>[
+      {'name': 'Vazirmatn', 'label': 'وزیرمتن', 'note': _tr('روښانه او منظم', 'روشن و منظم', 'Clear and readable')},
+      {'name': 'Noto Naskh Arabic', 'label': 'نوتو نسخ', 'note': _tr('د کتابونو کلاسیک سبک', 'سبک کلاسیک کتاب‌ها', 'Classic book style')},
+      {'name': 'Amiri', 'label': 'اميري', 'note': _tr('ادبي او دودیز خط', 'قلم ادبی و سنتی', 'Traditional literary font')},
+      {'name': 'Cairo', 'label': 'کایرو', 'note': _tr('عصري او ساده', 'مدرن و ساده', 'Modern and simple')},
+      {'name': 'Tajawal', 'label': 'تجوال', 'note': _tr('نرم او ښکلی', 'نرم و زیبا', 'Soft and elegant')},
     ];
-    const palettes = <Map<String, Object>>[
-      {'name': 'ځنګلي شین', 'color': Color(0xFF245B50)},
-      {'name': 'شاهي ارغواني', 'color': Color(0xFF6750A4)},
-      {'name': 'سمندري آبي', 'color': Color(0xFF176B87)},
-      {'name': 'یاقوتي سور', 'color': Color(0xFF9A3D50)},
-      {'name': 'طلایي نارنجي', 'color': Color(0xFF9A641F)},
-      {'name': 'فیروزه يي', 'color': Color(0xFF287C78)},
+    final palettes = <Map<String, Object>>[
+      {'name': _tr('ځنګلي شین', 'سبز جنگلی', 'Forest green'), 'color': const Color(0xFF245B50)},
+      {'name': _tr('شاهي ارغواني', 'بنفش شاهانه', 'Royal purple'), 'color': const Color(0xFF6750A4)},
+      {'name': _tr('سمندري آبي', 'آبی دریایی', 'Ocean blue'), 'color': const Color(0xFF176B87)},
+      {'name': _tr('یاقوتي سور', 'سرخ یاقوتی', 'Ruby red'), 'color': const Color(0xFF9A3D50)},
+      {'name': _tr('طلایي نارنجي', 'نارنجی طلایی', 'Golden orange'), 'color': const Color(0xFF9A641F)},
+      {'name': _tr('فیروزه يي', 'فیروزه‌ای', 'Turquoise'), 'color': const Color(0xFF287C78)},
     ];
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 30),
