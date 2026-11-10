@@ -801,7 +801,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                                 child: Text(
                                   item.description,
                                   textAlign: TextAlign.center,
-                                  style: const TextStyle(
+                                  style: TextStyle(
                                     color: Colors.white.withValues(alpha: 0.82),
                                     fontSize: 15,
                                     height: 2,
