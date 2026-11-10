@@ -154,7 +154,15 @@ class _FormattedTextState extends State<FormattedText> {
       if (name == 'br') {
         children.add(const TextSpan(text: '\n'));
       } else if (closing) {
-        if (name == 'li' || name == 'blockquote') children.add(const TextSpan(text: '\n'));
+        if (name == 'blockquote') {
+          children.add(TextSpan(text: ' ❞',
+            style: base.copyWith(fontSize: (base.fontSize ?? 14) * 1.45,
+              fontWeight: FontWeight.w900,
+              color: widget.linkColor ?? Theme.of(context).colorScheme.primary)));
+          children.add(const TextSpan(text: '\n'));
+        } else if (name == 'li') {
+          children.add(const TextSpan(text: '\n'));
+        }
         if (name == 'ol') ordered = false;
         if (styles.isNotEmpty) style = styles.removeLast();
         if (hrefs.isNotEmpty) href = hrefs.removeLast();
@@ -181,7 +189,13 @@ class _FormattedTextState extends State<FormattedText> {
             break;
           case 'blockquote':
             style = style.copyWith(fontStyle: FontStyle.italic,
-              color: widget.linkColor ?? Theme.of(context).colorScheme.primary);
+              fontWeight: FontWeight.w700,
+              color: widget.linkColor ?? Theme.of(context).colorScheme.primary,
+              backgroundColor: Theme.of(context).colorScheme.primary.withValues(alpha: .09));
+            children.add(TextSpan(text: '❝ ',
+              style: base.copyWith(fontSize: (base.fontSize ?? 14) * 1.65,
+                fontWeight: FontWeight.w900,
+                color: widget.linkColor ?? Theme.of(context).colorScheme.primary)));
             break;
           case 'a':
             href = RegExp(r'href="([^"]+)"').firstMatch(tag)?.group(1)?.replaceAll('&amp;', '&');
@@ -5031,12 +5045,12 @@ class _TypingCoupletBoxState extends State<_TypingCoupletBox> {
               const SizedBox(height: 9),
               AnimatedSwitcher(
                 duration: const Duration(milliseconds: 280),
-                child: Text(
+                child: FormattedText(
                   shown + (_charIndex < currentText.length ? '▏' : ''),
                   key: ValueKey(_itemIndex),
-                  textDirection: TextDirection.rtl,
                   textAlign: TextAlign.center,
                   style: TextStyle(color: c.onSurface, fontSize: 14, height: 1.9, fontWeight: FontWeight.w800),
+                  linkColor: c.primary,
                 ),
               ),
               if (poem.poet.isNotEmpty) ...[
