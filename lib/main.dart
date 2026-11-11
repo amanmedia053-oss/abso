@@ -16,6 +16,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 import 'package:webview_flutter_android/webview_flutter_android.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'writer_community.dart';
 
 /// Safe WhatsApp-like formatting parser. HTML escaping always happens first.
 String parseFormatting(String text) {
@@ -2100,6 +2101,24 @@ class _PoetryShellState extends State<PoetryShell> {
             _drawerItem(Icons.favorite_rounded, 'خوښ شوي شعرونه', 1),
             _drawerItem(Icons.info_rounded, 'زموږ په اړه', 2),
             _drawerItem(Icons.settings_rounded, 'تنظیمات', 3),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 5),
+              child: Material(
+                color: colors.tertiary.withValues(alpha: .09),
+                borderRadius: BorderRadius.circular(17),
+                child: ListTile(
+                  leading: Icon(Icons.people_alt_rounded, color: colors.tertiary),
+                  title: const Text('د لیکوالانو ټولنه', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w900)),
+                  subtitle: const Text('پروفایلونه، پلویان او د شعرونو لېږل', style: TextStyle(fontSize: 10)),
+                  trailing: Icon(Icons.arrow_back_ios_new_rounded, size: 13, color: colors.tertiary),
+                  onTap: () {
+                    Navigator.pop(context);
+                    Navigator.push(context, MaterialPageRoute(builder: (_) =>
+                      const WriterCommunityPage()));
+                  },
+                ),
+              ),
+            ),
             const SizedBox(height: 7),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 14),
