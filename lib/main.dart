@@ -5109,6 +5109,7 @@ class _CollectionPoemsPageState extends State<CollectionPoemsPage> {
   late final DatabaseReference _viewsRef;
   static const double _expandedHeaderHeight = 318;
   static const double _collapsedHeaderHeight = 76;
+  int _visibleCount = 10;
 
   @override
   void initState() {
@@ -5128,7 +5129,16 @@ class _CollectionPoemsPageState extends State<CollectionPoemsPage> {
       body: SafeArea(
         top: true,
         bottom: false,
-        child: CustomScrollView(
+        child: NotificationListener<ScrollNotification>(
+          onNotification: (notification) {
+            if (notification.metrics.extentAfter < 260 &&
+                _visibleCount < widget.poems.length) {
+              setState(() => _visibleCount =
+                (_visibleCount + 10).clamp(0, widget.poems.length).toInt());
+            }
+            return false;
+          },
+          child: CustomScrollView(
         physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
         slivers: [
           SliverPersistentHeader(
@@ -5156,9 +5166,10 @@ class _CollectionPoemsPageState extends State<CollectionPoemsPage> {
                 (context, index) => Padding(
                   padding: const EdgeInsets.only(bottom: 10),
                   child: _collectionPoemTile(context, widget.poems[index])),
-                childCount: widget.poems.length))),
+                childCount: widget.poems.length < _visibleCount ? widget.poems.length : _visibleCount))),
         ],
-      ),
+          ),
+        ),
       ),
     ));
   }
