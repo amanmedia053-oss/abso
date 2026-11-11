@@ -48,9 +48,10 @@
     },
     "profiles": {
       "$uid": {
-        ".read": "auth != null && auth.uid == $uid",
+        ".read": true,
         ".write": "auth != null && auth.uid == $uid"
-      }
+      },
+      ".read": true
     },
     "comments": {
       ".read": true,
@@ -114,6 +115,34 @@
       ".read": true,
       "$imageId": {
         ".write": "auth != null && root.child('admins').child(auth.uid).child('role').val() == 'admin'"
+      }
+    },
+    "pendingPoems": {
+      ".read": "auth != null && root.child('admins').child(auth.uid).child('role').val() == 'admin'",
+      "$uid": {
+        ".read": "auth != null && (auth.uid == $uid || root.child('admins').child(auth.uid).child('role').val() == 'admin')",
+        "$poemId": {
+          ".write": "auth != null && ((auth.uid == $uid && !data.exists() && newData.child('authorUid').val() == auth.uid && newData.child('status').val() == 'pending') || (auth.uid == $uid && data.exists() && data.child('authorUid').val() == auth.uid && newData.child('status').val() == 'pending') || root.child('admins').child(auth.uid).child('role').val() == 'admin')",
+          ".validate": "!newData.exists() || (newData.hasChildren(['authorUid','text','status','createdAt']) && newData.child('authorUid').val() == $uid && newData.child('text').isString() && newData.child('text').val().length > 0 && newData.child('text').val().length <= 12000 && newData.child('status').val() == 'pending')"
+        }
+      }
+    },
+    "followers": {
+      "$authorUid": {
+        ".read": true,
+        "$followerUid": {
+          ".write": "auth != null && auth.uid == $followerUid && auth.uid != $authorUid && (!newData.exists() || newData.val() == true)",
+          ".validate": "newData.isBoolean()"
+        }
+      }
+    },
+    "following": {
+      "$followerUid": {
+        ".read": true,
+        "$authorUid": {
+          ".write": "auth != null && auth.uid == $followerUid && auth.uid != $authorUid && (!newData.exists() || newData.val() == true)",
+          ".validate": "newData.isBoolean()"
+        }
       }
     }
   }
