@@ -2691,11 +2691,10 @@ class _PoetryShellState extends State<PoetryShell> {
           const SliverToBoxAdapter(child: Padding(padding: EdgeInsets.all(20),
             child: Center(child: Text('په دې لټون کې څه پیدا نه شول.'))))
         else
-          SliverToBoxAdapter(child: SizedBox(height: 176, child: ListView.separated(
-            padding: const EdgeInsets.fromLTRB(16, 2, 16, 10),
+          SliverToBoxAdapter(child: SizedBox(height: 176, child: PagedListView<Poem>(
+            items: visible, padding: const EdgeInsets.fromLTRB(16, 2, 16, 10),
             scrollDirection: Axis.horizontal, physics: const BouncingScrollPhysics(),
-            itemCount: visible.length, separatorBuilder: (_, __) => const SizedBox(width: 10),
-            itemBuilder: (context, index) => _horizontalPoemCard(visible[index])))),
+            itemBuilder: (context, poem, index) => _horizontalPoemCard(poem)))),
         SliverPadding(
           padding: const EdgeInsets.fromLTRB(16, 10, 16, 12),
           sliver: SliverToBoxAdapter(
@@ -2709,14 +2708,12 @@ class _PoetryShellState extends State<PoetryShell> {
         SliverToBoxAdapter(
           child: SizedBox(
             height: 126,
-            child: ListView.separated(
+            child: PagedListView<LocalPoetryCategory>(
+              items: _offlineCategories,
               padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
               scrollDirection: Axis.horizontal,
               physics: const BouncingScrollPhysics(),
-              itemCount: _offlineCategories.length,
-              separatorBuilder: (_, __) => const SizedBox(width: 10),
-              itemBuilder: (context, index) {
-                final category = _offlineCategories[index];
+              itemBuilder: (context, category, index) {
                 final remoteEntry = _categoryNames.entries.cast<MapEntry<String, String>?>()
                     .firstWhere(
                       (entry) => entry!.value.trim() == category.title,
@@ -2811,14 +2808,12 @@ class _PoetryShellState extends State<PoetryShell> {
           SliverPadding(padding: const EdgeInsets.fromLTRB(16, 10, 16, 9),
             sliver: SliverToBoxAdapter(child: _sectionHeader(Icons.people_alt_rounded,
               'شاعران', '${poetGroups.length} شاعران'))),
-          SliverToBoxAdapter(child: SizedBox(height: 132, child: ListView.separated(
-            padding: const EdgeInsets.fromLTRB(16, 2, 16, 10), scrollDirection: Axis.horizontal,
-            physics: const BouncingScrollPhysics(), itemCount: poetGroups.length,
-            separatorBuilder: (_, __) => const SizedBox(width: 10),
-            itemBuilder: (context, index) {
-              final entry = poetGroups.entries.elementAt(index);
-              return _horizontalPoetCard(entry.key, _poetNames[entry.key] ?? '', entry.value);
-            }))),
+          SliverToBoxAdapter(child: SizedBox(height: 132, child: PagedListView<MapEntry<String, List<Poem>>>(
+            items: poetGroups.entries.toList(),
+            padding: const EdgeInsets.fromLTRB(16, 2, 16, 10),
+            scrollDirection: Axis.horizontal, physics: const BouncingScrollPhysics(),
+            itemBuilder: (context, entry, index) =>
+              _horizontalPoetCard(entry.key, _poetNames[entry.key] ?? '', entry.value)))),
         ],
         SliverToBoxAdapter(child: _shortVideosHomeSection()),
       ],
@@ -3056,11 +3051,10 @@ class _PoetryShellState extends State<PoetryShell> {
         ),
       );
     }
-    return ListView.builder(
-      key: const PageStorageKey('favorites'),
+    return PagedListView<Poem>(
+      key: const PageStorageKey('favorites'), items: saved,
       padding: const EdgeInsets.all(14),
-      itemCount: saved.length,
-      itemBuilder: (context, index) => _poemCard(saved[index]),
+      itemBuilder: (context, poem, index) => _poemCard(poem),
     );
   }
 
@@ -4278,13 +4272,11 @@ class _PoemsAdminPageState extends State<PoemsAdminPage> {
               ),
             ]),
           ),
-        Expanded(child: ListView.separated(
-          padding: const EdgeInsets.fromLTRB(14, 4, 14, 14),
-          itemCount: items.length,
-          separatorBuilder: (_, __) => const SizedBox(height: 9),
-          itemBuilder: (context, i) {
-            final id = items[i].key.toString();
-            final data = Map<String, dynamic>.from(items[i].value as Map);
+        Expanded(child: PagedListView<dynamic>(
+          items: items, padding: const EdgeInsets.fromLTRB(14, 4, 14, 14),
+          itemBuilder: (context, item, i) {
+            final id = item.key.toString();
+            final data = Map<String, dynamic>.from(item.value as Map);
             return Card(child: ListTile(
               leading: Checkbox(
                 value: selectedPoems.contains(id),
@@ -4510,12 +4502,9 @@ class _SimpleListAdminState extends State<SimpleListAdmin> {
                   FilledButton.icon(onPressed: () => _editItem(),
                     icon: const Icon(Icons.add_rounded), label: const Text('لومړی توکی اضافه کړه')),
                 ]))
-              : ListView.separated(
-                  padding: const EdgeInsets.fromLTRB(14, 4, 14, 20),
-                  itemCount: entries.length,
-                  separatorBuilder: (_, __) => const SizedBox(height: 9),
-                  itemBuilder: (context, index) {
-                    final entry = entries[index];
+              : PagedListView<dynamic>(
+                  items: entries, padding: const EdgeInsets.fromLTRB(14, 4, 14, 20),
+                  itemBuilder: (context, entry, index) {
                     final id = entry.key.toString();
                     final value = entry.value;
                     final label = (value is Map ? (value['name'] ?? '') : value).toString();
@@ -4870,13 +4859,9 @@ class _PoetrySearchPageState extends State<PoetrySearchPage> {
               Text('د لټون کلمه یا فلټرونه بدل کړئ.',
                 style: TextStyle(color: c.onSurfaceVariant, fontSize: 12)),
             ]))
-          : ListView.separated(
-              keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
-              padding: const EdgeInsets.all(14),
-              itemCount: results.length,
-              separatorBuilder: (_, __) => const SizedBox(height: 9),
-              itemBuilder: (context, index) {
-                final poem = results[index];
+          : PagedListView<Poem>(
+              items: results, padding: const EdgeInsets.all(14),
+              itemBuilder: (context, poem, index) {
                 return Card(
                   clipBehavior: Clip.antiAlias,
                   child: ListTile(
@@ -5054,6 +5039,53 @@ class _TypingCoupletBoxState extends State<_TypingCoupletBox> {
             ]),
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// Lazy batch list: initially shows ten items, then adds ten near the end.
+class PagedListView<T> extends StatefulWidget {
+  const PagedListView({super.key, required this.items, required this.itemBuilder,
+    this.padding, this.separatorBuilder, this.scrollDirection = Axis.vertical,
+    this.physics, this.pageSize = 10});
+  final List<T> items;
+  final Widget Function(BuildContext, T, int) itemBuilder;
+  final EdgeInsetsGeometry? padding;
+  final Widget Function(BuildContext, int)? separatorBuilder;
+  final Axis scrollDirection;
+  final ScrollPhysics? physics;
+  final int pageSize;
+  @override
+  State<PagedListView<T>> createState() => _PagedListViewState<T>();
+}
+class _PagedListViewState<T> extends State<PagedListView<T>> {
+  late int _visibleCount;
+  @override
+  void initState() { super.initState(); _visibleCount = widget.pageSize; }
+  void _loadNextBatch() {
+    if (!mounted || _visibleCount >= widget.items.length) return;
+    setState(() => _visibleCount =
+      (_visibleCount + widget.pageSize).clamp(0, widget.items.length).toInt());
+  }
+  @override
+  Widget build(BuildContext context) {
+    final count = _visibleCount.clamp(0, widget.items.length).toInt();
+    return NotificationListener<ScrollNotification>(
+      onNotification: (n) {
+        if (n.metrics.axis == widget.scrollDirection &&
+            n.metrics.extentAfter < 220 && count < widget.items.length) {
+          _loadNextBatch();
+        }
+        return false;
+      },
+      child: ListView.separated(
+        padding: widget.padding, scrollDirection: widget.scrollDirection,
+        physics: widget.physics, itemCount: count,
+        separatorBuilder: widget.separatorBuilder ?? (_, __) =>
+          widget.scrollDirection == Axis.vertical
+            ? const SizedBox(height: 9) : const SizedBox(width: 10),
+        itemBuilder: (context, i) => widget.itemBuilder(context, widget.items[i], i),
       ),
     );
   }
